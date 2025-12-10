@@ -1,13 +1,16 @@
 # 🎨 Flux AI Pro - v8.6.1 智能自适应版
 
 [![Deploy to Cloudflare Workers](https://img.shields.io/badge/Deploy%20to-Cloudflare%20Workers-orange?style=for-the-badge&logo=cloudflare)](https://workers.cloudflare.com/)
-[![Version](https://img.shields.io/badge/Version-8.6.1%20Clean-blue?style=for-the-badge)](https://github.com/kinai9661/Flux-AI-Pro)
+[![Version](https://img.shields.io/badge/Version-8.6.1%20Safe-blue?style=for-the-badge)](https://github.com/kinai9661/Flux-AI-Pro)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![Cost](https://img.shields.io/badge/Cost-100%25%20FREE-success?style=for-the-badge)](https://pollinations.ai/)
 
 > **基於 Cloudflare Workers 的智能自适应 AI 图像生成平台**
 > 
 > **✨ 三档质量模式** | **🧠 智能提示词分析** | **⚡ 模型专属优化** | **🎨 17 个免费模型** | **完全开源**
+
+> **🛡️ 内容安全声明**: 本项目严格遵守内容安全规范，仅供合法的创意与艺术创作使用。
+> 禁止生成任何违法、暴力、色情或不当内容。用户需遵守当地法律法规，项目维护者不对用户生成内容承担责任。
 
 ---
 
@@ -79,6 +82,7 @@
 - ✅ **私密模式**: 保护用户隐私
 - ✅ **OpenAI 兼容 API**: 直接对接 NextChat/LobeChat
 - ✅ **历史记录**: 本地存储最近 100 条
+- ✅ **内容安全**: 遵守社区规范与法律要求
 
 ---
 
@@ -310,11 +314,11 @@ const CONFIG = {
 
 ## 📅 更新日志
 
-### v8.6.1 (2025-12-10) - 🧹 清洁版
-- **移除**: 所有 NSFW 成人内容功能
-- **优化**: 清理与 NSFW 相关的所有代码
+### v8.6.1 (2025-12-11) - ✨ 优化版
+- **新增**: 内容安全过滤机制与使用规范
+- **优化**: 代码架构清理与文档完善
+- **增强**: Web UI 用户体验优化
 - **保留**: v8.6.0 所有核心功能（三档质量、智能分析等）
-- **更新**: Web UI 界面优化
 
 ### v8.6.0 (2025-12-04) - 🧠 智能自适应版
 - **新增**: 三档质量模式 (经济/标准/超高清)
@@ -360,7 +364,7 @@ const CONFIG = {
 | 快速测试概念 | ⚡ 经济 | 速度优先，节省资源 |
 | 日常社交媒体 | ⭐ 标准 | 平衡质量与速度 |
 | 专业作品集 | 💎 超高清 | 极致细节，适合印刷 |
-| 客户交付 | 💎 超高清 | 最高标准，零妃协 |
+| 客户交付 | 💎 超高清 | 最高标准，零妥协 |
 | 动画帧生成 | ⚡ 经济 | 批量生成，一致性优先 |
 | 产品渲染图 | 💎 超高清 | 商业用途，细节重要 |
 
@@ -381,14 +385,14 @@ turbo + 经济 + 任意风格
 
 艺术创作:
 flux-pro + 超高清 + oil-painting/watercolor
-→ 适合: 数字艺术品、NFT、画庻展示
+→ 适合: 数字艺术品、NFT、画廊展示
 ```
 
 ---
 
 ## ⚠️ 重要提醒
 
-### Pollinations.ai
+### Pollinations.ai 服务说明
 1. **完全免费**，但服务稳定性由第三方控制
 2. 请遵守其 [使用条款](https://pollinations.ai/terms)
 3. 部分实验性模型可能不可用 (自动回退)
@@ -398,9 +402,17 @@ flux-pro + 超高清 + oil-painting/watercolor
 2. **自动优化**会根据复杂度推荐最佳模式
 3. 建议首次测试使用**标准模式**找到平衡点
 
-### 法律与责任
-- 请勿生成非法、仇恨或违反当地法律的内容
-- 用户需自行承担生成内容带来的责任
+### 内容安全与使用规范
+1. **严格禁止**生成违法、暴力、色情、仇恨或任何不当内容
+2. **尊重版权**，不得生成侵犯他人知识产权的作品
+3. **负责任使用**，用户需对生成内容的合法性负全部责任
+4. **遵守法规**，请遵守当地法律法规与社区准则
+5. **违规处理**，发现滥用行为将立即停止服务访问
+
+### 法律声明
+- 本项目仅供合法的创意与艺术创作使用
+- 用户需自行承担生成内容带来的所有法律责任
+- 项目维护者不对用户生成的内容负责
 
 ---
 
