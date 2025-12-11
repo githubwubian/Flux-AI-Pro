@@ -116,7 +116,7 @@ const CONFIG = {
     QUALITY_MODES: {
       economy: {
         name: "經濟模式",
-        description: "快速出圖，適合測試",
+        description: "快速出圖,適合測試",
         min_resolution: 1024,
         steps_multiplier: 0.85,
         guidance_multiplier: 0.9,
@@ -132,7 +132,7 @@ const CONFIG = {
       },
       ultra: {
         name: "超高清模式",
-        description: "極致質量，耗時較長",
+        description: "極致質量,耗時較長",
         min_resolution: 1536,
         steps_multiplier: 1.35,
         guidance_multiplier: 1.15,
@@ -203,7 +203,7 @@ class Logger {
     get() { return this.logs; }
 }
 
-// 自動翻譯函數（使用 Cloudflare Workers AI）
+// 自動翻譯函數(使用 Cloudflare Workers AI)
 async function translateToEnglish(text, env) {
     try {
         const hasChinese = /[\u4e00-\u9fa5]/.test(text);
@@ -857,16 +857,16 @@ timerElement.textContent=\`⏱️ 已耗時: \${elapsed} 秒\`;
 
 const EXAMPLES={
 all:[
-{label:'汉服',text:'一個穿著中國傳統漢服的少女，站在盛開的櫻花樹下，溫柔的微笑，細膩的畫面，柔和的光線'},
+{label:'汉服',text:'一個穿著中國傳統漢服的少女,站在盛開的櫻花樹下,溫柔的微笑,細膩的畫面,柔和的光線'},
 {label:'赛博朋克',text:'賽博朋克風格的中國龍 cyberpunk style, neon lights, futuristic Chinese dragon, detailed scales, glowing eyes'},
-{label:'油画',text:'古典油畫風格的威尼斯運河，細膩的筆觸，豐富的色彩，藝術感強'},
+{label:'油画',text:'古典油畫風格的威尼斯運河,細膩的筆觸,豐富的色彩,藝術感強'},
 {label:'动漫',text:'anime style girl with cat ears, vibrant colors, cute expression, detailed anime art'}
 ],
 banana:[
-{label:'漢服少女',text:'一位身穿精美漢服的古典美女，站在江南園林中，背景是飄落的桃花，柔和的光線，極致細節，8K畫質'},
-{label:'中文書法',text:'毛筆書法「天道酬勤」四個繁體大字，墨香四溢，宣紙質感，金色背景，專業攝影，4K超高清'},
-{label:'故宮建築',text:'紫禁城太和殿在日出時分，雲霧繚繞，金色陽光灑滿紅牆黃瓦，超廣角鏡頭，4K超高清'},
-{label:'水墨山水',text:'中國傳統水墨山水畫，高山流水，雲霧繚繞，意境深遠，細膩的筆觸，4K超高清'}
+{label:'漢服少女',text:'一位身穿精美漢服的古典美女,站在江南園林中,背景是飄落的桃花,柔和的光線,極致細節,8K畫質'},
+{label:'中文書法',text:'毛筆書法「天道酬勤」四個繁體大字,墨香四溢,宣紙質感,金色背景,專業攝影,4K超高清'},
+{label:'故宮建築',text:'紫禁城太和殿在日出時分,雲霧繚繞,金色陽光灑滿紅牆黃瓦,超廣角鏡頭,4K超高清'},
+{label:'水墨山水',text:'中國傳統水墨山水畫,高山流水,雲霧繚繞,意境深遠,細膩的筆觸,4K超高清'}
 ]
 };
 
@@ -1031,14 +1031,14 @@ container.innerHTML=history.map(item=>\`
 }
 
 function deleteHistoryItem(id){
-if(confirm('確定刪除這條紀錄嗎？')){
+if(confirm('確定刪除這條紀錄嗎?')){
 HistoryManager.delete(id);
 showHistory();
 }
 }
 
 function clearAllHistory(){
-if(confirm('確定清空所有歷史紀錄嗎？此操作不可復原！')){
+if(confirm('確定清空所有歷史紀錄嗎?此操作不可復原!')){
 HistoryManager.clear();
 showHistory();
 }
@@ -1082,7 +1082,7 @@ button.disabled=true;
 button.textContent='生成中...';
 
 startTime=Date.now();
-resultDiv.innerHTML='<div class="success"><strong>⏳ 正在生成圖像，請稍候...</strong><div class="timer">⏱️ 已耗時: 0.0 秒</div></div>';
+resultDiv.innerHTML='<div class="success"><strong>⏳ 正在生成圖像,請稍候...</strong><div class="timer">⏱️ 已耗時: 0.0 秒</div></div>';
 
 generationTimer=setInterval(updateTimer,100);
 
