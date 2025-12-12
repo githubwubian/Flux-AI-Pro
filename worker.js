@@ -1,6 +1,6 @@
 // =================================================================================
 //  項目: Flux AI Pro
-//  版本: 9.3.0 (本地上傳 + 圖生圖 + 多圖融合 + 多張生成 + 4K)
+//  版本: 9.3.1 (修復 localStorage 錯誤)
 //  作者: Enhanced by AI Assistant  
 //  日期: 2025-12-12
 //  功能: 本地上傳 | 圖生圖 | 多圖融合 | 多張生成 | 英文提示詞
@@ -8,7 +8,7 @@
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "9.3.0",
+  PROJECT_VERSION: "9.3.1",
   API_MASTER_KEY: "1",
   
   PROVIDERS: {
@@ -180,7 +180,6 @@ class Logger {
 }
 
 async function translateToEnglish(text, env) {
-    // 不進行翻譯,直接返回原文
     return { text: text, translated: false };
 }
 
@@ -587,6 +586,7 @@ class PollinationsProvider {
                         throw new Error("HTTP " + response.status);
                     }
                 } catch (e) {
+                    console.error(`❌ [Attempt ${retry + 1}/${CONFIG.MAX_RETRIES}] Model: ${tryModel}, Error:`, e.message);
                     if (retry < CONFIG.MAX_RETRIES - 1) {
                         await new Promise(resolve => setTimeout(resolve, 1000 * (retry + 1)));
                     }
@@ -679,7 +679,7 @@ export default {
             '多圖融合 (Multi-Image Fusion)',
             '多張生成 (Batch 1-4)',
             '4K Ultra HD',
-            'Timer & History',
+            'Session History',
             '17 Models | 8 Styles',
             'English Prompts Only'
           ]
@@ -695,7 +695,7 @@ export default {
             '🎲 Batch Generation (1-4)',
             '🍌 4K Support',
             '⏱️ Timer',
-            '📜 History',
+            '📜 Session History',
             '🇺🇸 English Only'
           ]
         }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
@@ -1028,6 +1028,7 @@ button{width:100%;padding:16px;background:linear-gradient(135deg,#f59e0b 0%,#d97
 .history-info{color:#9ca3af;font-size:12px;margin-top:5px}
 .history-actions{display:flex;gap:10px;margin-top:10px}
 .history-actions button{padding:8px 16px;font-size:12px;margin:0}
+.warning-box{background:rgba(239,68,68,0.1);border:1px solid #ef4444;padding:12px;border-radius:8px;margin-top:10px;font-size:12px;color:#fca5a5}
 </style>
 </head>
 <body>
@@ -1035,7 +1036,7 @@ button{width:100%;padding:16px;background:linear-gradient(135deg,#f59e0b 0%,#d97
 <div class="header">
 <div class="header-left">
 <h1>🎨 Flux AI Pro<span class="badge">v${CONFIG.PROJECT_VERSION}</span></h1>
-<p class="subtitle">本地上傳 · 圖生圖 · 多圖融合 · 多張生成 · 4K · 英文提示詞</p>
+<p class="subtitle">本地上傳 · 圖生圖 · 多圖融合 · 多張生成 · 4K · 英文提示詞<span class="badge-new">會話存儲</span></p>
 </div>
 <button onclick="toggleHistory()" class="history-btn">📜 歷史<span id="historyBadge" class="history-badge" style="display:none">0</span></button>
 </div>
@@ -1091,7 +1092,7 @@ button{width:100%;padding:16px;background:linear-gradient(135deg,#f59e0b 0%,#d97
 <label>藝術風格</label>
 <select id="style">
 <option value="none">無</option>
-${Object.entries(CONFIG.STYLE_PRESETS).map(([k,v])=>'<option value="' + k + '">' + v.name + '</option>').join('')}
+${Object.entries(CONFIG.STYLE_PRESETS).filter(([k])=>k!=='none').map(([k,v])=>'<option value="' + k + '">' + v.name + '</option>').join('')}
 </select>
 </div>
 
@@ -1121,6 +1122,10 @@ ${Object.entries(CONFIG.PRESET_SIZES).map(([k,v])=>'<option value="' + k + '">' 
 </select>
 <small style="color:#9ca3af;font-size:11px;margin-top:5px;display:block">多張生成時會自動使用不同的隨機種子</small>
 <button onclick="generate()">🚀 開始生成</button>
+<div class="warning-box">
+⚠️ <strong>歷史記錄僅保存在當前會話</strong><br>
+刷新頁面後會清空 (已修復 localStorage 錯誤)
+</div>
 </div>
 </div>
 
@@ -1130,11 +1135,12 @@ ${Object.entries(CONFIG.PRESET_SIZES).map(([k,v])=>'<option value="' + k + '">' 
 <div id="historyModal" class="modal">
 <div class="modal-content">
 <div class="modal-header">
-<h2>📜 生成歷史</h2>
+<h2>📜 生成歷史 (會話存儲)</h2>
 <span class="close" onclick="closeHistory()">&times;</span>
 </div>
 <div style="display:flex;justify-content:space-between;margin-bottom:20px">
 <button onclick="clearHistory()" style="width:auto;background:#ef4444">🗑️ 清空歷史</button>
+<small style="color:#9ca3af;align-self:center">僅保存在當前會話,刷新後清空</small>
 </div>
 <div id="historyList"></div>
 </div>
@@ -1335,25 +1341,16 @@ renderReferenceImages();
 }
 
 function loadHistory(){
-try{
-const saved=localStorage.getItem('flux_ai_history');
-if(saved){
-generationHistory=JSON.parse(saved);
+console.log('✓ History loaded (session only - v9.3.1)');
 updateHistoryBadge();
-}
-}catch(e){console.error('Load history error:',e);}
 }
 
 function saveHistory(){
-try{
-localStorage.setItem('flux_ai_history',JSON.stringify(generationHistory.slice(0,100)));
-}catch(e){console.error('Save history error:',e);}
 }
 
 function addToHistory(item){
 generationHistory.unshift({...item,timestamp:new Date().toISOString()});
 if(generationHistory.length>100)generationHistory=generationHistory.slice(0,100);
-saveHistory();
 updateHistoryBadge();
 }
 
@@ -1380,7 +1377,7 @@ document.getElementById('historyModal').style.display='none';
 function renderHistory(){
 const list=document.getElementById('historyList');
 if(generationHistory.length===0){
-list.innerHTML='<p style="text-align:center;color:#9ca3af">暫無歷史記錄</p>';
+list.innerHTML='<p style="text-align:center;color:#9ca3af">暫無歷史記錄 (僅保存在當前會話)</p>';
 return;
 }
 list.innerHTML='';
@@ -1416,7 +1413,6 @@ alert('已載入歷史配置,點擊生成按鈕即可!');
 function deleteHistory(index){
 if(confirm('確定刪除此記錄?')){
 generationHistory.splice(index,1);
-saveHistory();
 updateHistoryBadge();
 renderHistory();
 }
@@ -1425,7 +1421,6 @@ renderHistory();
 function clearHistory(){
 if(confirm('確定清空所有歷史記錄?')){
 generationHistory=[];
-saveHistory();
 updateHistoryBadge();
 renderHistory();
 }
@@ -1482,11 +1477,10 @@ button.disabled=true;
 const startTime=Date.now();
 let timerInterval;
 button.textContent='生成中 (0/'+numOutputs+') ⏱️ 0.0s';
-let currentProgress=0;
 
 timerInterval=setInterval(()=>{
 const elapsed=((Date.now()-startTime)/1000).toFixed(1);
-button.textContent='生成中 ('+currentProgress+'/'+numOutputs+') ⏱️ '+elapsed+'s';
+button.textContent='生成中 ⏱️ '+elapsed+'s';
 },100);
 
 try{
