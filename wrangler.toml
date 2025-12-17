@@ -1,0 +1,134 @@
+# =================================================================================
+# Cloudflare Workers 配置文件
+# 項目: Flux AI Pro
+# 版本: 9.5.1-fixed
+# 適用: Cloudflare Workers 免費計劃
+# =================================================================================
+
+# Worker 基本配置
+name = "flux-ai-pro"
+main = "worker.js"
+compatibility_date = "2024-12-17"
+
+# Workers AI 綁定（用於中文翻譯）
+[ai]
+binding = "AI"
+
+# ✅ 免費計劃移除了 CPU 限制配置
+# 免費計劃默認: 10ms CPU 時間/請求
+# 如需更多，請升級到付費計劃: $5/月
+
+# 兼容性標誌
+compatibility_flags = ["nodejs_compat"]
+
+# 觀察者配置（開發時使用）
+[observability]
+enabled = true
+
+# 構建配置
+[build]
+command = ""
+watch_dirs = []
+
+# ============================================
+# 環境配置
+# ============================================
+
+# 開發環境
+[env.dev]
+name = "flux-ai-pro-dev"
+
+# 生產環境
+[env.production]
+name = "flux-ai-pro"
+
+# ============================================
+# Secret 環境變量配置（推薦）
+# ============================================
+# 使用以下命令設置 API Key:
+# wrangler secret put POLLINATIONS_API_KEY
+# 然後輸入: pol_xxxxxxxxxx
+
+# ============================================
+# 可選配置（需要時取消註釋）
+# ============================================
+
+# 自定義域名（需要在 Cloudflare 添加域名）
+# [[routes]]
+# pattern = "flux.yourdomain.com/*"
+# zone_name = "yourdomain.com"
+
+# KV 命名空間（持久化存儲）
+# 創建命令: wrangler kv:namespace create "FLUX_AI_STORAGE"
+# [[kv_namespaces]]
+# binding = "FLUX_AI_STORAGE"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"
+
+# R2 存儲（圖片存儲）
+# 創建命令: wrangler r2 bucket create flux-ai-images
+# [[r2_buckets]]
+# binding = "FLUX_AI_BUCKET"
+# bucket_name = "flux-ai-images"
+# preview_bucket_name = "flux-ai-images-preview"
+
+# D1 數據庫（SQL 存儲）
+# 創建命令: wrangler d1 create flux-ai-db
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "flux-ai-db"
+# database_id = "your-database-id"
+
+# 分析引擎（數據分析）
+# [[analytics_engine_datasets]]
+# binding = "FLUX_AI_ANALYTICS"
+
+# Durable Objects（需付費計劃）
+# [[durable_objects.bindings]]
+# name = "FLUX_AI_DO"
+# class_name = "FluxAIDurableObject"
+# script_name = "flux-ai-pro"
+
+# Queue（消息隊列，需付費計劃）
+# [[queues.producers]]
+# binding = "FLUX_AI_QUEUE"
+# queue = "flux-ai-queue"
+
+# [[queues.consumers]]
+# queue = "flux-ai-queue"
+# max_batch_size = 10
+# max_batch_timeout = 30
+
+# ============================================
+# 注意事項
+# ============================================
+# 1. 免費計劃限制:
+#    - 100,000 請求/天
+#    - 10ms CPU 時間/請求
+#    - 1MB 腳本大小
+#    - 不支持自定義 CPU 限制
+#
+# 2. 升級付費計劃 ($5/月):
+#    - 10,000,000 請求/月
+#    - 30ms CPU 時間/請求
+#    - 10MB 腳本大小
+#    - 支持自定義 CPU 限制
+#
+# 3. 升級地址:
+#    https://dash.cloudflare.com/[your-account-id]/workers/plans
+#
+# 4. Workers AI 使用:
+#    - 免費額度: 10,000 神經元/天
+#    - 付費後: 更多額度
+#
+# 5. 部署命令:
+#    wrangler deploy                    # 部署到生產環境
+#    wrangler deploy --env dev          # 部署到開發環境
+#    wrangler dev                       # 本地開發
+#    wrangler tail                      # 查看日誌
+#    wrangler delete flux-ai-pro        # 刪除 Worker
+#
+# 6. Secret 管理:
+#    wrangler secret put POLLINATIONS_API_KEY    # 添加 Secret
+#    wrangler secret list                        # 查看 Secret 列表
+#    wrangler secret delete POLLINATIONS_API_KEY # 刪除 Secret
