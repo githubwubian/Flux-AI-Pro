@@ -1,12 +1,12 @@
 // =================================================================================
-//  項目: Flux AI Pro - Midnight Blue Edition
-//  版本: 9.7.2 (UI Style Update)
-//  更新: 套用午夜藍調選擇框配色 + Google 免費翻譯
+//  項目: Flux AI Pro - Bilingual Edition
+//  版本: 9.8.0 (International)
+//  更新: 新增繁中/英文雙語切換 + Google 免費翻譯
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "9.7.2-midnight",
+  PROJECT_VERSION: "9.8.0-i18n",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -39,68 +39,13 @@ const CONFIG = {
       default: true,
       description: "官方 AI 圖像生成服務（需要 API Key）",
       features: {
-        private_mode: true,
-        custom_size: true,
-        seed_control: true,
-        negative_prompt: true,
-        enhance: true,
-        nologo: true,
-        style_presets: true,
-        auto_hd: true,
-        quality_modes: true,
-        auto_translate: true,
-        reference_images: true,
-        image_to_image: true,
-        batch_generation: true,
-        api_key_auth: true
+        private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { 
-          id: "zimage", 
-          name: "Z-Image Turbo ⚡", 
-          confirmed: true, 
-          category: "zimage", 
-          description: "快速 6B 參數圖像生成 (Alpha)", 
-          max_size: 2048,
-          pricing: { image_price: 0.0002, currency: "pollen" },
-          input_modalities: ["text"],
-          output_modalities: ["image"]
-        },
-        { 
-          id: "flux", 
-          name: "Flux 標準版", 
-          confirmed: true, 
-          category: "flux", 
-          description: "快速且高質量的圖像生成", 
-          max_size: 2048,
-          pricing: { image_price: 0.00012, currency: "pollen" },
-          input_modalities: ["text"],
-          output_modalities: ["image"]
-        },
-        { 
-          id: "turbo", 
-          name: "Flux Turbo ⚡", 
-          confirmed: true, 
-          category: "flux", 
-          description: "超快速圖像生成", 
-          max_size: 2048,
-          pricing: { image_price: 0.0003, currency: "pollen" },
-          input_modalities: ["text"],
-          output_modalities: ["image"]
-        },
-        { 
-          id: "kontext", 
-          name: "Kontext 🎨", 
-          confirmed: true, 
-          category: "kontext", 
-          description: "上下文感知圖像生成（支持圖生圖）", 
-          max_size: 2048,
-          pricing: { image_price: 0.04, currency: "pollen" },
-          supports_reference_images: true,
-          max_reference_images: 1,
-          input_modalities: ["text", "image"],
-          output_modalities: ["image"]
-        }
+        { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux", name: "Flux 標準版", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "turbo", name: "Flux Turbo ⚡", confirmed: true, category: "flux", description: "超快速圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -167,28 +112,9 @@ const CONFIG = {
   },
   
   OPTIMIZATION_RULES: {
-    MODEL_STEPS: {
-      "zimage": { min: 8, optimal: 15, max: 25 },
-      "flux": { min: 15, optimal: 20, max: 30 },
-      "turbo": { min: 4, optimal: 8, max: 12 },
-      "kontext": { min: 18, optimal: 25, max: 35 }
-    },
-    SIZE_MULTIPLIER: {
-      small: { threshold: 512 * 512, multiplier: 0.8 },
-      medium: { threshold: 1024 * 1024, multiplier: 1.0 },
-      large: { threshold: 1536 * 1536, multiplier: 1.15 },
-      xlarge: { threshold: 2048 * 2048, multiplier: 1.3 }
-    },
-    STYLE_ADJUSTMENT: {
-      "photorealistic": 1.1,
-      "oil-painting": 1.05,
-      "watercolor": 0.95,
-      "sketch": 0.9,
-      "manga": 1.0,
-      "pixel-art": 0.85,
-      "3d-render": 1.15,
-      "default": 1.0
-    }
+    MODEL_STEPS: { "zimage": { min: 8, optimal: 15, max: 25 }, "flux": { min: 15, optimal: 20, max: 30 }, "turbo": { min: 4, optimal: 8, max: 12 }, "kontext": { min: 18, optimal: 25, max: 35 } },
+    SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
+    STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
   },
   
   HD_OPTIMIZATION: {
@@ -198,11 +124,7 @@ const CONFIG = {
       standard: { name: "標準模式", description: "平衡質量與速度", min_resolution: 1280, max_resolution: 2048, steps_multiplier: 1.0, guidance_multiplier: 1.0, hd_level: "enhanced" },
       ultra: { name: "超高清模式", description: "極致質量", min_resolution: 1536, max_resolution: 2048, steps_multiplier: 1.35, guidance_multiplier: 1.15, hd_level: "maximum", force_upscale: true }
     },
-    HD_PROMPTS: {
-      basic: "high quality, detailed, sharp",
-      enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd",
-      maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR"
-    },
+    HD_PROMPTS: { basic: "high quality, detailed, sharp", enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd", maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR" },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise",
     MODEL_QUALITY_PROFILES: {
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
@@ -223,44 +145,20 @@ function getClientIP(request) {
   return request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
 }
 
-// =================================================================================
-// 修改處：Google GTX 免費翻譯函數
-// =================================================================================
+// Google GTX 免費翻譯函數
 async function translateToEnglish(text, env) {
   try {
     const hasChinese = /[\u4e00-\u9fa5\u3400-\u4db5\u20000-\u2a6d6]/.test(text);
     if (!hasChinese) return { text: text, translated: false, reason: "No Chinese detected" };
-    
-    // 使用 Google GTX 免費接口
     const url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=" + encodeURIComponent(text);
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
+    const response = await fetch(url, { method: 'GET', headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' } });
     if (!response.ok) throw new Error(`Google API HTTP ${response.status}`);
-
     const data = await response.json();
     let translatedText = "";
-    if (data && data[0] && Array.isArray(data[0])) {
-      data[0].forEach(segment => {
-        if (segment && segment[0]) translatedText += segment[0];
-      });
-    }
-
+    if (data && data[0] && Array.isArray(data[0])) { data[0].forEach(segment => { if (segment && segment[0]) translatedText += segment[0]; }); }
     if (!translatedText) throw new Error("Empty translation result");
-    
     console.log(`✅ [Google GTX] Translated: "${text.substring(0,10)}..." -> "${translatedText.substring(0,10)}..."`);
-    
-    return { 
-      text: translatedText.trim(), 
-      translated: true, 
-      original: text, 
-      model: "google-gtx-free" 
-    };
+    return { text: translatedText.trim(), translated: true, original: text, model: "google-gtx-free" };
   } catch (error) {
     console.error("❌ Translate Error:", error.message);
     return { text: text, translated: false, error: error.message };
@@ -297,15 +195,9 @@ class HDOptimizer {
     const optimizations = [];
     const hdLevel = modeConfig.hd_level;
     let enhancedPrompt = prompt;
-    if (hdConfig.HD_PROMPTS[hdLevel]) {
-      enhancedPrompt = prompt + ", " + hdConfig.HD_PROMPTS[hdLevel];
-      optimizations.push("HD增強: " + hdLevel);
-    }
+    if (hdConfig.HD_PROMPTS[hdLevel]) { enhancedPrompt = prompt + ", " + hdConfig.HD_PROMPTS[hdLevel]; optimizations.push("HD增強: " + hdLevel); }
     let enhancedNegative = negativePrompt || "";
-    if (qualityMode !== 'economy') {
-      enhancedNegative = enhancedNegative ? enhancedNegative + ", " + hdConfig.HD_NEGATIVE : hdConfig.HD_NEGATIVE;
-      optimizations.push("負面提示詞: 高清過濾");
-    }
+    if (qualityMode !== 'economy') { enhancedNegative = enhancedNegative ? enhancedNegative + ", " + hdConfig.HD_NEGATIVE : hdConfig.HD_NEGATIVE; optimizations.push("負面提示詞: 高清過濾"); }
     let finalWidth = width;
     let finalHeight = height;
     let sizeUpscaled = false;
@@ -331,10 +223,7 @@ class HDOptimizer {
 
 class ParameterOptimizer {
   static optimizeSteps(model, width, height, style = 'none', qualityMode = 'standard', userSteps = null) {
-    if (userSteps !== null && userSteps !== -1) {
-      const suggestion = this.calculateOptimalSteps(model, width, height, style, qualityMode);
-      return { steps: userSteps, optimized: false, suggested: suggestion.steps, reasoning: suggestion.reasoning, user_override: true };
-    }
+    if (userSteps !== null && userSteps !== -1) { const suggestion = this.calculateOptimalSteps(model, width, height, style, qualityMode); return { steps: userSteps, optimized: false, suggested: suggestion.steps, reasoning: suggestion.reasoning, user_override: true }; }
     return this.calculateOptimalSteps(model, width, height, style, qualityMode);
   }
   static calculateOptimalSteps(model, width, height, style, qualityMode = 'standard') {
@@ -390,10 +279,7 @@ class StyleProcessor {
         else enhancedNegative = styleConfig.negative;
       }
       return { enhancedPrompt: enhancedPrompt, enhancedNegative: enhancedNegative };
-    } catch (error) {
-      console.error("❌ StyleProcessor error:", error.message);
-      return { enhancedPrompt: prompt, enhancedNegative: negativePrompt || "" };
-    }
+    } catch (error) { console.error("❌ StyleProcessor error:", error.message); return { enhancedPrompt: prompt, enhancedNegative: negativePrompt || "" }; }
   }
 }
 
@@ -412,13 +298,7 @@ async function fetchWithTimeout(url, options = {}, timeout = CONFIG.FETCH_TIMEOU
 }
 
 function corsHeaders(additionalHeaders = {}) {
-  return { 
-    'Access-Control-Allow-Origin': '*', 
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With', 
-    'Access-Control-Max-Age': '86400', 
-    ...additionalHeaders 
-  };
+  return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With', 'Access-Control-Max-Age': '86400', ...additionalHeaders };
 }
 class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
@@ -447,9 +327,6 @@ class PollinationsProvider {
       }
     }
     
-    // =================================================================================
-    // 修改處：優先處理翻譯 (Translate First)
-    // =================================================================================
     let basePrompt = prompt;
     let translationLog = { translated: false };
 
@@ -465,9 +342,6 @@ class PollinationsProvider {
       }
     }
 
-    // =================================================================================
-    // 修改處：分析與 HD 優化 (使用英文 basePrompt)
-    // =================================================================================
     const promptComplexity = PromptAnalyzer.analyzeComplexity(basePrompt);
     const recommendedQuality = PromptAnalyzer.recommendQualityMode(basePrompt, model);
     logger.add("🧠 Prompt Analysis", { complexity: (promptComplexity * 100).toFixed(1) + '%', recommended_quality: recommendedQuality, selected_quality: qualityMode, has_reference_images: validReferenceImages.length > 0 });
@@ -503,9 +377,6 @@ class PollinationsProvider {
       finalGuidance = guidance || 7.5;
     }
     
-    // =================================================================================
-    // 修改處：風格疊加 (Style Overlay)
-    // =================================================================================
     const { enhancedPrompt, enhancedNegative } = StyleProcessor.applyStyle(optimizedPrompt, style, finalNegative);
     const finalFullPrompt = enhancedPrompt;
 
@@ -728,7 +599,7 @@ function handleUI() {
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flux AI Pro v${CONFIG.PROJECT_VERSION} - ${stylesCount} 種風格</title>
+<title>Flux AI Pro v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -738,12 +609,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .nav-left{display:flex;align-items:center;gap:20px}
 .logo{color:#f59e0b;font-size:24px;font-weight:800;text-shadow:0 0 20px rgba(245,158,11,0.6);display:flex;align-items:center;gap:10px}
 .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600}
-.badge-new{background:linear-gradient(135deg,#ec4899 0%,#db2777 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700}
 .badge-styles{background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:700}
-.nav-menu{display:flex;gap:10px}
+.nav-menu{display:flex;gap:10px;align-items:center}
 .nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px}
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
+.lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
 .api-status{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(16,185,129,0.1);border:1px solid #10b981}
 .api-endpoint{font-size:10px;color:#6b7280;margin-top:4px}
 .main-content{flex:1;display:flex;overflow:hidden}
@@ -758,13 +629,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .section-title{font-size:16px;font-weight:700;color:#f59e0b;margin-bottom:15px;display:flex;align-items:center;gap:8px}
 .form-group{margin-bottom:16px}
 label{display:block;margin-bottom:6px;font-weight:600;font-size:13px;color:#e5e7eb}
-input,select,textarea{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:13px;transition:all 0.3s}
+input,textarea{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:13px;transition:all 0.3s}
 input:focus,textarea:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.1)}
-/* Midnight Blue Style for Select */
-select{background-color:#1e293b!important;color:#e2e8f0!important;border:1px solid #334155!important}
+select{background-color:#1e293b!important;color:#e2e8f0!important;border:1px solid #334155!important;width:100%;padding:10px;border-radius:8px;font-size:13px}
 select:focus{border-color:#818cf8!important;box-shadow:0 0 0 3px rgba(129,140,248,0.2)!important;outline:none}
 option{background-color:#0f172a;color:#f1f5f9}
-/* End Style */
 textarea{min-height:120px;resize:vertical;font-family:inherit;line-height:1.6}
 select{cursor:pointer}
 .input-hint{font-size:11px;color:#6b7280;margin-top:4px}
@@ -785,7 +654,6 @@ select{cursor:pointer}
 .model-badge{background:rgba(245,158,11,0.2);color:#f59e0b;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
 .seed-badge{background:rgba(16,185,129,0.2);color:#10b981;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
 .style-badge{background:rgba(139,92,246,0.2);color:#8b5cf6;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
-.time-badge{background:rgba(59,130,246,0.2);color:#3b82f6;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600}
 .gallery-actions{display:flex;gap:8px;margin-top:10px}
 .action-btn{padding:6px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:12px;color:#fff;cursor:pointer;transition:all 0.3s;display:inline-flex;align-items:center;gap:5px;flex:1;justify-content:center}
 .action-btn:hover{background:rgba(255,255,255,0.2);border-color:#f59e0b}
@@ -800,10 +668,8 @@ select{cursor:pointer}
 .empty-state{text-align:center;padding:60px 20px;color:#9ca3af}
 .empty-state svg{margin:0 auto 20px;opacity:0.5}
 .alert{padding:12px 15px;border-radius:8px;margin-bottom:15px;border-left:4px solid;font-size:13px}
-.alert-success{background:rgba(16,185,129,0.1);border-color:#10b981;color:#10b981}
-.alert-error{background:rgba(239,68,68,0.1);border-color:#ef4444;color:#ef4444}
-.alert-warning{background:rgba(245,158,11,0.1);border-color:#f59e0b;color:#f59e0b}
 .alert-info{background:rgba(139,92,246,0.1);border-color:#8b5cf6;color:#8b5cf6}
+.alert-error{background:rgba(239,68,68,0.1);border-color:#ef4444;color:#ef4444}
 .advanced-toggle{cursor:pointer;color:#3b82f6;font-size:13px;margin-bottom:12px;display:inline-block}
 .advanced-toggle:hover{text-decoration:underline}
 .advanced-section{display:none;animation:fadeIn 0.3s}
@@ -831,58 +697,80 @@ select{cursor:pointer}
 <div class="container">
 <div class="top-nav">
 <div class="nav-left">
-<div class="logo">🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span><span class="badge-styles">${stylesCount} 風格</span></div>
+<div class="logo">🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span><span class="badge-styles" id="badgeStyles">${stylesCount} 風格</span></div>
 <div><div class="api-status">${authStatus}</div><div class="api-endpoint">📡 ${apiEndpoint}</div></div>
 </div>
 <div class="nav-menu">
-<button class="nav-btn active" data-page="generate"><span>🎨</span> 生成圖像</button>
-<button class="nav-btn" data-page="history"><span>📚</span> 歷史記錄 <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
+<button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
+<button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
+<button class="lang-btn" id="langSwitch">EN / 繁中</button>
 </div>
 </div>
 <div id="generatePage" class="page active">
 <div class="main-content">
 <div class="left-panel">
-<div class="section-title">⚙️ 生成參數</div>
+<div class="section-title" data-t="settings_title">⚙️ 生成參數</div>
 <form id="generateForm">
-<div class="form-group"><label>模型選擇</label><select id="model"><optgroup label="⚡ Z-Image 系列（默認）"><option value="zimage" selected>Z-Image Turbo ⚡ (6B 參數, 極速)</option></optgroup><optgroup label="🎨 Flux 系列"><option value="flux">Flux 標準版 (平衡速度與質量)</option><option value="turbo">Flux Turbo ⚡ (超快速生成)</option></optgroup><optgroup label="🖼️ Kontext 系列（圖生圖）"><option value="kontext">Kontext 🎨 (支持參考圖像)</option></optgroup></select><div class="input-hint">💰 價格: Z-Image (0.0002) | Flux (0.00012) | Turbo (0.0003) | Kontext (0.04)</div></div>
-<div class="form-group"><label>尺寸預設</label><select id="size"><option value="square-1k" selected>方形 1024x1024</option><option value="square-1.5k">方形 1536x1536</option><option value="square-2k">方形 2048x2048</option><option value="portrait-9-16-hd">豎屏 1080x1920</option><option value="landscape-16-9-hd">橫屏 1920x1080</option><option value="instagram-square">Instagram 方形</option><option value="wallpaper-fhd">桌布 Full HD</option></select></div>
-<div class="form-group"><label>藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select><div class="style-hint">✨ ${stylesCount} 種風格可選</div></div>
-<div class="form-group"><label>質量模式</label><select id="qualityMode"><option value="economy">經濟模式 (快速)</option><option value="standard" selected>標準模式 (平衡)</option><option value="ultra">超高清模式 (極致)</option></select></div>
-<a class="advanced-toggle" id="advancedToggle">▼ 進階選項</a>
+<div class="form-group"><label data-t="model_label">模型選擇</label><select id="model"><optgroup label="⚡ Z-Image Series"><option value="zimage" selected>Z-Image Turbo ⚡ (6B, Fast)</option></optgroup><optgroup label="🎨 Flux Series"><option value="flux">Flux Standard</option><option value="turbo">Flux Turbo ⚡</option></optgroup><optgroup label="🖼️ Kontext Series"><option value="kontext">Kontext 🎨 (Img2Img)</option></optgroup></select><div class="input-hint" data-t="price_hint">💰 價格: Z-Image (0.0002) | Flux (0.00012)</div></div>
+<div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="square-2k">Square 2048x2048</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option><option value="instagram-square">Instagram Square</option><option value="wallpaper-fhd">Wallpaper FHD</option></select></div>
+<div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select><div class="style-hint" data-t="style_hint_text">✨ 多種風格可選</div></div>
+<div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy (Fast)</option><option value="standard" selected>Standard (Balanced)</option><option value="ultra">Ultra HD (Best)</option></select></div>
+<a class="advanced-toggle" id="advancedToggle" data-t="adv_toggle">▼ 進階選項</a>
 <div id="advancedSection" class="advanced-section">
-<div class="form-group"><label>Seed</label><input type="number" id="seed" value="-1" min="-1" max="999999"><div class="input-hint">-1 = 隨機</div></div>
-<div class="form-group"><label>生成數量</label><input type="number" id="numOutputs" value="1" min="1" max="4"></div>
-<div class="form-group"><label><input type="checkbox" id="autoOptimize" checked> 自動優化參數</label></div>
-<div class="form-group"><label><input type="checkbox" id="autoHD" checked> 自動HD增強</label></div>
+<div class="form-group"><label>Seed</label><input type="number" id="seed" value="-1" min="-1" max="999999"><div class="input-hint" data-t="seed_hint">-1 = Random</div></div>
+<div class="form-group"><label data-t="count_label">生成數量</label><input type="number" id="numOutputs" value="1" min="1" max="4"></div>
+<div class="form-group"><label><input type="checkbox" id="autoOptimize" checked> <span data-t="auto_opt">自動優化參數</span></label></div>
+<div class="form-group"><label><input type="checkbox" id="autoHD" checked> <span data-t="auto_hd">自動HD增強</span></label></div>
 </div>
-<button type="submit" class="btn btn-primary" id="generateBtn">🎨 開始生成</button>
+<button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn">🎨 開始生成</button>
 </form>
 </div>
 <div class="center-panel">
-<div class="section-title">🖼️ 生成結果</div>
-<div id="results"><div class="empty-state"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><p style="font-size:16px;margin-bottom:10px">尚未生成任何圖像</p><p style="font-size:14px">填寫左側參數並輸入提示詞後點擊生成</p></div></div>
+<div class="section-title" data-t="result_title">🖼️ 生成結果</div>
+<div id="results"><div class="empty-state"><svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><p style="font-size:16px;margin-bottom:10px" data-t="empty_title">尚未生成任何圖像</p><p style="font-size:14px" data-t="empty_desc">填寫左側參數並輸入提示詞後點擊生成</p></div></div>
 </div>
 <div class="right-panel">
-<div class="section-title">💬 提示詞</div>
-<div class="form-group"><label>正面提示詞</label><textarea id="prompt" placeholder="描述你想生成的圖像... (支援中文)" required></textarea><div class="input-hint">✅ 支持中文自動翻譯 (Google)</div></div>
-<div class="form-group"><label>負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="描述不想要的內容..." rows="4"></textarea></div>
-<div class="form-group"><label>參考圖像 URL (可選)</label><textarea id="referenceImages" placeholder="多張圖片用逗號分隔" rows="3"></textarea><div class="input-hint">📌 僅支持 Kontext 模型</div></div>
-<div class="alert alert-info" style="margin-top:20px"><strong>🎨 風格提示</strong><br>當前已選: <span id="currentStyleName">無風格</span><br><span id="styleDescription" style="font-size:11px;opacity:0.8">使用原始提示詞</span></div>
-<div class="section-title" style="margin-top:25px">📋 當前配置預覽</div>
-<div class="prompt-display"><div class="label">模型</div><div class="content" id="previewModel">Z-Image Turbo</div></div>
-<div class="prompt-display"><div class="label">尺寸</div><div class="content" id="previewSize">1024x1024</div></div>
-<div class="prompt-display"><div class="label">風格</div><div class="content" id="previewStyle">無風格</div></div>
+<div class="section-title" data-t="prompt_title">💬 提示詞</div>
+<div class="form-group"><label data-t="pos_prompt">正面提示詞</label><textarea id="prompt" placeholder="Describe your image..." required></textarea><div class="input-hint" data-t="trans_hint">✅ Google Auto-Translate Supported</div></div>
+<div class="form-group"><label data-t="neg_prompt">負面提示詞 (可選)</label><textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea></div>
+<div class="form-group"><label data-t="ref_img">參考圖像 URL (可選)</label><textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea><div class="input-hint" data-t="ref_hint">📌 Only for Kontext model</div></div>
+<div class="alert alert-info" style="margin-top:20px"><strong data-t="style_info">🎨 風格提示</strong><br><span data-t="curr_style">當前已選</span>: <span id="currentStyleName">None</span><br><span id="styleDescription" style="font-size:11px;opacity:0.8">Raw prompt</span></div>
+<div class="section-title" style="margin-top:25px" data-t="config_prev">📋 當前配置預覽</div>
+<div class="prompt-display"><div class="label" data-t="prev_model">模型</div><div class="content" id="previewModel">Z-Image Turbo</div></div>
+<div class="prompt-display"><div class="label" data-t="prev_size">尺寸</div><div class="content" id="previewSize">1024x1024</div></div>
+<div class="prompt-display"><div class="label" data-t="prev_style">風格</div><div class="content" id="previewStyle">None</div></div>
 </div></div></div>
 <div id="historyPage" class="page">
 <div class="main-content" style="flex-direction:column;padding:20px">
 <div class="history-header">
-<div class="history-stats"><div class="stat-item"><div class="label">📊 總記錄數</div><div class="value" id="historyTotal">0</div></div><div class="stat-item"><div class="label">💾 存儲空間</div><div class="value" id="storageSize">0 KB</div></div><div class="stat-item"><div class="label">🎨 最近風格</div><div class="value" id="recentStyle" style="font-size:14px">-</div></div></div>
-<div class="history-actions"><button class="btn btn-secondary" id="exportBtn" style="width:auto;padding:10px 20px">📥 導出記錄</button><button class="btn btn-danger" id="clearBtn" style="width:auto;padding:10px 20px">🗑️ 清空記錄</button></div>
+<div class="history-stats"><div class="stat-item"><div class="label" data-t="stat_total">📊 總記錄數</div><div class="value" id="historyTotal">0</div></div><div class="stat-item"><div class="label" data-t="stat_storage">💾 存儲空間</div><div class="value" id="storageSize">0 KB</div></div><div class="stat-item"><div class="label" data-t="stat_recent">🎨 最近風格</div><div class="value" id="recentStyle" style="font-size:14px">-</div></div></div>
+<div class="history-actions"><button class="btn btn-secondary" id="exportBtn" style="width:auto;padding:10px 20px" data-t="btn_export">📥 導出</button><button class="btn btn-danger" id="clearBtn" style="width:auto;padding:10px 20px" data-t="btn_clear">🗑️ 清空</button></div>
 </div>
-<div id="historyList" style="padding:0 20px"><div class="empty-state"><p style="font-size:16px;margin-bottom:10px">暫無歷史記錄</p></div></div>
+<div id="historyList" style="padding:0 20px"><div class="empty-state"><p data-t="no_history">暫無歷史記錄</p></div></div>
 </div></div>
 <div id="imageModal" class="modal"><button class="modal-close" id="modalCloseBtn">×</button><div class="modal-content" id="modalContentDiv"><img id="modalImage" src="" alt="Preview"></div></div>
 <script>
+const I18N = {
+  zh: {
+    nav_gen: "🎨 生成圖像", nav_his: "📚 歷史記錄", settings_title: "⚙️ 生成參數", model_label: "模型選擇", price_hint: "💰 價格: Z-Image (0.0002) | Flux (0.00012)", size_label: "尺寸預設", style_label: "藝術風格 🎨", style_hint_text: "✨ 多種風格可選", quality_label: "質量模式", adv_toggle: "▼ 進階選項", seed_hint: "-1 = 隨機", count_label: "生成數量", auto_opt: "自動優化參數", auto_hd: "自動HD增強", gen_btn: "🎨 開始生成", result_title: "🖼️ 生成結果", empty_title: "尚未生成任何圖像", empty_desc: "填寫左側參數並輸入提示詞後點擊生成", prompt_title: "💬 提示詞", pos_prompt: "正面提示詞", trans_hint: "✅ 支持中文自動翻譯 (Google)", neg_prompt: "負面提示詞 (可選)", ref_img: "參考圖像 URL (可選)", ref_hint: "📌 僅支持 Kontext 模型", style_info: "🎨 風格提示", curr_style: "當前已選", config_prev: "📋 當前配置預覽", prev_model: "模型", prev_size: "尺寸", prev_style: "風格", stat_total: "📊 總記錄數", stat_storage: "💾 存儲空間", stat_recent: "🎨 最近風格", btn_export: "📥 導出記錄", btn_clear: "🗑️ 清空記錄", no_history: "暫無歷史記錄", btn_reuse: "🔄 重用", btn_dl: "💾 下載", badge_styles: "風格"
+  },
+  en: {
+    nav_gen: "🎨 Create", nav_his: "📚 History", settings_title: "⚙️ Settings", model_label: "Model", price_hint: "💰 Price: Z-Image (0.0002) | Flux (0.00012)", size_label: "Size", style_label: "Art Style 🎨", style_hint_text: "✨ Various styles", quality_label: "Quality", adv_toggle: "▼ Advanced", seed_hint: "-1 = Random", count_label: "Count", auto_opt: "Auto Optimize", auto_hd: "Auto HD", gen_btn: "🎨 Generate", result_title: "🖼️ Results", empty_title: "No images yet", empty_desc: "Enter prompt and click Generate", prompt_title: "💬 Prompt", pos_prompt: "Positive Prompt", trans_hint: "✅ Google Auto-Translate Supported", neg_prompt: "Negative Prompt (Optional)", ref_img: "Ref Image URL (Optional)", ref_hint: "📌 Kontext model only", style_info: "🎨 Style Info", curr_style: "Selected", config_prev: "📋 Preview", prev_model: "Model", prev_size: "Size", prev_style: "Style", stat_total: "📊 Total", stat_storage: "💾 Storage", stat_recent: "🎨 Recent", btn_export: "📥 Export", btn_clear: "🗑️ Clear", no_history: "No history found", btn_reuse: "🔄 Reuse", btn_dl: "💾 Save", badge_styles: "Styles"
+  }
+};
+let curLang = 'zh';
+function toggleLang(){ curLang = curLang === 'zh' ? 'en' : 'zh'; updateLang(); }
+function updateLang(){
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const key = el.getAttribute('data-t');
+    if(I18N[curLang][key]) el.textContent = I18N[curLang][key];
+  });
+  const promptArea = document.getElementById('prompt');
+  if(promptArea) promptArea.placeholder = curLang==='zh' ? "描述你想生成的圖像... (支援中文)" : "Describe your image... (Supports auto-translate)";
+  updateHistoryDisplay();
+}
+document.getElementById('langSwitch').onclick = toggleLang;
+
 const STYLE_PRESETS = ${JSON.stringify(CONFIG.STYLE_PRESETS)};
 const PRESET_SIZES = ${JSON.stringify(CONFIG.PRESET_SIZES)};
 document.querySelectorAll('.nav-btn').forEach(btn=>{
@@ -910,10 +798,10 @@ function updatePreview(){
   const style=document.getElementById('style').value;
   const sizeConfig=PRESET_SIZES[sizePreset]||PRESET_SIZES['square-1k'];
   const styleConfig=STYLE_PRESETS[style];
-  const modelNames={'zimage':'Z-Image Turbo ⚡','flux':'Flux 標準版','turbo':'Flux Turbo ⚡','kontext':'Kontext 🎨'};
+  const modelNames={'zimage':'Z-Image Turbo ⚡','flux':'Flux Standard','turbo':'Flux Turbo ⚡','kontext':'Kontext 🎨'};
   document.getElementById('previewModel').textContent=modelNames[model]||model;
-  document.getElementById('previewSize').textContent=sizeConfig.name+' ('+sizeConfig.width+'x'+sizeConfig.height+')';
-  document.getElementById('previewStyle').textContent=styleConfig ? styleConfig.icon + ' ' + styleConfig.name : '無風格';
+  document.getElementById('previewSize').textContent=sizeConfig.name;
+  document.getElementById('previewStyle').textContent=styleConfig ? styleConfig.icon + ' ' + styleConfig.name : 'None';
   updateStyleDescription();
 }
 document.getElementById('model').addEventListener('change',updatePreview);
@@ -925,8 +813,8 @@ const MAX_HISTORY=100;
 function getHistory(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY))||[]; }catch(e){ return[]; } }
 function saveHistory(history){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(history)); updateHistoryStats(); }catch(e){} }
 function addToHistory(item){ let history=getHistory(); history.unshift({...item,id:Date.now()+Math.random(),timestamp:new Date().toISOString()}); if(history.length>MAX_HISTORY)history=history.slice(0,MAX_HISTORY); saveHistory(history); }
-function deleteFromHistory(id){ if(!confirm('確定刪除？'))return; saveHistory(getHistory().filter(item=>item.id!==id)); updateHistoryDisplay(); }
-function clearHistory(){ if(!confirm('確定清空？'))return; localStorage.removeItem(STORAGE_KEY); updateHistoryDisplay(); updateHistoryStats(); }
+function deleteFromHistory(id){ if(!confirm(curLang==='zh'?'確定刪除？':'Delete item?'))return; saveHistory(getHistory().filter(item=>item.id!==id)); updateHistoryDisplay(); }
+function clearHistory(){ if(!confirm(curLang==='zh'?'確定清空？':'Clear all history?'))return; localStorage.removeItem(STORAGE_KEY); updateHistoryDisplay(); updateHistoryStats(); }
 function exportHistory(){
   const url=URL.createObjectURL(new Blob([JSON.stringify(getHistory(),null,2)],{type:'application/json'}));
   const link=document.createElement('a'); link.href=url; link.download='flux-history.json'; link.click(); URL.revokeObjectURL(url);
@@ -941,12 +829,12 @@ function updateHistoryStats(){
 function updateHistoryDisplay(){
   const history=getHistory();
   const list=document.getElementById('historyList');
-  if(history.length===0){ list.innerHTML='<div class="empty-state"><p>暫無記錄</p></div>'; updateHistoryStats(); return; }
+  if(history.length===0){ list.innerHTML='<div class="empty-state"><p>'+I18N[curLang].no_history+'</p></div>'; updateHistoryStats(); return; }
   const div=document.createElement('div'); div.className='gallery';
   history.forEach(item=>{
     const itemDiv=document.createElement('div'); itemDiv.className='gallery-item';
     const styleName=STYLE_PRESETS[item.style] ? STYLE_PRESETS[item.style].name : item.style;
-    itemDiv.innerHTML=\`<img src="\${item.url}" loading="lazy"><div class="gallery-info"><div class="gallery-meta"><span class="model-badge">\${item.model}</span></div><div class="gallery-meta"><span class="style-badge">\${styleName}</span></div><div class="gallery-actions"><button class="action-btn reuse-btn">🔄 重用</button><button class="action-btn download-btn">💾 下載</button><button class="action-btn delete delete-btn">🗑️</button></div></div>\`;
+    itemDiv.innerHTML=\`<img src="\${item.url}" loading="lazy"><div class="gallery-info"><div class="gallery-meta"><span class="model-badge">\${item.model}</span></div><div class="gallery-meta"><span class="style-badge">\${styleName}</span></div><div class="gallery-actions"><button class="action-btn reuse-btn">\${I18N[curLang].btn_reuse}</button><button class="action-btn download-btn">\${I18N[curLang].btn_dl}</button><button class="action-btn delete delete-btn">🗑️</button></div></div>\`;
     itemDiv.querySelector('img').onclick=()=>openModal(item.url);
     itemDiv.querySelector('.reuse-btn').onclick=()=>reusePrompt(item.id);
     itemDiv.querySelector('.download-btn').onclick=()=>downloadImage(item.url,item.seed);
@@ -974,7 +862,7 @@ function displayGeneratedImages(images){
   const galleryDiv=document.createElement('div'); galleryDiv.className='gallery';
   history.slice(0,images.length).forEach((item)=>{
     const itemDiv=document.createElement('div'); itemDiv.className='gallery-item';
-    itemDiv.innerHTML=\`<img src="\${item.url}"><div class="gallery-info"><div style="background:#10b981;color:#fff;padding:2px;font-size:10px;text-align:center;border-radius:4px">✅ NEW</div><div class="gallery-actions"><button class="action-btn download-btn">💾 下載</button></div></div>\`;
+    itemDiv.innerHTML=\`<img src="\${item.url}"><div class="gallery-info"><div style="background:#10b981;color:#fff;padding:2px;font-size:10px;text-align:center;border-radius:4px">✅ NEW</div><div class="gallery-actions"><button class="action-btn download-btn">\${I18N[curLang].btn_dl}</button></div></div>\`;
     itemDiv.querySelector('img').onclick=()=>openModal(item.url);
     itemDiv.querySelector('.download-btn').onclick=()=>downloadImage(item.url,item.seed);
     galleryDiv.appendChild(itemDiv);
@@ -990,8 +878,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
   const resDiv=document.getElementById('results');
   const sizeConfig=PRESET_SIZES[document.getElementById('size').value];
   
-  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> 生成中...';
-  resDiv.innerHTML='<div class="loading"><div class="spinner"></div><p>正在生成...</p></div>';
+  btn.disabled=true; btn.innerHTML='<div class="spinner"></div> ' + (curLang==='zh'?'生成中...':'Generating...');
+  resDiv.innerHTML='<div class="loading"><div class="spinner"></div><p>'+(curLang==='zh'?'正在生成...':'Generating...')+'</p></div>';
   
   try{
     const res=await fetch('/_internal/generate',{
@@ -1029,10 +917,10 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
   }catch(e){
     resDiv.innerHTML='<div class="alert alert-error">'+e.message+'</div>';
   }finally{
-    btn.disabled=false; btn.innerHTML='🎨 開始生成';
+    btn.disabled=false; btn.textContent=I18N[curLang].gen_btn;
   }
 });
-window.addEventListener('DOMContentLoaded',()=>{ updateHistoryStats(); updatePreview(); });
+window.addEventListener('DOMContentLoaded',()=>{ updateHistoryStats(); updatePreview(); updateLang(); });
 </script>
 </body>
 </html>`;
