@@ -1731,7 +1731,6 @@ export default {
 // 前端 HTML 界面（深色模式 + 雙語 + 100 張歷史記錄）
 // =================================================================================
 
-const HTML_CONTENT = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
