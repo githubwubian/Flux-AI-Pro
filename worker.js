@@ -42,9 +42,6 @@ const CONFIG = {
       enabled: true,
       default: true,
       description: "官方 AI 圖像生成服務（需要 API Key）",
-@@ -112,15 +112,355 @@ const CONFIG = {
-
-  DEFAULT_PROVIDER: "pollinations",
 
   // ========================================
   // ✨ 擴展風格庫 - 45+ 種藝術風格
