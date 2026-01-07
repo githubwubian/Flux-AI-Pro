@@ -1,3 +1,4 @@
+@@ -1,3260 +1,2788 @@
 // =================================================================================
 //  項目: Flux AI Pro - Extended Styles Edition
 //  版本: 9.6.1-extended-styles (✅ 45+ 種藝術風格)
@@ -17,6 +18,7 @@ const CONFIG = {
 
   POLLINATIONS_AUTH: {
     enabled: true,
+    token: "",  // 將從 env.POLLINATIONS_API_KEY 讀取
     token: "",
     method: "header"
   },
@@ -113,7 +115,11 @@ const CONFIG = {
 
   DEFAULT_PROVIDER: "pollinations",
 
+  // ========================================
+  // ✨ 擴展風格庫 - 45+ 種藝術風格
+  // ========================================
   STYLE_PRESETS: {
+    // ========== 基礎風格 ==========
     none: { 
       name: "無風格", 
       prompt: "", 
@@ -122,6 +128,8 @@ const CONFIG = {
       icon: "⚡",
       description: "使用原始提示詞"
     },
+    
+    // ========== 插畫動畫 ==========
     anime: { 
       name: "動漫風格", 
       prompt: "anime style, anime art, vibrant colors, cel shading, detailed anime", 
@@ -138,6 +146,8 @@ const CONFIG = {
       icon: "🍃",
       description: "宮崎駿動畫風格"
     },
+    
+    // ========== 漫畫風格 ==========
     manga: {
       name: "日本漫畫",
       prompt: "manga style, japanese comic art, black and white, screentones, halftone patterns, dynamic poses, detailed linework",
@@ -178,6 +188,8 @@ const CONFIG = {
       icon: "🥰",
       description: "Q版可愛漫畫風格"
     },
+    
+    // ========== 黑白單色 ==========
     "black-white": {
       name: "黑白",
       prompt: "black and white, monochrome, high contrast, dramatic lighting, grayscale",
@@ -218,6 +230,8 @@ const CONFIG = {
       icon: "🖤",
       description: "炭筆繪畫粗糙質感"
     },
+    
+    // ========== 寫實風格 ==========
     photorealistic: { 
       name: "寫實照片", 
       prompt: "photorealistic, 8k uhd, high quality, detailed, professional photography, sharp focus", 
@@ -226,6 +240,8 @@ const CONFIG = {
       icon: "📷",
       description: "攝影級寫實效果"
     },
+    
+    // ========== 繪畫風格 ==========
     "oil-painting": { 
       name: "油畫", 
       prompt: "oil painting, canvas texture, visible brushstrokes, rich colors, artistic, masterpiece", 
@@ -242,6 +258,8 @@ const CONFIG = {
       icon: "💧",
       description: "清新水彩風格"
     },
+    
+    // ========== 藝術流派 ==========
     impressionism: {
       name: "印象派",
       prompt: "impressionist painting, soft brushstrokes, light and color focus, Monet style, outdoor scene, visible brush marks",
@@ -282,6 +300,8 @@ const CONFIG = {
       icon: "🎪",
       description: "普普藝術大膽色彩"
     },
+    
+    // ========== 視覺風格 ==========
     neon: {
       name: "霓虹燈",
       prompt: "neon lights, glowing, vibrant neon colors, night scene, electric, luminous, dark background",
@@ -322,6 +342,8 @@ const CONFIG = {
       icon: "🌴",
       description: "蒸氣波復古未來"
     },
+    
+    // ========== 數位風格 ==========
     "pixel-art": {
       name: "像素藝術",
       prompt: "pixel art, 8-bit, 16-bit, retro gaming style, pixelated, nostalgic, limited color palette",
@@ -362,6 +384,8 @@ const CONFIG = {
       icon: "📺",
       description: "故障美學數位崩壞"
     },
+    
+    // ========== 傳統藝術 ==========
     "ukiyo-e": {
       name: "浮世繪",
       prompt: "ukiyo-e style, japanese woodblock print, Hokusai inspired, traditional japanese art, flat colors, bold outlines",
@@ -386,6 +410,8 @@ const CONFIG = {
       icon: "✂️",
       description: "剪紙藝術層次堆疊"
     },
+    
+    // ========== 美學風格 ==========
     gothic: {
       name: "哥特風格",
       prompt: "gothic style, dark, ornate, Victorian gothic, mysterious, dramatic, baroque elements, elegant darkness",
@@ -402,6 +428,8 @@ const CONFIG = {
       icon: "🌺",
       description: "新藝術流動線條"
     },
+    
+    // ========== 科幻奇幻 ==========
     cyberpunk: { 
       name: "賽博朋克", 
       prompt: "cyberpunk style, neon lights, futuristic, sci-fi, dystopian, high-tech low-life, blade runner style", 
@@ -420,6 +448,9 @@ const CONFIG = {
     }
   },
 
+  // ========================================
+  // 風格分類配置
+  // ========================================
   STYLE_CATEGORIES: {
     'basic': { name: '基礎', icon: '⚡', order: 1 },
     'illustration': { name: '插畫動畫', icon: '🎨', order: 2 },
@@ -554,8 +585,12 @@ function getClientIP(request) {
          'unknown';
 }
 
+// ========================================
+// ✨ Google 免費翻譯 API（方案2）
+// ========================================
 async function translateToEnglish(text, env) {
   try {
+    // 檢測是否包含中文（繁體、簡體都支援）
     const hasChinese = /[\u4e00-\u9fa5]/.test(text);
     if (!hasChinese) {
       return { 
@@ -568,8 +603,12 @@ async function translateToEnglish(text, env) {
     console.log("🌐 檢測到中文，準備翻譯:", text.substring(0, 50) + (text.length > 50 ? "..." : ""));
 
     try {
+      // 使用 Google Translate 免費端點（無需 API Key）
       const url = new URL('https://translate.googleapis.com/translate_a/single');
       url.searchParams.append('client', 'gtx');
+      url.searchParams.append('sl', 'auto');   // 自動檢測來源語言（支援簡繁中文）
+      url.searchParams.append('tl', 'en');     // 目標語言：英文
+      url.searchParams.append('dt', 't');      // dt=t 表示只返回翻譯文字
       url.searchParams.append('sl', 'auto');
       url.searchParams.append('tl', 'en');
       url.searchParams.append('dt', 't');
@@ -589,11 +628,15 @@ async function translateToEnglish(text, env) {
         return { 
           text: text, 
           translated: false, 
+          reason: `API returned ${response.status}` 
           reason: "API returned " + response.status
         };
       }
 
       const result = await response.json();
+      
+      // 解析 Google Translate API 回應格式
+      // 格式: [[["翻譯文字", "原始文字", null, null, 3], ...], null, "zh-CN", ...]
       let translatedText = '';
 
       if (result && Array.isArray(result) && result[0]) {
@@ -604,6 +647,7 @@ async function translateToEnglish(text, env) {
         }
       }
 
+      // 去除可能的空白和換行
       translatedText = translatedText.trim();
 
       if (!translatedText || translatedText === text) {
@@ -615,6 +659,7 @@ async function translateToEnglish(text, env) {
         };
       }
 
+      // 檢測語言（result[2] 是檢測到的來源語言）
       const detectedLang = result[2] || 'unknown';
 
       console.log("✅ Google 翻譯成功!");
@@ -635,6 +680,7 @@ async function translateToEnglish(text, env) {
       console.error("❌ Google 翻譯過程發生錯誤:", error.message);
       console.error("   錯誤堆疊:", error.stack);
 
+      // 翻譯失敗不影響生成，返回原文
       return { 
         text: text, 
         translated: false, 
@@ -1080,6 +1126,9 @@ class PollinationsProvider {
       prompt_added: enhancedPrompt.length - finalPrompt.length
     });
 
+    // ========================================
+    // ✨ Google 翻譯整合（步驟6）
+    // ========================================
     const translation = await translateToEnglish(enhancedPrompt, this.env);
     const finalPromptForAPI = translation.text;
 
@@ -1153,6 +1202,7 @@ class PollinationsProvider {
 
     const authConfig = CONFIG.POLLINATIONS_AUTH;
     if (authConfig.enabled && authConfig.token) {
+      headers['Authorization'] = `Bearer ${authConfig.token}`;
       headers['Authorization'] = 'Bearer ' + authConfig.token;
       logger.add("🔐 API Authentication", { 
         method: "Bearer Token",
@@ -1336,6 +1386,11 @@ export default {
       });
     }
 
+    // ========================================
+    // API 路由
+    // ========================================
+    
+    // 1. 生成圖片 API (內部端點)
     if (path === '/_internal/generate' && request.method === 'POST') {
       const logger = new Logger();
       logger.add("📥 Request Info", { 
@@ -1393,6 +1448,7 @@ export default {
           generation_mode: referenceImages?.length > 0 ? "圖生圖" : "文生圖"
         });
 
+        // 從環境變數讀取 API Key
         const pollinationsApiKey = env.POLLINATIONS_API_KEY || "";
         if (pollinationsApiKey) {
           CONFIG.POLLINATIONS_AUTH.token = pollinationsApiKey;
@@ -1525,6 +1581,7 @@ export default {
       }
     }
 
+    // 2. 獲取配置 API
     if (path === '/api/config' || path === '/_internal/config') {
       const configData = {
         project: {
@@ -1585,6 +1642,7 @@ export default {
       });
     }
 
+    // 3. 健康檢查 API
     if (path === '/health' || path === '/_internal/health') {
       const pollinationsApiKey = env.POLLINATIONS_API_KEY || "";
 
@@ -1609,6 +1667,7 @@ export default {
       });
     }
 
+    // 4. 風格列表 API
     if (path === '/api/styles' || path === '/_internal/styles') {
       const groupedStyles = {};
 
@@ -1642,6 +1701,7 @@ export default {
       });
     }
 
+    // 5. 模型列表 API
     if (path === '/api/models' || path === '/_internal/models') {
       const models = CONFIG.PROVIDERS.pollinations.models.map(m => ({
         id: m.id,
@@ -1666,6 +1726,7 @@ export default {
       });
     }
 
+    // 6. 翻譯測試 API
     if (path === '/api/translate' && request.method === 'POST') {
       try {
         const body = await request.json();
@@ -1705,12 +1766,14 @@ export default {
       }
     }
 
+    // 7. 提供前端 HTML
     if (path === '/' || path === '/index.html') {
       return new Response(HTML_CONTENT, { 
         headers: corsHeaders({ 'Content-Type': 'text/html; charset=utf-8' }) 
       });
     }
 
+    // 404 處理
     return Response.json({ 
       error: 'Not Found',
       available_endpoints: [
@@ -1729,8 +1792,8 @@ export default {
   }
 };
 // =================================================================================
+// 前端 HTML 界面（第 5 段 Part 1）
 // 前端 HTML 界面
-// 前端 HTML 界面（完整版 - 45+ 風格）
 // =================================================================================
 
 const HTML_CONTENT = `<!DOCTYPE html>
@@ -1861,7 +1924,15 @@ const HTML_CONTENT = `<!DOCTYPE html>
       gap: 15px;
     }
     
+    .form-row-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+    }
+    
     @media (max-width: 768px) {
+      .form-row,
+      .form-row-3 {
       .form-row {
         grid-template-columns: 1fr;
       }
@@ -2213,6 +2284,45 @@ const HTML_CONTENT = `<!DOCTYPE html>
       font-weight: 600;
     }
     
+    .quality-modes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    
+    .quality-mode-btn {
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .quality-mode-btn:hover {
+      border-color: #667eea;
+      background: rgba(102, 126, 234, 0.05);
+    }
+    
+    .quality-mode-btn.active {
+      border-color: #667eea;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+      font-weight: 600;
+    }
+    
+    .quality-mode-btn .name {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #333;
+    }
+    
+    .quality-mode-btn .desc {
+      font-size: 0.85em;
+      color: #666;
+    }
+    
     .translation-info {
       background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
       border: 2px solid #667eea;
@@ -2258,6 +2368,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
     </div>
     
     <div class="main-content">
+      <!-- 左側：控制面板 -->
       <div class="panel">
         <h2>⚙️ 生成設定</h2>
         
@@ -2307,11 +2418,13 @@ const HTML_CONTENT = `<!DOCTYPE html>
         </div>
         
         <div id="styleCategories" class="style-grid" style="display: none;">
+          <!-- 動態生成風格卡片 -->
         </div>
         
         <div class="form-group">
           <label>📐 預設尺寸</label>
           <div class="preset-sizes" id="presetSizes">
+            <!-- 動態生成預設尺寸按鈕 -->
           </div>
         </div>
         
@@ -2342,6 +2455,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
         </button>
       </div>
       
+      <!-- 右側：結果展示 -->
       <div class="panel">
         <h2>🖼️ 生成結果</h2>
         
@@ -2353,9 +2467,11 @@ const HTML_CONTENT = `<!DOCTYPE html>
         </div>
         
         <div id="metaInfo" class="meta-info" style="display: none;">
+          <!-- 動態生成元資訊 -->
         </div>
         
         <div id="translationInfo" class="translation-info" style="display: none;">
+          <!-- 動態生成翻譯資訊 -->
         </div>
         
         <div class="action-buttons" id="actionButtons" style="display: none;">
@@ -2371,12 +2487,14 @@ const HTML_CONTENT = `<!DOCTYPE html>
     let currentImage = null;
     let currentMetadata = null;
     
+    // 載入配置
     async function loadConfig() {
       try {
         const response = await fetch('/api/config');
         currentConfig = await response.json();
         console.log('✅ 配置載入成功:', currentConfig);
         
+        // 初始化風格選擇器
         initStyleSelector();
         initPresetSizes();
         
@@ -2387,14 +2505,17 @@ const HTML_CONTENT = `<!DOCTYPE html>
       }
     }
     
+    // 初始化風格選擇器
     function initStyleSelector() {
       const styleSelect = document.getElementById('styleSelect');
       const styleCategories = document.getElementById('styleCategories');
       
       if (!currentConfig || !currentConfig.styles) return;
       
+      // 清空現有選項（保留"無風格"）
       styleSelect.innerHTML = '<option value="none">無風格</option>';
       
+      // 按分類組織風格
       const grouped = {};
       currentConfig.styles.forEach(style => {
         const category = style.category || 'basic';
@@ -2404,6 +2525,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
         grouped[category].push(style);
       });
       
+      // 生成分類和風格卡片
       let html = '';
       Object.entries(grouped).forEach(([categoryId, styles]) => {
         const categoryInfo = currentConfig.style_categories[categoryId];
@@ -2426,6 +2548,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
           </div>
         \`;
         
+        // 添加到下拉選單
         styles.forEach(style => {
           const option = document.createElement('option');
           option.value = style.id;
@@ -2437,6 +2560,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
       styleCategories.innerHTML = html;
     }
     
+    // 初始化預設尺寸
     function initPresetSizes() {
       const container = document.getElementById('presetSizes');
       if (!currentConfig || !currentConfig.preset_sizes) return;
@@ -2455,6 +2579,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
       });
     }
     
+    // 切換分類顯示
     function toggleCategory(categoryId) {
       const content = document.getElementById(\`category-\${categoryId}\`);
       const toggle = document.getElementById(\`toggle-\${categoryId}\`);
@@ -2467,6 +2592,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
       }
     }
     
+    // 選擇風格
     function selectStyle(styleId) {
       document.querySelectorAll('.style-card').forEach(card => {
         card.classList.remove('active');
@@ -2475,6 +2601,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
       document.getElementById('styleSelect').value = styleId;
     }
     
+    // 風格選擇器改變時同步卡片
     document.getElementById('styleSelect')?.addEventListener('change', (e) => {
       const styleId = e.target.value;
       document.querySelectorAll('.style-card').forEach(card => {
@@ -2510,7 +2637,6 @@ const HTML_CONTENT = `<!DOCTYPE html>
       const actionButtons = document.getElementById('actionButtons');
       
       // 檢查是否包含中文
-      // 檢查是否包含中文 - 修復版
       const hasChinese = /[\u4e00-\u9fa5]/.test(prompt);
       const translationHint = hasChinese ? '<p style="font-size: 0.9em; color: #999; margin-top: 10px;">🌐 自動翻譯中文提示詞...</p>' : '';
       
@@ -2521,6 +2647,9 @@ const HTML_CONTENT = `<!DOCTYPE html>
         <div class="loading">
           <div class="spinner"></div>
           <p>正在生成圖片，請稍候...</p>
+          <p style="font-size: 0.9em; color: #999; margin-top: 10px;">
+            ${/[\u4e00-\u9fa5]/.test(prompt) ? '🌐 自動翻譯中文提示詞...' : ''}
+          </p>
           \${translationHint}
         </div>
       \`;
@@ -2559,6 +2688,7 @@ const HTML_CONTENT = `<!DOCTYPE html>
         
         const contentType = response.headers.get('content-type');
         
+        if (contentType.startsWith('image/')) {
         if (contentType && contentType.startsWith('image/')) {
           // 直接返回圖片
           const blob = await response.blob();
@@ -2628,8 +2758,8 @@ const HTML_CONTENT = `<!DOCTYPE html>
       
       // 顯示元資訊
       const styleName = currentConfig.styles.find(s => s.id === metadata.style)?.name || metadata.style;
+      const qualityModeName = currentConfig.quality_modes.find(q => q.id === metadata.quality_mode || metadata.qualityMode)?.name || metadata.quality_mode || metadata.qualityMode;
       const qualityModeName = currentConfig.quality_modes.find(q => q.id === metadata.quality_mode || q.id === metadata.qualityMode)?.name || metadata.quality_mode || metadata.qualityMode;
-      const qualityModeName = currentConfig.quality_modes.find(q => q.id === (metadata.quality_mode || metadata.qualityMode))?.name || metadata.quality_mode || metadata.qualityMode;
       
       metaInfo.innerHTML = \`
         <div>
@@ -2788,3 +2918,4 @@ const HTML_CONTENT = `<!DOCTYPE html>
   </script>
 </body>
 </html>
+`;
