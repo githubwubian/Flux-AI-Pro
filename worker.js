@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - GPT-Image Edition
-//  版本: 9.9.0 (IndexedDB 永久存檔版)
-//  更新: 解決歷史記錄死圖問題，改用 IndexedDB 儲存 Base64
+//  版本: 10.0.0-Beta (Smart Seed & Auto-Optimize)
+//  更新: 新增智能種子鎖定與手動參數控制
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "9.9.0-gpt",
+  PROJECT_VERSION: "10.0.0-Beta",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -528,7 +528,6 @@ export default {
     }
   }
 };
-
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
   const startTime = Date.now();
@@ -546,16 +545,38 @@ async function handleInternalGenerate(request, env, ctx) {
       referenceImages = body.reference_images.filter(url => { try { new URL(url); return true; } catch { return false; } });
     }
     
+    // Seed 處理邏輯：接收前端傳來的數值，若是 -1 則保持 -1 (代表隨機)
     const seedInput = body.seed !== undefined ? body.seed : -1;
     let seedValue = -1;
-    if (seedInput !== -1) { const parsedSeed = parseInt(seedInput); if (!isNaN(parsedSeed) && parsedSeed >= 0 && parsedSeed <= 999999) seedValue = parsedSeed; }
+    if (seedInput !== -1) { 
+        const parsedSeed = parseInt(seedInput); 
+        if (!isNaN(parsedSeed)) seedValue = parsedSeed; 
+    }
     
+    // 參數處理：如果 auto_optimize 為 false，則讀取用戶自訂的 steps 與 guidance
+    const autoOptimize = body.auto_optimize !== false; // 預設為 true
+    const userSteps = body.steps ? parseInt(body.steps) : null;
+    const userGuidance = body.guidance_scale ? parseFloat(body.guidance_scale) : null;
+
     const options = { 
-      provider: body.provider || null, model: body.model || "gptimage", width: Math.min(Math.max(width, 256), 2048), height: Math.min(Math.max(height, 256), 2048), 
-      numOutputs: Math.min(Math.max(body.n || 1, 1), 4), seed: seedValue, negativePrompt: body.negative_prompt || "", guidance: body.guidance_scale || null, 
-      steps: body.steps || null, enhance: body.enhance === true, nologo: body.nologo !== false, privateMode: body.private !== false, 
-      style: body.style || "none", autoOptimize: body.auto_optimize !== false, autoHD: body.auto_hd !== false, 
-      qualityMode: body.quality_mode || 'standard', referenceImages: referenceImages
+      provider: body.provider || null, 
+      model: body.model || "gptimage", 
+      width: Math.min(Math.max(width, 256), 2048), 
+      height: Math.min(Math.max(height, 256), 2048), 
+      numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
+      seed: seedValue, 
+      negativePrompt: body.negative_prompt || "", 
+      // 關鍵修改：若自動優化開啟，傳入 null 讓後端計算；若關閉，傳入用戶數值
+      guidance: autoOptimize ? null : userGuidance, 
+      steps: autoOptimize ? null : userSteps, 
+      enhance: body.enhance === true, 
+      nologo: body.nologo !== false, 
+      privateMode: body.private !== false, 
+      style: body.style || "none", 
+      autoOptimize: autoOptimize, 
+      autoHD: body.auto_hd !== false, 
+      qualityMode: body.quality_mode || 'standard', 
+      referenceImages: referenceImages
     };
     
     const router = new MultiProviderRouter({}, env);
@@ -698,8 +719,40 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
 <div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
 <div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
-<div class="form-group"><label>Seed (-1 = Random)</label><input type="number" id="seed" value="-1"></div>
-<button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn">🎨 開始生成</button>
+
+<div class="form-group">
+    <label data-t="seed_label">Seed (種子碼)</label>
+    <div style="display:flex; gap:10px;">
+        <input type="number" id="seed" value="-1" placeholder="Random (-1)" disabled style="flex:1; opacity: 0.7; cursor: not-allowed; font-family: monospace;">
+        <button type="button" id="seedToggleBtn" class="btn" style="width:auto; padding:0 15px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">🎲</button>
+    </div>
+</div>
+
+<div class="form-group" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-top:15px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <label for="autoOptimize" style="margin:0; cursor:pointer;" data-t="auto_opt_label">✨ 自動優化</label>
+            <div style="font-size:11px; color:#9ca3af; margin-top:2px;" data-t="auto_opt_desc">自動調整 Steps 與 Guidance</div>
+        </div>
+        <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
+    </div>
+    
+    <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
+        
+        <div class="form-group">
+            <label data-t="steps_label">生成步數 (Steps)</label>
+            <input type="number" id="steps" value="25" min="1" max="50">
+        </div>
+        
+        <div class="form-group">
+            <label data-t="guidance_label">引導係數 (Guidance)</label>
+            <input type="number" id="guidanceScale" value="7.5" step="0.1" min="1" max="20">
+        </div>
+    </div>
+</div>
+
+<button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px;">🎨 開始生成</button>
 </form>
 </div>
 <div class="center-panel">
@@ -765,10 +818,23 @@ async function clearDB(){
 }
 
 // ====== I18N 與 UI 邏輯 ======
-const I18N={zh:{nav_gen:"🎨 生成圖像",nav_his:"📚 歷史記錄",settings_title:"⚙️ 生成參數",model_label:"模型選擇",size_label:"尺寸預設",style_label:"藝術風格 🎨",quality_label:"質量模式",gen_btn:"🎨 開始生成",empty_title:"尚未生成任何圖像",pos_prompt:"正面提示詞",neg_prompt:"負面提示詞 (可選)",ref_img:"參考圖像 URL (Kontext 專用)",stat_total:"📊 總記錄數",stat_storage:"💾 存儲空間 (永久)",btn_export:"📥 導出",btn_clear:"🗑️ 清空",no_history:"暫無歷史記錄",btn_reuse:"🔄 重用",btn_dl:"💾 下載"},en:{nav_gen:"🎨 Create",nav_his:"📚 History",settings_title:"⚙️ Settings",model_label:"Model",size_label:"Size",style_label:"Art Style 🎨",quality_label:"Quality",gen_btn:"🎨 Generate",empty_title:"No images yet",pos_prompt:"Positive Prompt",neg_prompt:"Negative Prompt",ref_img:"Reference Image URL",stat_total:"📊 Total",stat_storage:"💾 Storage",btn_export:"📥 Export",btn_clear:"🗑️ Clear",no_history:"No history found",btn_reuse:"🔄 Reuse",btn_dl:"💾 Save"}};
+const I18N={
+    zh:{
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載"
+    },
+    en:{
+        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save"
+    }
+};
 let curLang='zh';
 function toggleLang(){curLang=curLang==='zh'?'en':'zh';updateLang();}
-function updateLang(){document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[curLang][k])el.textContent=I18N[curLang][k];});}
+function updateLang(){
+    document.querySelectorAll('[data-t]').forEach(el=>{const k=el.getAttribute('data-t');if(I18N[curLang][k])el.textContent=I18N[curLang][k];});
+    const seedToggleBtn = document.getElementById('seedToggleBtn');
+    if(seedToggleBtn && isSeedRandom !== undefined) {
+        seedToggleBtn.innerHTML = isSeedRandom ? I18N[curLang].seed_random : I18N[curLang].seed_lock;
+    }
+}
 document.getElementById('langSwitch').onclick=toggleLang;
 
 // 頁面切換
@@ -783,12 +849,43 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
     });
 });
 
+// Seed Toggle 與 Auto Optimize 邏輯
+const seedInput = document.getElementById('seed');
+const seedToggleBtn = document.getElementById('seedToggleBtn');
+const autoOptCheckbox = document.getElementById('autoOptimize');
+const advParamsDiv = document.getElementById('advancedParams');
+let isSeedRandom = true;
+
+function updateSeedUI() {
+    if (isSeedRandom) {
+        seedInput.value = '-1';
+        seedInput.disabled = true;
+        seedInput.style.opacity = '0.7';
+        seedInput.style.cursor = 'not-allowed';
+        seedToggleBtn.innerHTML = I18N[curLang].seed_random;
+        seedToggleBtn.classList.remove('active');
+        seedToggleBtn.style.background = 'rgba(255,255,255,0.1)';
+        seedToggleBtn.style.color = '#fff';
+    } else {
+        if(seedInput.value === '-1') seedInput.value = Math.floor(Math.random() * 1000000);
+        seedInput.disabled = false;
+        seedInput.style.opacity = '1';
+        seedInput.style.cursor = 'text';
+        seedToggleBtn.innerHTML = I18N[curLang].seed_lock;
+        seedToggleBtn.classList.add('active');
+        seedToggleBtn.style.background = '#f59e0b';
+        seedToggleBtn.style.color = '#000';
+    }
+}
+
+seedToggleBtn.addEventListener('click', () => { isSeedRandom = !isSeedRandom; updateSeedUI(); });
+autoOptCheckbox.addEventListener('change', () => { advParamsDiv.style.display = autoOptCheckbox.checked ? 'none' : 'block'; });
+
 // 生成與歷史記錄處理
 const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
 const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
 
 async function addToHistory(item){
-    // 無論是 URL 還是 Base64，都統一轉為 Base64 存入 DB
     let base64Data = item.image;
     if(!base64Data && item.url){
         try{
@@ -797,15 +894,8 @@ async function addToHistory(item){
             base64Data = await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(blob);});
         }catch(e){console.error("Image convert failed",e);}
     }
-    
     const record={
-        id: Date.now()+Math.random(),
-        timestamp: new Date().toISOString(),
-        prompt: item.prompt,
-        model: item.model,
-        style: item.style,
-        seed: item.seed,
-        base64: base64Data || item.url // 優先存 Base64
+        id: Date.now()+Math.random(), timestamp: new Date().toISOString(), prompt: item.prompt, model: item.model, style: item.style, seed: item.seed, base64: base64Data || item.url
     };
     await saveToDB(record);
 }
@@ -815,25 +905,23 @@ async function updateHistoryDisplay(){
     const list = document.getElementById('historyList');
     document.getElementById('historyCount').textContent=history.length;
     document.getElementById('historyTotal').textContent=history.length;
-    // 估算大小
     const size = JSON.stringify(history).length;
     document.getElementById('storageSize').textContent = (size/1024/1024).toFixed(2)+' MB';
 
-    if(history.length===0){
-        list.innerHTML='<div class="empty-state"><p>'+I18N[curLang].no_history+'</p></div>';
-        return;
-    }
+    if(history.length===0){ list.innerHTML='<div class="empty-state"><p>'+I18N[curLang].no_history+'</p></div>'; return; }
     const div=document.createElement('div');div.className='gallery';
     history.forEach(item=>{
-        const imgSrc = item.base64 || item.url; // 讀取永久存儲的 Base64
+        const imgSrc = item.base64 || item.url;
         const d=document.createElement('div'); d.className='gallery-item';
-        d.innerHTML=\`<img src="\${imgSrc}" loading="lazy"><div class="gallery-info"><div class="gallery-meta"><span class="model-badge">\${item.model}</span></div><div class="gallery-actions"><button class="action-btn reuse-btn">\${I18N[curLang].btn_reuse}</button><button class="action-btn download-btn">\${I18N[curLang].btn_dl}</button><button class="action-btn delete delete-btn">🗑️</button></div></div>\`;
+        d.innerHTML=\`<img src="\${imgSrc}" loading="lazy"><div class="gallery-info"><div class="gallery-meta"><span class="model-badge">\${item.model}</span><span class="seed-badge">#\${item.seed}</span></div><div class="gallery-actions"><button class="action-btn reuse-btn">\${I18N[curLang].btn_reuse}</button><button class="action-btn download-btn">\${I18N[curLang].btn_dl}</button><button class="action-btn delete delete-btn">🗑️</button></div></div>\`;
         d.querySelector('img').onclick=()=>openModal(imgSrc);
         d.querySelector('.reuse-btn').onclick=()=>{
             document.getElementById('prompt').value=item.prompt||'';
             document.getElementById('model').value=item.model||'gptimage';
             document.getElementById('style').value=item.style||'none';
-            document.getElementById('seed').value=item.seed||-1;
+            const savedSeed = item.seed;
+            if (savedSeed && savedSeed !== -1 && savedSeed !== '-1') { isSeedRandom = false; seedInput.value = savedSeed; } else { isSeedRandom = true; seedInput.value = '-1'; }
+            updateSeedUI();
             document.querySelector('[data-page="generate"]').click();
         };
         d.querySelector('.download-btn').onclick=()=>{const a=document.createElement('a');a.href=imgSrc;a.download='flux-'+item.seed+'.png';a.click();};
@@ -864,18 +952,18 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     btn.disabled=true; btn.textContent=curLang==='zh'?'生成中...':'Generating...';
     resDiv.innerHTML='<div class="loading"><div class="spinner"></div></div>';
     
+    const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
+    const isAutoOpt = autoOptCheckbox.checked;
+
     try{
         const res=await fetch('/_internal/generate',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
+            method:'POST', headers:{'Content-Type':'application/json'},
             body:JSON.stringify({
-                prompt,
-                model:document.getElementById('model').value,
-                width:sizeConfig.width,
-                height:sizeConfig.height,
-                style:document.getElementById('style').value,
-                quality_mode:document.getElementById('qualityMode').value,
-                seed:parseInt(document.getElementById('seed').value),
+                prompt, model:document.getElementById('model').value, width:sizeConfig.width, height:sizeConfig.height,
+                style:document.getElementById('style').value, quality_mode:document.getElementById('qualityMode').value,
+                seed: currentSeed, auto_optimize: isAutoOpt,
+                steps: isAutoOpt ? null : parseInt(document.getElementById('steps').value),
+                guidance_scale: isAutoOpt ? null : parseFloat(document.getElementById('guidanceScale').value),
                 negative_prompt:document.getElementById('negativePrompt').value,
                 reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim())
             })
@@ -885,36 +973,23 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
         const contentType=res.headers.get('content-type');
         if(contentType&&contentType.startsWith('image/')){
             const blob=await res.blob();
-            // 轉 Base64 顯示與存儲
             const reader=new FileReader();
             reader.readAsDataURL(blob);
             reader.onloadend=async()=>{
                 const base64=reader.result;
-                const item={
-                    image:base64, // 這裡直接用 Base64
-                    prompt,
-                    model:res.headers.get('X-Model'),
-                    seed:res.headers.get('X-Seed'),
-                    style:res.headers.get('X-Style')
-                };
-                await addToHistory(item); // 存入 DB
+                const realSeed = res.headers.get('X-Seed');
+                const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
+                await addToHistory(item);
                 displayResult([item]);
             };
         }else{
             const data=await res.json();
             if(data.error) throw new Error(data.error.message);
-            for(const d of data.data){
-                const item={...d, prompt};
-                await addToHistory(item);
-                items.push(item);
-            }
+            for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
             displayResult(items);
         }
-    }catch(err){
-        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>';
-    }finally{
-        btn.disabled=false; btn.textContent=I18N[curLang].gen_btn;
-    }
+    }catch(err){ resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; }
+    finally{ btn.disabled=false; btn.textContent=I18N[curLang].gen_btn; }
 });
 
 function displayResult(items){
@@ -930,7 +1005,7 @@ function displayResult(items){
 
 window.onload=()=>{
     updateLang();
-    updateHistoryDisplay(); // 載入即顯示歷史
+    updateHistoryDisplay();
 };
 </script>
 </body>
