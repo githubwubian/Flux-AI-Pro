@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.2.0 (Access Control & KV Limit)
-//  更新: 強制 Nano Banana 模型僅能在 /nano 頁面使用
+//  版本: 10.3.0 (Final Complete Version)
+//  更新: 整合所有功能：獨立頁面、安全驗證、KV限流、頂部導航按鈕
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.2.0",
+  PROJECT_VERSION: "10.3.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -584,7 +584,7 @@ async function handleInternalGenerate(request, env, ctx) {
     const prompt = body.prompt;
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
-    // ====== 修改這裡：NanoBanana 來源與限流檢查 ======
+    // ====== NanoBanana 來源與限流檢查 ======
     if (body.model === 'nano-banana') {
         // 1. 來源檢查：必須帶有特殊 Header
         const source = request.headers.get('X-Source');
@@ -777,11 +777,10 @@ select{width:100%;padding:12px;background:#333;border:1px solid #444;border-radi
 
 function handleUI() {
   const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
-  const apiEndpoint = CONFIG.PROVIDERS.pollinations.endpoint;
-  const stylesCount = Object.keys(CONFIG.STYLE_PRESETS).length;
+  
+  // 生成樣式選單 HTML
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
-  
   let styleOptionsHTML = '';
   const sortedCategories = Object.entries(styleCategories).sort((a, b) => a[1].order - b[1].order);
   for (const [categoryKey, categoryInfo] of sortedCategories) {
@@ -803,7 +802,7 @@ function handleUI() {
 <title>Flux AI Pro v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
 <style>
-/* CSS 部分保持一致，為節省空間已壓縮 */
+/* CSS 部分 */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
 .container{max-width:100%;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
@@ -812,9 +811,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .logo{color:#f59e0b;font-size:24px;font-weight:800;text-shadow:0 0 20px rgba(245,158,11,0.6);display:flex;align-items:center;gap:10px}
 .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600}
 .nav-menu{display:flex;gap:10px;align-items:center}
-.nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px}
+/* nav-btn 樣式通用於 button 和 a */
+.nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px;text-decoration:none}
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
+/* 特別為 Nano 按鈕設計的懸停效果 */
+.nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
+
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
 .main-content{flex:1;display:flex;overflow:hidden}
 .left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
@@ -855,37 +858,44 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <body>
 <div class="container">
 <div class="top-nav">
-<div class="nav-left">
-<div class="logo">🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span></div>
-<div><div class="api-status">${authStatus}</div></div>
-</div>
-<div class="nav-menu">
-<button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
-<button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
-<button class="lang-btn" id="langSwitch">EN / 繁中</button>
-</div>
+    <div class="nav-left">
+        <div class="logo">🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span></div>
+        <div><div class="api-status">${authStatus}</div></div>
+    </div>
+    <div class="nav-menu">
+        <!-- 🔥 在這裡加入 Nano Banana 按鈕 -->
+        <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
+            🍌 Nano版
+        </a>
+        <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
+        <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
+        <button class="lang-btn" id="langSwitch">EN / 繁中</button>
+    </div>
 </div>
 <div id="generatePage" class="page active">
 <div class="main-content">
 <div class="left-panel">
 <div class="section-title" data-t="settings_title">⚙️ 生成參數</div>
 <form id="generateForm">
-<div class="form-group"><label data-t="model_label">模型選擇</label><select id="model">
-<optgroup label="🤖 GPT-Image Series">
-<option value="gptimage" selected>GPT-Image 🎨</option>
-<option value="gptimage-large">GPT-Image Large 🌟</option>
-</optgroup>
-<optgroup label="⚡ Z-Image Series">
-<option value="zimage">Z-Image Turbo ⚡ (6B)</option>
-</optgroup>
-<optgroup label="🎨 Flux Series">
-<option value="flux">Flux Standard</option>
-<option value="turbo">Flux Turbo ⚡</option>
-</optgroup>
-<optgroup label="🖼️ Kontext Series">
-<option value="kontext">Kontext 🎨 (Img2Img)</option>
-</optgroup>
-</select></div>
+<div class="form-group">
+    <label data-t="model_label">模型選擇</label>
+    <select id="model">
+        <optgroup label="🤖 GPT-Image Series">
+        <option value="gptimage" selected>GPT-Image 🎨</option>
+        <option value="gptimage-large">GPT-Image Large 🌟</option>
+        </optgroup>
+        <optgroup label="⚡ Z-Image Series">
+        <option value="zimage">Z-Image Turbo ⚡ (6B)</option>
+        </optgroup>
+        <optgroup label="🎨 Flux Series">
+        <option value="flux">Flux Standard</option>
+        <option value="turbo">Flux Turbo ⚡</option>
+        </optgroup>
+        <optgroup label="🖼️ Kontext Series">
+        <option value="kontext">Kontext 🎨 (Img2Img)</option>
+        </optgroup>
+    </select>
+</div>
 <div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
 <div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
 <div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
@@ -1007,10 +1017,11 @@ function updateLang(){
 }
 document.getElementById('langSwitch').onclick=toggleLang;
 
-// 頁面切換
-document.querySelectorAll('.nav-btn').forEach(btn=>{
+// 頁面切換 (排除 Nano 按鈕)
+document.querySelectorAll('.nav-btn:not(.nano-btn)').forEach(btn=>{
     btn.addEventListener('click',function(){
         const p=this.dataset.page;
+        if(!p) return;
         document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
         document.getElementById(p+'Page').classList.add('active');
