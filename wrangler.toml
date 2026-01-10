@@ -1,12 +1,22 @@
 # ============================================
 # Cloudflare Workers 配置文件
-# 項目: Flux AI Pro v9.6.0-gen-api
-# 更新: 2025-12-17
+# 項目: Flux AI Pro - NanoBanana Edition
+# 版本: 10.4.0 (Nano Pro Upgrade)
+# 更新: 2026-01-10
 # ============================================
 
 name = "flux-ai-pro"
 main = "worker.js"
 compatibility_date = "2024-12-01"
+
+# ============================================
+# KV 存儲綁定 (NanoBanana 限流必需)
+# ⚠️ 請執行: npx wrangler kv:namespace create "FLUX_KV"
+# 然後將生成的 id 填入下方
+# ============================================
+[[kv_namespaces]]
+binding = "FLUX_KV"
+id = "65c2232e78044e749adb797599cb6ac8"
 
 # ============================================
 # Workers AI 綁定（用於中文自動翻譯）
@@ -18,8 +28,8 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "9.6.0-gen-api"
-DEFAULT_MODEL = "flux"
+WORKER_VERSION = "10.4.0"
+DEFAULT_MODEL = "nano-banana"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
 MAX_TIMEOUT = 120000
@@ -27,15 +37,9 @@ ENVIRONMENT = "production"
 API_ENDPOINT = "https://gen.pollinations.ai"
 
 # ============================================
-# 自定義域名（可選 - 如不需要請註釋掉）
-# ============================================
-# routes = [
-#   { pattern = "flux-ai.your-domain.com/*", zone_name = "your-domain.com" }
-# ]
-
-# ============================================
 # Secrets 通過 wrangler secret 命令設置
 # 🔐 必需設置 POLLINATIONS_API_KEY
 # ============================================
 # 設置命令：
-# wrangler secret put POLLINATIONS_API_KEY
+# npx wrangler secret put POLLINATIONS_API_KEY
+
