@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.4.1 (Nano Pro Rename & Fix)
-//  更新: 模型 ID 更名為 nanobanana，並修復上游 API 映射問題
+//  版本: 10.6.0 (Cyber-Banana UI + Hourly Quota + Lightbox)
+//  更新: 整合所有 UI 優化、API 映射修復、每小時限額邏輯
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.4.1",
+  PROJECT_VERSION: "10.6.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -42,7 +42,7 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        // 🔥 修改 1: ID 更新為 nanobanana
+        // 🔥 核心模型設定: ID 為 nanobanana
         { id: "nanobanana", name: "Nano Banana 🍌", confirmed: true, category: "special", description: "Nano Banana 風格模型 (每小時限額 20 張)", max_size: 2048, pricing: { image_price: 0, currency: "free" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -117,7 +117,6 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: { 
-      // 🔥 修改 2: 這裡的 key 也更新為 nanobanana
       "nanobanana": { min: 15, optimal: 20, max: 30 },
       "gptimage": { min: 10, optimal: 18, max: 28 },
       "gptimage-large": { min: 15, optimal: 25, max: 35 },
@@ -140,7 +139,6 @@ const CONFIG = {
     HD_PROMPTS: { basic: "high quality, detailed, sharp", enhanced: "high quality, highly detailed, sharp focus, professional, 8k uhd", maximum: "masterpiece, best quality, ultra detailed, 8k uhd, high resolution, professional photography, sharp focus, HDR" },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise",
     MODEL_QUALITY_PROFILES: {
-      // 🔥 修改 3: 這裡的 key 也更新為 nanobanana
       "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "gptimage-large": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.05, recommended_quality: "ultra" },
@@ -361,10 +359,10 @@ class PollinationsProvider {
       qualityMode = 'standard', referenceImages = []
     } = options;
 
-    // 🔥🔥 修改 4: 關鍵的 ID 映射邏輯 (Fix for 400 Bad Request)
+    // 🔥 修復 400 Bad Request: 將 nanobanana 映射為 flux
     let apiModel = model;
     if (model === 'nanobanana') {
-        apiModel = 'flux'; // 將 nanobanana 指向 flux (或其他你想用的模型，如 'turbo')
+        apiModel = 'flux';
     }
     
     const modelConfig = this.config.models.find(m => m.id === model);
@@ -448,7 +446,7 @@ class PollinationsProvider {
     let baseUrl = this.config.endpoint + pathPrefix + "/" + encodedPrompt;
     
     const params = new URLSearchParams();
-    // 🔥🔥 修改 5: 這裡改用 apiModel
+    // 使用映射後的 apiModel 避免 400 錯誤
     params.append('model', apiModel); 
     params.append('width', finalWidth.toString());
     params.append('height', finalHeight.toString());
@@ -595,7 +593,6 @@ async function handleInternalGenerate(request, env, ctx) {
     if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
     // ====== NanoBanana 來源與限流檢查 ======
-    // 🔥 修改 6: 這裡的檢查也更新為 nanobanana
     if (body.model === 'nanobanana') {
         const source = request.headers.get('X-Source');
         if (source !== 'nano-page') {
@@ -604,10 +601,7 @@ async function handleInternalGenerate(request, env, ctx) {
             }), { status: 403, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
         
-        // 限制生成數量為 1
-        if (body.n && body.n > 1) {
-            body.n = 1;
-        }
+        if (body.n && body.n > 1) { body.n = 1; }
 
         const limiter = new RateLimiter(env);
         const check = await limiter.checkLimit(clientIP);
@@ -687,264 +681,440 @@ async function handleInternalGenerate(request, env, ctx) {
   }
 }
 
+// 🔥 Cyber-Banana UI: 包含每小時限額、燈箱、下載功能
 function handleNanoPage(request) {
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🍌 NanoBanana Pro - 獨立版</title>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🍌 NanoBanana Pro - 控制台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#121212;color:#eee;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
-.container{max-width:600px;width:100%;background:#1e1e1e;border-radius:24px;padding:30px;box-shadow:0 20px 50px rgba(0,0,0,0.5);border:1px solid #333}
-.header{text-align:center;margin-bottom:25px;position:relative}
-.logo{font-size:48px;margin-bottom:10px;animation:bounce 2s infinite;display:inline-block}
-h1{color:#FACC15;margin-bottom:5px;font-size:28px;font-weight:800;letter-spacing:-1px}
-.badge{background:#FACC15;color:#000;padding:2px 8px;border-radius:6px;font-size:12px;vertical-align:middle;margin-left:8px}
-.form-group{margin-bottom:15px}
-label{display:block;margin-bottom:8px;color:#aaa;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
-textarea, input[type="text"]{width:100%;background:#2a2a2a;border:2px solid #333;border-radius:12px;padding:12px;color:#fff;font-size:15px;transition:0.3s}
-textarea:focus, input:focus{outline:none;border-color:#FACC15;background:#333}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-select{width:100%;padding:12px;background:#2a2a2a;border:2px solid #333;border-radius:12px;color:#fff;cursor:pointer}
-.btn{width:100%;padding:16px;background:linear-gradient(135deg, #FACC15, #EAB308);border:none;border-radius:14px;color:#000;font-weight:800;font-size:18px;cursor:pointer;transition:all 0.2s;margin-top:10px}
-.btn:hover{transform:scale(1.02);box-shadow:0 0 20px rgba(250, 204, 21, 0.3)}
-.btn:disabled{opacity:0.6;filter:grayscale(1);cursor:not-allowed}
-
-/* 歷史記錄列 */
-.history-strip {margin-top:30px; display:flex; gap:10px; overflow-x:auto; padding-bottom:10px; scroll-behavior:smooth;}
-.history-item {width:80px; height:80px; border-radius:10px; overflow:hidden; border:2px solid #333; flex-shrink:0; cursor:pointer; position:relative; transition:0.2s;}
-.history-item.active {border-color:#FACC15; box-shadow:0 0 10px rgba(250, 204, 21, 0.3);}
-.history-item img {width:100%; height:100%; object-fit:cover;}
-
-/* Seed 控制 */
-.seed-control {display:flex; gap:10px;}
-.seed-btn {padding:0 15px; background:#333; border:none; border-radius:12px; color:#fff; cursor:pointer; font-size:18px;}
-.seed-btn.active {background:#FACC15; color:#000;}
-
-/* 骰子按鈕 */
-.dice-btn {background:none; border:none; cursor:pointer; font-size:18px; transition:transform 0.3s;}
-.dice-btn:hover {transform:rotate(180deg);}
-
-#resultArea{margin-top:20px;min-height:300px;background:#151515;border-radius:16px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;border:2px dashed #333}
-#resultImg{max-width:100%;max-height:600px;display:none;box-shadow:0 0 30px rgba(0,0,0,0.5)}
-.loading{display:none;color:#FACC15;font-weight:bold;text-align:center}
-@keyframes bounce {0%, 100% {transform: translateY(0);} 50% {transform: translateY(-10px);}}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:10px 20px;border-radius:8px;display:none;z-index:100}
+:root {
+    --primary: #FACC15;
+    --primary-dim: #cca400;
+    --bg-dark: #0f0f11;
+    --panel-bg: rgba(30, 30, 35, 0.7);
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #ffffff;
+    --text-muted: #9ca3af;
+    --glass: blur(20px) saturate(180%);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at 10% 20%, rgba(250, 204, 21, 0.05) 0%, transparent 40%);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+}
+.app-container { display: flex; width: 100%; height: 100%; }
+.sidebar {
+    width: 380px;
+    background: var(--panel-bg);
+    backdrop-filter: var(--glass);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    z-index: 10;
+    position: relative;
+}
+.main-stage {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, #1a1a1d 0%, #000 100%);
+    overflow: hidden;
+}
+.logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
+.logo-icon { font-size: 28px; animation: float 3s ease-in-out infinite; }
+.logo-text h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+.logo-text .badge { background: var(--primary); color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; vertical-align: top; }
+.control-group { margin-bottom: 24px; }
+.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+textarea, input[type="text"], input[type="number"] {
+    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 12px; padding: 14px; color: #fff; font-size: 14px; transition: 0.2s; font-family: inherit; resize: none;
+}
+textarea:focus, input:focus { border-color: var(--primary); outline: none; background: rgba(0,0,0,0.5); }
+.ratio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ratio-item {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; position: relative;
+}
+.ratio-item:hover { background: rgba(255,255,255,0.1); }
+.ratio-item.active { border-color: var(--primary); background: rgba(250, 204, 21, 0.1); color: var(--primary); }
+.ratio-shape { border: 2px solid currentColor; opacity: 0.7; }
+select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; appearance: none; cursor: pointer; }
+.gen-btn {
+    width: 100%; background: var(--primary); color: #000; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 20px rgba(250, 204, 21, 0.2); position: relative; overflow: hidden;
+}
+.gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(250, 204, 21, 0.4); }
+.gen-btn:active { transform: scale(0.98); }
+.gen-btn:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(1); }
+.tool-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: 0.2s; font-size: 14px; }
+.tool-btn:hover { color: var(--primary); }
+.tool-btn.active { color: var(--primary); }
+.quota-box {
+    margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);
+}
+.quota-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.quota-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.quota-fill { height: 100%; background: var(--primary); width: 100%; transition: width 0.5s ease; }
+.quota-text { font-weight: bold; color: var(--primary); }
+#resultImg {
+    max-width: 90%; max-height: 85%; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: none; object-fit: contain; transition: 0.3s; cursor: zoom-in;
+}
+.placeholder-text { color: rgba(255,255,255,0.1); font-size: 80px; font-weight: 900; user-select: none; }
+.history-dock {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 20, 23, 0.8); backdrop-filter: blur(15px); border: 1px solid var(--border); padding: 10px; border-radius: 20px; display: flex; gap: 10px; max-width: 90%; overflow-x: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 20;
+}
+.history-item {
+    width: 50px; height: 50px; border-radius: 10px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: 0.2s; flex-shrink: 0;
+}
+.history-item img { width: 100%; height: 100%; object-fit: cover; }
+.history-item:hover { transform: scale(1.1); z-index: 10; }
+.history-item.active { border-color: var(--primary); }
+.lightbox {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s;
+}
+.lightbox.show { display: flex; opacity: 1; }
+.lightbox img { max-width: 95%; max-height: 85vh; border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+.lightbox-close { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 40px; cursor: pointer; opacity: 0.7; transition: 0.2s; }
+.lightbox-close:hover { opacity: 1; color: var(--primary); }
+.lightbox-actions { margin-top: 20px; display: flex; gap: 15px; }
+.action-btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; transition: 0.2s; }
+.action-btn:hover { background: var(--primary); color: #000; border-color: var(--primary); }
+.loading-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50;
+}
+.banana-loader { font-size: 60px; animation: spin-bounce 1.5s infinite; margin-bottom: 20px; }
+.loading-text { color: var(--primary); font-weight: bold; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; }
+@media (max-width: 900px) {
+    body { flex-direction: column; overflow-y: auto; height: auto; }
+    .sidebar { width: 100%; height: auto; padding-bottom: 100px; border-right: none; }
+    .main-stage { height: 50vh; order: -1; border-bottom: 1px solid var(--border); }
+    #resultImg { max-height: 90%; }
+    .history-dock { bottom: 10px; }
+}
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes spin-bounce { 0% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0deg); } }
+.toast { position: fixed; top: 20px; right: 20px; background: #333; border-left: 4px solid var(--primary); color: #fff; padding: 15px 25px; border-radius: 8px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px; animation: slideIn 0.3s forwards; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
 </head>
 <body>
     <div id="toast" class="toast"></div>
-    <div class="container">
-        <div class="header">
-            <div class="logo">🍌</div>
-            <h1>Nano Pro <span class="badge">PRO</span></h1>
-            <p style="color:#666;font-size:13px">每小時限額 20 張 • 獨立高速通道</p>
-        </div>
 
-        <div class="form-group">
-            <label>
-                正面提示詞 (Prompt)
-                <button class="dice-btn" id="randomPromptBtn" title="隨機靈感">🎲</button>
-            </label>
-            <textarea id="prompt" rows="3" placeholder="例如: yellow banana in cyberpunk city, neon lights"></textarea>
-        </div>
-
-        <div class="form-group">
-            <label>排除元素 (Negative)</label>
-            <input type="text" id="negative" placeholder="text, watermark, ugly, blurry" value="nsfw, ugly, text, low quality">
-        </div>
-
-        <div class="grid-2">
-            <div class="form-group">
-                <label>畫布比例</label>
-                <select id="ratio">
-                    <option value="1024,1024">1:1 方形</option>
-                    <option value="1080,1920">9:16 手機桌布</option>
-                    <option value="1920,1080">16:9 電腦桌布</option>
-                    <option value="1536,2048">3:4 社群貼文</option>
-                    <option value="2560,1080">21:9 電影感</option>
-                </select>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">🍌</div>
+                <div class="logo-text">
+                    <h1>Nano Pro <span class="badge">V10.6</span></h1>
+                    <p style="color:#666; font-size:12px">Flux Engine • Free Tier</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label>藝術風格</label>
-                <select id="style">
-                    <option value="none">✨ 智能無風格</option>
-                    <option value="photorealistic">📷 寫實照片</option>
-                    <option value="anime">🌸 日系動漫</option>
-                    <option value="3d-render">🧊 3D 渲染</option>
-                    <option value="pixel-art">👾 像素藝術</option>
-                    <option value="cyberpunk">🌃 賽博龐克</option>
-                    <option value="oil-painting">🎨 油畫風格</option>
-                </select>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>Prompt</label>
+                    <button class="tool-btn" id="randomBtn" title="隨機靈感">🎲 靈感骰子</button>
+                </div>
+                <textarea id="prompt" rows="4" placeholder="描述你想像中的畫面... (支援中文)"></textarea>
+            </div>
+
+            <div class="control-group">
+                <label style="margin-bottom:10px; display:block">畫布比例</label>
+                <div class="ratio-grid">
+                    <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形">
+                        <div class="ratio-shape" style="width:14px; height:14px;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="1080" data-h="1350" title="4:5 IG">
+                        <div class="ratio-shape" style="width:12px; height:15px;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="1080" data-h="1920" title="9:16 限動">
+                        <div class="ratio-shape" style="width:9px; height:16px;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="1920" data-h="1080" title="16:9 桌布">
+                        <div class="ratio-shape" style="width:16px; height:9px;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影">
+                        <div class="ratio-shape" style="width:18px; height:7px;"></div>
+                    </div>
+                </div>
+                <input type="hidden" id="width" value="1024">
+                <input type="hidden" id="height" value="1024">
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label>風格 & 設定</label>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <select id="style">
+                        <option value="none">✨ 智能無風格</option>
+                        <option value="photorealistic">📷 寫實照片</option>
+                        <option value="anime">🌸 日系動漫</option>
+                        <option value="3d-render">🧊 3D 渲染</option>
+                        <option value="cyberpunk">🌃 賽博龐克</option>
+                        <option value="manga">📖 黑白漫畫</option>
+                        <option value="oil-painting">🎨 古典油畫</option>
+                    </select>
+                    <div style="position:relative">
+                         <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px">
+                         <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label>排除 (Negative)</label>
+                <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa">
+            </div>
+
+            <button id="genBtn" class="gen-btn">
+                <span>生成圖像</span>
+                <span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
+            </button>
+            
+            <div class="quota-box">
+                <div class="quota-info">
+                    <span>每小時能量</span>
+                    <span id="quotaText" class="quota-text">20 / 20</span>
+                </div>
+                <div class="quota-bar">
+                    <div id="quotaFill" class="quota-fill"></div>
+                </div>
             </div>
         </div>
 
-        <div class="form-group">
-            <label>種子碼 (Seed)</label>
-            <div class="seed-control">
-                <input type="number" id="seed" placeholder="隨機 (-1)" value="-1" style="flex:1">
-                <button type="button" class="seed-btn" id="lockSeedBtn" title="鎖定當前種子">🔒</button>
+        <div class="main-stage">
+            <div class="placeholder-text">NANOPRO</div>
+            <img id="resultImg" alt="Generated Image" title="點擊放大">
+            
+            <div class="loading-overlay">
+                <div class="banana-loader">🍌</div>
+                <div class="loading-text">正在注入 AI 能量...</div>
+            </div>
+
+            <div class="history-dock" id="historyStrip">
+                <!-- History Items -->
             </div>
         </div>
-        
-        <div class="form-group" style="display:flex; align-items:center; gap:10px; font-size:13px; color:#aaa;">
-            <input type="checkbox" id="autoEnhance" checked style="width:auto;"> 
-            <label for="autoEnhance" style="margin:0; cursor:pointer">啟用 Prompt 自動增強</label>
-        </div>
-
-        <button id="genBtn" class="btn">立即生成 🍌</button>
-
-        <div id="resultArea">
-            <div class="loading">
-                <div style="font-size:30px;margin-bottom:10px">🍌</div>
-                <div>正在召喚香蕉之力...</div>
-            </div>
-            <img id="resultImg" alt="Result">
-        </div>
-
-        <div class="history-strip" id="historyStrip">
-            <!-- 歷史圖片 -->
+    </div>
+    
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-close" id="lbClose">×</div>
+        <img id="lbImg" src="">
+        <div class="lightbox-actions">
+            <a id="lbDownload" class="action-btn" download="nano-banana-art.png" href="#">
+                📥 保存圖片
+            </a>
+            <button class="action-btn" onclick="document.getElementById('lbClose').click()">
+                ❌ 關閉
+            </button>
         </div>
     </div>
 
 <script>
-    const genBtn = document.getElementById('genBtn');
-    const resultImg = document.getElementById('resultImg');
-    const loading = document.querySelector('.loading');
-    const historyStrip = document.getElementById('historyStrip');
-    const seedInput = document.getElementById('seed');
-    const lockSeedBtn = document.getElementById('lockSeedBtn');
-    const promptIn = document.getElementById('prompt');
-    const randomPromptBtn = document.getElementById('randomPromptBtn');
-    
-    // 靈感庫
-    const inspirationPrompts = [
-        "A futuristic city with flying cars and neon lights, cyberpunk style",
-        "A cute shiba inu astronaut floating in space, digital art",
-        "Ancient temple in a jungle, cinematic lighting, photorealistic",
-        "Cyberpunk street food vendor in Tokyo, night time, rain",
-        "Magical forest with glowing mushrooms and fairies, fantasy art",
-        "Portrait of a robot girl with porcelain skin, intricate details",
-        "Steampunk airship flying over Victorian London",
-        "Minimalist landscape with mountains and a red sun, flat design"
-    ];
-
-    randomPromptBtn.onclick = () => {
-        const rand = inspirationPrompts[Math.floor(Math.random() * inspirationPrompts.length)];
-        promptIn.value = rand;
-    };
-
-    function showToast(msg) { 
-        const t = document.getElementById('toast'); 
-        t.textContent = msg; t.style.display = 'block'; 
-        setTimeout(() => t.style.display = 'none', 3000); 
-    }
-
-    // 種子碼按鈕邏輯
-    let isLocked = false;
-    updateSeedBtn();
-    
-    lockSeedBtn.onclick = () => {
-        isLocked = !isLocked;
-        updateSeedBtn();
+    const els = {
+        prompt: document.getElementById('prompt'),
+        negative: document.getElementById('negative'),
+        style: document.getElementById('style'),
+        seed: document.getElementById('seed'),
+        width: document.getElementById('width'),
+        height: document.getElementById('height'),
+        genBtn: document.getElementById('genBtn'),
+        img: document.getElementById('resultImg'),
+        loader: document.querySelector('.loading-overlay'),
+        history: document.getElementById('historyStrip'),
+        lockSeed: document.getElementById('lockSeedBtn'),
+        randomBtn: document.getElementById('randomBtn'),
+        ratios: document.querySelectorAll('.ratio-item'),
+        quotaText: document.getElementById('quotaText'),
+        quotaFill: document.getElementById('quotaFill'),
+        lightbox: document.getElementById('lightbox'),
+        lbImg: document.getElementById('lbImg'),
+        lbClose: document.getElementById('lbClose'),
+        lbDownload: document.getElementById('lbDownload')
     };
     
-    function updateSeedBtn() {
-        if(isLocked) {
-             // 鎖定狀態：保持當前值，不允許隨機
-             if(seedInput.value == '-1') seedInput.value = Math.floor(Math.random() * 1000000);
-             lockSeedBtn.textContent = '🔓';
-             lockSeedBtn.classList.add('active');
+    let currentQuota = 20;
+    const maxQuota = 20;
+    
+    const now = new Date();
+    const currentHourStr = now.toDateString() + '-' + now.getHours();
+    const stored = localStorage.getItem('nano_quota_hourly');
+    
+    if(stored) {
+        const data = JSON.parse(stored);
+        if(data.hour === currentHourStr) {
+            currentQuota = data.val;
         } else {
-             // 解鎖狀態：重置為 -1 (隨機)
-             seedInput.value = '-1';
-             lockSeedBtn.textContent = '🔒';
-             lockSeedBtn.classList.remove('active');
+            localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+            currentQuota = maxQuota;
+        }
+    } else {
+        localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+    }
+    updateQuotaUI();
+    
+    function updateQuotaUI() {
+        els.quotaText.textContent = \`\${currentQuota} / \${maxQuota}\`;
+        const pct = (currentQuota / maxQuota) * 100;
+        els.quotaFill.style.width = pct + '%';
+        if(currentQuota <= 0) {
+            els.quotaFill.style.background = '#ef4444';
+            els.genBtn.disabled = true;
+            els.genBtn.innerHTML = '<span>本小時能量已耗盡</span><span style="display:block;font-size:12px;font-weight:400;margin-top:4px">請稍後再來</span>';
+        }
+    }
+    
+    function consumeQuota() {
+        if(currentQuota > 0) {
+            currentQuota--;
+            const n = new Date();
+            const h = n.toDateString() + '-' + n.getHours();
+            localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: h, val: currentQuota}));
+            updateQuotaUI();
         }
     }
 
-    function addToHistory(url) {
-        const item = document.createElement('div');
-        item.className = 'history-item active';
-        item.innerHTML = \`<img src="\${url}">\`;
-        item.onclick = () => {
-            resultImg.src = url;
+    els.ratios.forEach(r => {
+        r.onclick = () => {
+            els.ratios.forEach(i => i.classList.remove('active'));
+            r.classList.add('active');
+            els.width.value = r.dataset.w;
+            els.height.value = r.dataset.h;
+        }
+    });
+
+    let isSeedRandom = true;
+    els.lockSeed.onclick = () => {
+        isSeedRandom = !isSeedRandom;
+        if(isSeedRandom) {
+            els.seed.value = '-1';
+            els.seed.disabled = true;
+            els.lockSeed.textContent = '🎲';
+            els.lockSeed.classList.remove('active');
+        } else {
+            if(els.seed.value == '-1') els.seed.value = Math.floor(Math.random() * 1000000);
+            els.seed.disabled = false;
+            els.lockSeed.textContent = '🔒';
+            els.lockSeed.classList.add('active');
+        }
+    };
+
+    const prompts = [
+        "Cyberpunk street vendor making noodles, neon rain, detailed, 8k",
+        "A translucent glass banana floating in space, nebula background",
+        "Cute isometric room, gaming setup, pastel colors, 3d render",
+        "Portrait of a futuristic warrior, gold and black armor, cinematic lighting",
+        "Traditional Japanese village in winter, snow, ukiyo-e style",
+        "Macro shot of a mechanical eye, gears, steampunk"
+    ];
+    els.randomBtn.onclick = () => {
+        els.prompt.value = prompts[Math.floor(Math.random() * prompts.length)];
+        els.prompt.focus();
+    };
+    
+    function openLightbox(url) {
+        els.lbImg.src = url;
+        els.lbDownload.href = url;
+        els.lightbox.classList.add('show');
+    }
+    els.lbClose.onclick = () => els.lightbox.classList.remove('show');
+    els.img.onclick = () => { if(els.img.src) openLightbox(els.img.src); };
+
+    function toast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.display = 'block';
+        setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    function addHistory(url) {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+        div.innerHTML = \`<img src="\${url}">\`;
+        div.onclick = () => {
+            els.img.src = url;
             document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
+            div.classList.add('active');
         };
-        historyStrip.prepend(item);
-        if(historyStrip.children.length > 10) historyStrip.lastChild.remove();
-        
-        // 確保第一張圖顯示
+        els.history.prepend(div);
+        if(els.history.children.length > 10) els.history.lastChild.remove();
         document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
+        div.classList.add('active');
     }
 
-    genBtn.onclick = async () => {
-        let prompt = promptIn.value.trim();
-        const negative = document.getElementById('negative').value.trim();
-        
-        if(!prompt) return showToast("請輸入提示詞！");
-        
-        // 自動增強
-        if(document.getElementById('autoEnhance').checked) {
-            prompt += ", high quality, 8k uhd, detailed";
-        }
-        
-        genBtn.disabled = true; 
-        genBtn.innerHTML = '🍌 正在生成...'; 
-        resultImg.style.display = 'none'; 
-        loading.style.display = 'block';
+    els.genBtn.onclick = async () => {
+        const p = els.prompt.value.trim();
+        if(!p) return toast("⚠️ 請輸入提示詞");
+        if(currentQuota <= 0) return toast("🚫 本小時能量已耗盡，請稍後再來！");
 
-        const [width, height] = document.getElementById('ratio').value.split(',').map(Number);
-        const seedVal = parseInt(seedInput.value);
+        els.genBtn.disabled = true;
+        els.loader.style.display = 'flex';
+        els.img.style.opacity = '0.5';
 
         try {
             const res = await fetch('/_internal/generate', {
-                method: 'POST', 
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Source': 'nano-page'
-                },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Source': 'nano-page' },
                 body: JSON.stringify({
-                    prompt: prompt, 
-                    negative_prompt: negative,
-                    // 🔥 修改 7: 前端請求也改為 nanobanana
-                    model: 'nanobanana', 
-                    width: width, 
-                    height: height, 
-                    style: document.getElementById('style').value, 
-                    seed: seedVal,
-                    nologo: true,
-                    n: 1 // 強制限制為 1 張
+                    prompt: p,
+                    negative_prompt: els.negative.value,
+                    model: 'nanobanana',
+                    width: parseInt(els.width.value),
+                    height: parseInt(els.height.value),
+                    style: els.style.value,
+                    seed: parseInt(els.seed.value),
+                    n: 1,
+                    nologo: true
                 })
             });
 
-            if(res.status === 429) { const d = await res.json(); throw new Error(d.error.message); }
-            if(!res.ok) throw new Error('生成失敗，請稍後再試');
+            if(res.status === 429) {
+                const err = await res.json();
+                currentQuota = 0;
+                const n = new Date();
+                const h = n.toDateString() + '-' + n.getHours();
+                localStorage.setItem('nano_quota_hourly', JSON.stringify({hour: h, val: 0}));
+                updateQuotaUI();
+                throw new Error(err.error?.message || '限額已滿');
+            }
 
-            const blob = await res.blob(); 
+            if(!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error?.message || '生成失敗');
+            }
+
+            const blob = await res.blob();
             const url = URL.createObjectURL(blob);
             
-            resultImg.src = url; 
-            resultImg.style.display = 'block';
+            els.img.src = url;
+            els.img.style.display = 'block';
+            els.img.style.opacity = '1';
+            document.querySelector('.placeholder-text').style.display = 'none';
             
-            // 讀取真實種子碼並更新 Input (如果原本是隨機)
             const realSeed = res.headers.get('X-Seed');
-            if(seedInput.value == '-1') {
-                // 不更新 input value 以免影響下一次隨機，但在 UI 上可以考慮顯示
-            }
-            
-            addToHistory(url);
+            if(!isSeedRandom) els.seed.value = realSeed;
 
-        } catch (err) { 
-            showToast(err.message); 
-        } finally { 
-            loading.style.display = 'none'; 
-            genBtn.disabled = false; 
-            genBtn.innerHTML = '立即生成 🍌'; 
+            addHistory(url);
+            consumeQuota();
+
+        } catch(e) {
+            toast("❌ " + e.message);
+        } finally {
+            if(currentQuota > 0) els.genBtn.disabled = false;
+            els.loader.style.display = 'none';
         }
     };
 </script>
@@ -980,7 +1150,7 @@ function handleUI() {
 <title>Flux AI Pro v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
 <style>
-/* CSS 部分 */
+/* 完整版 CSS 樣式 - Flux Pro 主界面 */
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
 .container{max-width:100%;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
@@ -989,13 +1159,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .logo{color:#f59e0b;font-size:24px;font-weight:800;text-shadow:0 0 20px rgba(245,158,11,0.6);display:flex;align-items:center;gap:10px}
 .badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600}
 .nav-menu{display:flex;gap:10px;align-items:center}
-/* nav-btn 樣式通用於 button 和 a */
 .nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px;text-decoration:none}
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
-/* 特別為 Nano 按鈕設計的懸停效果 */
 .nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
-
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
 .main-content{flex:1;display:flex;overflow:hidden}
 .left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
@@ -1041,7 +1208,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div><div class="api-status">${authStatus}</div></div>
     </div>
     <div class="nav-menu">
-        <!-- 🔥 在這裡加入 Nano Banana 按鈕 -->
         <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
             🍌 Nano版
         </a>
@@ -1195,7 +1361,6 @@ function updateLang(){
 }
 document.getElementById('langSwitch').onclick=toggleLang;
 
-// 頁面切換 (排除 Nano 按鈕)
 document.querySelectorAll('.nav-btn:not(.nano-btn)').forEach(btn=>{
     btn.addEventListener('click',function(){
         const p=this.dataset.page;
@@ -1208,7 +1373,6 @@ document.querySelectorAll('.nav-btn:not(.nano-btn)').forEach(btn=>{
     });
 });
 
-// Seed Toggle 與 Auto Optimize 邏輯
 const seedInput = document.getElementById('seed');
 const seedToggleBtn = document.getElementById('seedToggleBtn');
 const autoOptCheckbox = document.getElementById('autoOptimize');
@@ -1240,7 +1404,6 @@ function updateSeedUI() {
 seedToggleBtn.addEventListener('click', () => { isSeedRandom = !isSeedRandom; updateSeedUI(); });
 autoOptCheckbox.addEventListener('change', () => { advParamsDiv.style.display = autoOptCheckbox.checked ? 'none' : 'block'; });
 
-// 生成與歷史記錄處理
 const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
 const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
 
