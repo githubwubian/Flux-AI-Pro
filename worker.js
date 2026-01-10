@@ -902,7 +902,7 @@ select{width:100%;padding:12px;background:#2a2a2a;border:2px solid #333;border-r
                     negative_prompt: negative,
                     model: 'nano-banana', 
                     width: width, 
-                    height: height,
+                    height: height, 
                     style: document.getElementById('style').value, 
                     seed: seedVal,
                     nologo: true,
