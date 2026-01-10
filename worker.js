@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.3.0 (Final Complete Version)
-//  更新: 整合所有功能：獨立頁面、安全驗證、KV限流、頂部導航按鈕
+//  版本: 10.4.0 (Nano Pro Upgrade)
+//  更新: Nano 頁面升級 (方案 B+C) - 歷史畫廊、靈感骰子、參數增強
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.3.0",
+  PROJECT_VERSION: "10.4.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -586,15 +586,18 @@ async function handleInternalGenerate(request, env, ctx) {
 
     // ====== NanoBanana 來源與限流檢查 ======
     if (body.model === 'nano-banana') {
-        // 1. 來源檢查：必須帶有特殊 Header
         const source = request.headers.get('X-Source');
         if (source !== 'nano-page') {
              return new Response(JSON.stringify({ 
                 error: { message: "🍌 Nano Banana 模型僅限於獨立頁面使用！", type: 'access_denied' } 
             }), { status: 403, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
         }
+        
+        // 限制生成數量為 1
+        if (body.n && body.n > 1) {
+            body.n = 1;
+        }
 
-        // 2. 限流檢查
         const limiter = new RateLimiter(env);
         const check = await limiter.checkLimit(clientIP);
         
@@ -678,32 +681,46 @@ function handleNanoPage(request) {
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🍌 NanoBanana AI - 獨立版</title>
+<title>🍌 NanoBanana Pro - 獨立版</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
 <style>
-/* 獨立頁面的 CSS：黃色主題 */
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:#1a1a1a;color:#fff;min-height:100vh;display:flex;justify-content:center;align-items:center;padding:20px}
-.container{max-width:500px;width:100%;background:#2a2a2a;border-radius:20px;padding:30px;box-shadow:0 10px 30px rgba(0,0,0,0.5);border:1px solid #333}
-.header{text-align:center;margin-bottom:30px}
-.logo{font-size:48px;margin-bottom:10px;animation:bounce 2s infinite}
-h1{color:#FACC15;margin-bottom:5px;font-size:24px}
-.subtitle{color:#888;font-size:14px}
-.limit-badge{display:inline-block;background:#FACC15;color:#000;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:bold;margin-top:10px}
-.form-group{margin-bottom:20px}
-textarea{width:100%;background:#333;border:2px solid #444;border-radius:12px;padding:15px;color:#fff;font-size:16px;min-height:100px;resize:vertical;transition:0.3s}
-textarea:focus{outline:none;border-color:#FACC15;background:#404040}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-bottom:20px}
-select{width:100%;padding:12px;background:#333;border:1px solid #444;border-radius:10px;color:#fff;cursor:pointer}
-.btn{width:100%;padding:15px;background:linear-gradient(45deg, #FACC15, #EAB308);border:none;border-radius:12px;color:#000;font-weight:900;font-size:18px;cursor:pointer;transition:transform 0.2s, box-shadow 0.2s}
-.btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(250, 204, 21, 0.3)}
-.btn:active{transform:translateY(0)}
-.btn:disabled{opacity:0.6;cursor:not-allowed}
-#resultArea{margin-top:30px;min-height:200px;display:flex;justify-content:center;align-items:center;background:#222;border-radius:12px;border:2px dashed #444;position:relative;overflow:hidden}
-#resultImg{max-width:100%;display:none;border-radius:8px}
-.loading{display:none;color:#FACC15;font-weight:bold}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#121212;color:#eee;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+.container{max-width:600px;width:100%;background:#1e1e1e;border-radius:24px;padding:30px;box-shadow:0 20px 50px rgba(0,0,0,0.5);border:1px solid #333}
+.header{text-align:center;margin-bottom:25px;position:relative}
+.logo{font-size:48px;margin-bottom:10px;animation:bounce 2s infinite;display:inline-block}
+h1{color:#FACC15;margin-bottom:5px;font-size:28px;font-weight:800;letter-spacing:-1px}
+.badge{background:#FACC15;color:#000;padding:2px 8px;border-radius:6px;font-size:12px;vertical-align:middle;margin-left:8px}
+.form-group{margin-bottom:15px}
+label{display:block;margin-bottom:8px;color:#aaa;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+textarea, input[type="text"]{width:100%;background:#2a2a2a;border:2px solid #333;border-radius:12px;padding:12px;color:#fff;font-size:15px;transition:0.3s}
+textarea:focus, input:focus{outline:none;border-color:#FACC15;background:#333}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+select{width:100%;padding:12px;background:#2a2a2a;border:2px solid #333;border-radius:12px;color:#fff;cursor:pointer}
+.btn{width:100%;padding:16px;background:linear-gradient(135deg, #FACC15, #EAB308);border:none;border-radius:14px;color:#000;font-weight:800;font-size:18px;cursor:pointer;transition:all 0.2s;margin-top:10px}
+.btn:hover{transform:scale(1.02);box-shadow:0 0 20px rgba(250, 204, 21, 0.3)}
+.btn:disabled{opacity:0.6;filter:grayscale(1);cursor:not-allowed}
+
+/* 歷史記錄列 */
+.history-strip {margin-top:30px; display:flex; gap:10px; overflow-x:auto; padding-bottom:10px; scroll-behavior:smooth;}
+.history-item {width:80px; height:80px; border-radius:10px; overflow:hidden; border:2px solid #333; flex-shrink:0; cursor:pointer; position:relative; transition:0.2s;}
+.history-item.active {border-color:#FACC15; box-shadow:0 0 10px rgba(250, 204, 21, 0.3);}
+.history-item img {width:100%; height:100%; object-fit:cover;}
+
+/* Seed 控制 */
+.seed-control {display:flex; gap:10px;}
+.seed-btn {padding:0 15px; background:#333; border:none; border-radius:12px; color:#fff; cursor:pointer; font-size:18px;}
+.seed-btn.active {background:#FACC15; color:#000;}
+
+/* 骰子按鈕 */
+.dice-btn {background:none; border:none; cursor:pointer; font-size:18px; transition:transform 0.3s;}
+.dice-btn:hover {transform:rotate(180deg);}
+
+#resultArea{margin-top:20px;min-height:300px;background:#151515;border-radius:16px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;border:2px dashed #333}
+#resultImg{max-width:100%;max-height:600px;display:none;box-shadow:0 0 30px rgba(0,0,0,0.5)}
+.loading{display:none;color:#FACC15;font-weight:bold;text-align:center}
 @keyframes bounce {0%, 100% {transform: translateY(0);} 50% {transform: translateY(-10px);}}
-.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:10px 20px;border-radius:8px;display:none;z-index:100;box-shadow:0 5px 15px rgba(0,0,0,0.3)}
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:10px 20px;border-radius:8px;display:none;z-index:100}
 </style>
 </head>
 <body>
@@ -711,63 +728,212 @@ select{width:100%;padding:12px;background:#333;border:1px solid #444;border-radi
     <div class="container">
         <div class="header">
             <div class="logo">🍌</div>
-            <h1>NanoBanana Generator</h1>
-            <div class="subtitle">極速生成 • 獨立通道</div>
-            <div class="limit-badge">⚡ 每小時限額: 20 張</div>
+            <h1>Nano Pro <span class="badge">PRO</span></h1>
+            <p style="color:#666;font-size:13px">每小時限額 20 張 • 獨立高速通道</p>
         </div>
+
         <div class="form-group">
-            <textarea id="prompt" placeholder="輸入你想看到的畫面... (例如: yellow banana cyberpunk city)"></textarea>
+            <label>
+                正面提示詞 (Prompt)
+                <button class="dice-btn" id="randomPromptBtn" title="隨機靈感">🎲</button>
+            </label>
+            <textarea id="prompt" rows="3" placeholder="例如: yellow banana in cyberpunk city, neon lights"></textarea>
         </div>
-        <div class="controls">
-            <select id="ratio">
-                <option value="1024,1024">1:1 方形</option>
-                <option value="1080,1920">9:16 手機</option>
-                <option value="1920,1080">16:9 電腦</option>
-            </select>
-            <select id="style">
-                <option value="none">無風格</option>
-                <option value="photorealistic">寫實照片</option>
-                <option value="anime">日系動漫</option>
-                <option value="pixel-art">像素藝術</option>
-                <option value="cyberpunk">賽博龐克</option>
-            </select>
+
+        <div class="form-group">
+            <label>排除元素 (Negative)</label>
+            <input type="text" id="negative" placeholder="text, watermark, ugly, blurry" value="nsfw, ugly, text, low quality">
         </div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>畫布比例</label>
+                <select id="ratio">
+                    <option value="1024,1024">1:1 方形</option>
+                    <option value="1080,1920">9:16 手機桌布</option>
+                    <option value="1920,1080">16:9 電腦桌布</option>
+                    <option value="1536,2048">3:4 社群貼文</option>
+                    <option value="2560,1080">21:9 電影感</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>藝術風格</label>
+                <select id="style">
+                    <option value="none">✨ 智能無風格</option>
+                    <option value="photorealistic">📷 寫實照片</option>
+                    <option value="anime">🌸 日系動漫</option>
+                    <option value="3d-render">🧊 3D 渲染</option>
+                    <option value="pixel-art">👾 像素藝術</option>
+                    <option value="cyberpunk">🌃 賽博龐克</option>
+                    <option value="oil-painting">🎨 油畫風格</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>種子碼 (Seed)</label>
+            <div class="seed-control">
+                <input type="number" id="seed" placeholder="隨機 (-1)" value="-1" style="flex:1">
+                <button type="button" class="seed-btn" id="lockSeedBtn" title="鎖定當前種子">🔒</button>
+            </div>
+        </div>
+        
+        <div class="form-group" style="display:flex; align-items:center; gap:10px; font-size:13px; color:#aaa;">
+            <input type="checkbox" id="autoEnhance" checked style="width:auto;"> 
+            <label for="autoEnhance" style="margin:0; cursor:pointer">啟用 Prompt 自動增強</label>
+        </div>
+
         <button id="genBtn" class="btn">立即生成 🍌</button>
+
         <div id="resultArea">
-            <div class="loading">🍌 正在召喚香蕉之力...</div>
+            <div class="loading">
+                <div style="font-size:30px;margin-bottom:10px">🍌</div>
+                <div>正在召喚香蕉之力...</div>
+            </div>
             <img id="resultImg" alt="Result">
         </div>
+
+        <div class="history-strip" id="historyStrip">
+            <!-- 歷史圖片 -->
+        </div>
     </div>
+
 <script>
     const genBtn = document.getElementById('genBtn');
-    const promptIn = document.getElementById('prompt');
     const resultImg = document.getElementById('resultImg');
     const loading = document.querySelector('.loading');
-    const toast = document.getElementById('toast');
-    function showToast(msg) { toast.textContent = msg; toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 3000); }
+    const historyStrip = document.getElementById('historyStrip');
+    const seedInput = document.getElementById('seed');
+    const lockSeedBtn = document.getElementById('lockSeedBtn');
+    const promptIn = document.getElementById('prompt');
+    const randomPromptBtn = document.getElementById('randomPromptBtn');
+    
+    // 靈感庫
+    const inspirationPrompts = [
+        "A futuristic city with flying cars and neon lights, cyberpunk style",
+        "A cute shiba inu astronaut floating in space, digital art",
+        "Ancient temple in a jungle, cinematic lighting, photorealistic",
+        "Cyberpunk street food vendor in Tokyo, night time, rain",
+        "Magical forest with glowing mushrooms and fairies, fantasy art",
+        "Portrait of a robot girl with porcelain skin, intricate details",
+        "Steampunk airship flying over Victorian London",
+        "Minimalist landscape with mountains and a red sun, flat design"
+    ];
+
+    randomPromptBtn.onclick = () => {
+        const rand = inspirationPrompts[Math.floor(Math.random() * inspirationPrompts.length)];
+        promptIn.value = rand;
+    };
+
+    function showToast(msg) { 
+        const t = document.getElementById('toast'); 
+        t.textContent = msg; t.style.display = 'block'; 
+        setTimeout(() => t.style.display = 'none', 3000); 
+    }
+
+    // 種子碼按鈕邏輯
+    let isLocked = false;
+    updateSeedBtn();
+    
+    lockSeedBtn.onclick = () => {
+        isLocked = !isLocked;
+        updateSeedBtn();
+    };
+    
+    function updateSeedBtn() {
+        if(isLocked) {
+             // 鎖定狀態：保持當前值，不允許隨機
+             if(seedInput.value == '-1') seedInput.value = Math.floor(Math.random() * 1000000);
+             lockSeedBtn.textContent = '🔓';
+             lockSeedBtn.classList.add('active');
+        } else {
+             // 解鎖狀態：重置為 -1 (隨機)
+             seedInput.value = '-1';
+             lockSeedBtn.textContent = '🔒';
+             lockSeedBtn.classList.remove('active');
+        }
+    }
+
+    function addToHistory(url) {
+        const item = document.createElement('div');
+        item.className = 'history-item active';
+        item.innerHTML = \`<img src="\${url}">\`;
+        item.onclick = () => {
+            resultImg.src = url;
+            document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+        };
+        historyStrip.prepend(item);
+        if(historyStrip.children.length > 10) historyStrip.lastChild.remove();
+        
+        // 確保第一張圖顯示
+        document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+    }
+
     genBtn.onclick = async () => {
-        const prompt = promptIn.value.trim();
+        let prompt = promptIn.value.trim();
+        const negative = document.getElementById('negative').value.trim();
+        
         if(!prompt) return showToast("請輸入提示詞！");
-        genBtn.disabled = true; genBtn.innerHTML = '生成中...'; resultImg.style.display = 'none'; loading.style.display = 'block';
+        
+        // 自動增強
+        if(document.getElementById('autoEnhance').checked) {
+            prompt += ", high quality, 8k uhd, detailed";
+        }
+        
+        genBtn.disabled = true; 
+        genBtn.innerHTML = '🍌 正在生成...'; 
+        resultImg.style.display = 'none'; 
+        loading.style.display = 'block';
+
         const [width, height] = document.getElementById('ratio').value.split(',').map(Number);
+        const seedVal = parseInt(seedInput.value);
+
         try {
             const res = await fetch('/_internal/generate', {
                 method: 'POST', 
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Source': 'nano-page' // 識別證：標記來自 Nano 頁面
+                    'X-Source': 'nano-page'
                 },
                 body: JSON.stringify({
-                    prompt: prompt, model: 'nano-banana', width: width, height: height,
-                    style: document.getElementById('style').value, nologo: true
+                    prompt: prompt, 
+                    negative_prompt: negative,
+                    model: 'nano-banana', 
+                    width: width, 
+                    height: height,
+                    style: document.getElementById('style').value, 
+                    seed: seedVal,
+                    nologo: true,
+                    n: 1 // 強制限制為 1 張
                 })
             });
-            if(res.status === 429) { const errData = await res.json(); throw new Error(errData.error.message); }
-            if(res.status === 403) { throw new Error('僅限 Nano 頁面使用此模型'); }
-            if(!res.ok) throw new Error('生成失敗');
-            const blob = await res.blob(); const url = URL.createObjectURL(blob);
-            resultImg.src = url; resultImg.style.display = 'block';
-        } catch (err) { showToast(err.message); } finally { loading.style.display = 'none'; genBtn.disabled = false; genBtn.innerHTML = '立即生成 🍌'; }
+
+            if(res.status === 429) { const d = await res.json(); throw new Error(d.error.message); }
+            if(!res.ok) throw new Error('生成失敗，請稍後再試');
+
+            const blob = await res.blob(); 
+            const url = URL.createObjectURL(blob);
+            
+            resultImg.src = url; 
+            resultImg.style.display = 'block';
+            
+            // 讀取真實種子碼並更新 Input (如果原本是隨機)
+            const realSeed = res.headers.get('X-Seed');
+            if(seedInput.value == '-1') {
+                // 不更新 input value 以免影響下一次隨機，但在 UI 上可以考慮顯示
+            }
+            
+            addToHistory(url);
+
+        } catch (err) { 
+            showToast(err.message); 
+        } finally { 
+            loading.style.display = 'none'; 
+            genBtn.disabled = false; 
+            genBtn.innerHTML = '立即生成 🍌'; 
+        }
     };
 </script>
 </body>
