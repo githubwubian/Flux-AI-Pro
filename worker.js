@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.6.4 (Cooldown Update)
-//  更新: 主頁新增生成後 60 秒冷卻限制
+//  版本: 10.6.5 (Nano Cooldown)
+//  更新: Nano Pro 頁面加入 60 秒強制冷卻機制 (抗重整)
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.6.4",
+  PROJECT_VERSION: "10.6.5",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -949,6 +949,51 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     let currentQuota = 5;
     const maxQuota = 5;
     
+    // Cooldown Logic
+    const COOLDOWN_KEY = 'nano_cooldown_timestamp';
+    const COOLDOWN_SEC = 60;
+    let cooldownInterval = null;
+
+    function checkAndStartCooldown() {
+        const lastTime = localStorage.getItem(COOLDOWN_KEY);
+        if(!lastTime) return;
+
+        const now = Date.now();
+        const diff = Math.floor((now - parseInt(lastTime)) / 1000);
+        
+        if (diff < COOLDOWN_SEC) {
+            startCooldownTimer(COOLDOWN_SEC - diff);
+        }
+    }
+
+    function startCooldownTimer(seconds) {
+        if(cooldownInterval) clearInterval(cooldownInterval);
+        
+        els.genBtn.disabled = true;
+        updateCooldownText(seconds);
+        
+        let left = seconds;
+        cooldownInterval = setInterval(() => {
+            left--;
+            if(left <= 0) {
+                clearInterval(cooldownInterval);
+                localStorage.removeItem(COOLDOWN_KEY);
+                if(currentQuota > 0) {
+                    els.genBtn.disabled = false;
+                    els.genBtn.innerHTML = '<span>生成圖像</span><span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>';
+                } else {
+                    updateQuotaUI();
+                }
+            } else {
+                updateCooldownText(left);
+            }
+        }, 1000);
+    }
+
+    function updateCooldownText(sec) {
+        els.genBtn.innerHTML = \`<span>⚡ 能量回充中... (\${sec}s)</span>\`;
+    }
+    
     const now = new Date();
     const currentHourStr = now.toDateString() + '-' + now.getHours();
     const stored = localStorage.getItem('nano_quota_hourly_v2'); 
@@ -965,6 +1010,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
     }
     updateQuotaUI();
+    
+    // Check cooldown on load
+    checkAndStartCooldown();
     
     function updateQuotaUI() {
         els.quotaText.textContent = \`\${currentQuota} / \${maxQuota}\`;
@@ -1109,11 +1157,16 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             addHistory(url);
             consumeQuota();
+            
+            // Start Cooldown
+            localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
+            startCooldownTimer(COOLDOWN_SEC);
 
         } catch(e) {
             toast("❌ " + e.message);
+            // On error, re-enable button if quota exists (unless rate limited)
+            if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
         } finally {
-            if(currentQuota > 0) els.genBtn.disabled = false;
             els.loader.style.display = 'none';
         }
     };
