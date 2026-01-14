@@ -1,6 +1,6 @@
 // =================================================================================
 //  項目: Flux AI Pro - Multi-Provider Edition
-//  版本: 10.7.1 (修復 IndexedDB keyPath 錯誤)
+//  版本: 10.7.1 (修復 IndexedDB keyPath 錯誤 + 模板字串語法)
 //  更新: 支持 Pollinations + Infip.pro 多供應商，自動獲取模型
 // =================================================================================
 
@@ -873,6 +873,7 @@ class MultiProviderRouter {
       }));
   }
 }
+
 // =================================================================================
 //  主 Worker 處理器
 // =================================================================================
@@ -883,7 +884,6 @@ export default {
     const startTime = Date.now();
     const clientIP = getClientIP(request);
 
-    // 初始化 Pollinations API Key（從 env 注入）
     if (env.POLLINATIONS_API_KEY) {
       CONFIG.POLLINATIONS_AUTH.enabled = true;
       CONFIG.POLLINATIONS_AUTH.token = env.POLLINATIONS_API_KEY;
@@ -892,13 +892,11 @@ export default {
       CONFIG.POLLINATIONS_AUTH.token = "";
     }
 
-    // 初始化 Infip API Key（從 env 注入）
     if (env.INFIP_API_KEY) {
       CONFIG.INFIP_AUTH.enabled = true;
       CONFIG.INFIP_AUTH.token = env.INFIP_API_KEY;
       CONFIG.PROVIDERS.infip.enabled = true;
 
-      // 自動抓模型（失敗就維持空列表）
       try {
         const models = await fetchInfipModels(env.INFIP_API_KEY);
         if (models && models.length > 0) CONFIG.PROVIDERS.infip.models = models;
@@ -912,7 +910,6 @@ export default {
       CONFIG.PROVIDERS.infip.models = [];
     }
 
-    // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
@@ -956,7 +953,6 @@ export default {
         });
       }
 
-      // 統一加上 trace header
       const duration = Date.now() - startTime;
       const headers = new Headers(response.headers);
       headers.set('X-Response-Time', duration + 'ms');
@@ -979,10 +975,6 @@ export default {
   }
 };
 
-// =================================================================================
-//  內部生成 API：/_internal/generate
-// =================================================================================
-
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
   const startTime = Date.now();
@@ -1000,7 +992,6 @@ async function handleInternalGenerate(request, env, ctx) {
     const prompt = (body.prompt || '').trim();
     if (!prompt) throw new Error("Prompt is required");
 
-    // NanoBanana Pro：只允許 /nano 頁面呼叫 + KV 限流
     if (body.model === 'nanobanana-pro') {
       const source = request.headers.get('X-Source');
       if (source !== 'nano-page') {
@@ -1020,11 +1011,9 @@ async function handleInternalGenerate(request, env, ctx) {
       }
     }
 
-    // size
     const width = Math.min(Math.max(parseInt(body.width || 1024), 256), 2048);
     const height = Math.min(Math.max(parseInt(body.height || 1024), 256), 2048);
 
-    // seed
     const seedInput = body.seed !== undefined ? body.seed : -1;
     let seedValue = -1;
     if (seedInput !== -1) {
@@ -1032,7 +1021,6 @@ async function handleInternalGenerate(request, env, ctx) {
       if (!isNaN(parsed)) seedValue = parsed;
     }
 
-    // ref images
     let referenceImages = [];
     if (Array.isArray(body.reference_images)) {
       referenceImages = body.reference_images
@@ -1069,7 +1057,6 @@ async function handleInternalGenerate(request, env, ctx) {
     const results = await router.generate(prompt, options, logger);
     const duration = Date.now() - startTime;
 
-    // 單張：回傳 image binary
     if (results.length === 1 && results[0].imageData) {
       const r = results[0];
       return new Response(r.imageData, {
@@ -1090,7 +1077,6 @@ async function handleInternalGenerate(request, env, ctx) {
       });
     }
 
-    // 多張：base64 JSON（目前 UI 用不到，但保留）
     const data = await Promise.all(results.map(async (r) => {
       const u8 = new Uint8Array(r.imageData);
       let bin = '';
@@ -1123,417 +1109,173 @@ async function handleInternalGenerate(request, env, ctx) {
   }
 }
 // =================================================================================
-//  Nano Banana Pro 專屬頁面（180秒冷卻，每小時5張限額）
+//  /nano 頁面（簡化版，仍保留：seed、尺寸、風格、冷卻、限額 header）
 // =================================================================================
 
 function handleNanoPage(request) {
   const html = `<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>🍌 NanoBanana Pro - 控制台</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NanoBanana Pro</title>
 <style>
-:root {
-    --primary: #FACC15;
-    --primary-dim: #cca400;
-    --bg-dark: #0f0f11;
-    --panel-bg: rgba(30, 30, 35, 0.7);
-    --border: rgba(255, 255, 255, 0.1);
-    --text: #ffffff;
-    --text-muted: #9ca3af;
-    --glass: blur(20px) saturate(180%);
-}
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--bg-dark);
-    background-image: radial-gradient(circle at 10% 20%, rgba(250, 204, 21, 0.05) 0%, transparent 40%);
-    color: var(--text);
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-}
-.app-container { display: flex; width: 100%; height: 100%; }
-.sidebar {
-    width: 380px;
-    background: var(--panel-bg);
-    backdrop-filter: var(--glass);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-    overflow-y: auto;
-    z-index: 10;
-    position: relative;
-}
-.main-stage {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: radial-gradient(circle at center, #1a1a1d 0%, #000 100%);
-    overflow: hidden;
-}
-.logo-area { display: flex; align-items: center; gap: 12px; margin-bottom: 30px; }
-.logo-icon { font-size: 28px; animation: float 3s ease-in-out infinite; }
-.logo-text h1 { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-.logo-text .badge { background: var(--primary); color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; vertical-align: top; }
-.control-group { margin-bottom: 24px; }
-.label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-textarea, input[type="text"], input[type="number"] {
-    width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 12px; padding: 14px; color: #fff; font-size: 14px; transition: 0.2s; font-family: inherit; resize: none;
-}
-textarea:focus, input:focus { border-color: var(--primary); outline: none; background: rgba(0,0,0,0.5); }
-.ratio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.ratio-item {
-    background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; position: relative;
-}
-.ratio-item:hover { background: rgba(255,255,255,0.1); }
-.ratio-item.active { border-color: var(--primary); background: rgba(250, 204, 21, 0.1); color: var(--primary); }
-.ratio-shape { border: 2px solid currentColor; opacity: 0.7; }
-select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; appearance: none; cursor: pointer; }
-.gen-btn {
-    width: 100%; background: var(--primary); color: #000; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 20px rgba(250, 204, 21, 0.2); position: relative; overflow: hidden;
-}
-.gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(250, 204, 21, 0.4); }
-.gen-btn:active { transform: scale(0.98); }
-.gen-btn:disabled { opacity: 0.7; cursor: not-allowed; filter: grayscale(1); }
-.tool-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: 0.2s; font-size: 14px; }
-.tool-btn:hover { color: var(--primary); }
-.tool-btn.active { color: var(--primary); }
-.quota-box { margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border); }
-.quota-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
-.quota-bar { width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
-.quota-fill { height: 100%; background: var(--primary); width: 100%; transition: width 0.5s ease; }
-.quota-text { font-weight: bold; color: var(--primary); }
-#resultImg {
-    max-width: 90%; max-height: 85%; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: none; object-fit: contain; transition: 0.3s; cursor: zoom-in;
-}
-.placeholder-text { color: rgba(255,255,255,0.1); font-size: 80px; font-weight: 900; user-select: none; }
-.history-dock {
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(20, 20, 23, 0.8);
-    backdrop-filter: blur(15px); border: 1px solid var(--border); padding: 10px; border-radius: 20px;
-    display: flex; gap: 10px; max-width: 90%; overflow-x: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 20;
-}
-.history-item { width: 50px; height: 50px; border-radius: 10px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: 0.2s; flex-shrink: 0; }
-.history-item img { width: 100%; height: 100%; object-fit: cover; }
-.history-item:hover { transform: scale(1.1); z-index: 10; }
-.history-item.active { border-color: var(--primary); }
-
-.lightbox {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95);
-    z-index: 1000; display: none; flex-direction: column; justify-content: center; align-items: center;
-    opacity: 0; transition: opacity 0.3s;
-}
-.lightbox.show { display: flex; opacity: 1; }
-.lightbox img { max-width: 95%; max-height: 85vh; border-radius: 8px; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
-.lightbox-close { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 40px; cursor: pointer; opacity: 0.7; transition: 0.2s; }
-.lightbox-close:hover { opacity: 1; color: var(--primary); }
-.lightbox-actions { margin-top: 20px; display: flex; gap: 15px; }
-.action-btn { padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.1); color: #fff; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 600; text-decoration: none; transition: 0.2s; }
-.action-btn:hover { background: var(--primary); color: #000; border-color: var(--primary); }
-
-.loading-overlay {
-    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
-    display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 50;
-}
-.banana-loader { font-size: 60px; animation: spin-bounce 1.5s infinite; margin-bottom: 20px; }
-.loading-text { color: var(--primary); font-weight: bold; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; }
-
-@media (max-width: 900px) {
-    body { flex-direction: column; overflow-y: auto; height: auto; }
-    .sidebar { width: 100%; height: auto; padding-bottom: 100px; border-right: none; }
-    .main-stage { height: 50vh; order: -1; border-bottom: 1px solid var(--border); }
-    #resultImg { max-height: 90%; }
-    .history-dock { bottom: 10px; }
-}
-
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes spin-bounce { 0% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.2) rotate(10deg); } 100% { transform: scale(1) rotate(0deg); } }
-.toast {
-  position: fixed; top: 20px; right: 20px; background: #333; border-left: 4px solid var(--primary); color: #fff;
-  padding: 15px 25px; border-radius: 8px; display: none; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 14px;
-  animation: slideIn 0.3s forwards;
-}
-@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background:#0b0b0f; color:#fff; margin:0; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 20px; }
+  .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 16px; }
+  textarea,input,select,button { width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.3); color:#fff; }
+  textarea { resize: vertical; min-height: 110px; }
+  .row { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .btn { background: #FACC15; color:#000; font-weight: 800; cursor:pointer; border:none; }
+  .btn:disabled { opacity:0.6; cursor:not-allowed; }
+  .muted { color:#9ca3af; font-size: 12px; }
+  img { max-width:100%; border-radius: 12px; border:1px solid rgba(255,255,255,0.12); }
+  .top { display:flex; align-items:center; justify-content:space-between; margin-bottom: 12px; }
+  .pill { font-size:12px; padding: 4px 8px; border-radius: 999px; background: rgba(250,204,21,0.12); border:1px solid rgba(250,204,21,0.35); color:#FACC15; }
 </style>
 </head>
 <body>
-  <div id="toast" class="toast"></div>
+  <div class="wrap">
+    <div class="top">
+      <div style="font-weight:900;font-size:18px;">NanoBanana Pro</div>
+      <div class="pill">/nano 限定</div>
+    </div>
 
-  <div class="app-container">
-    <div class="sidebar">
-      <div class="logo-area">
-        <div class="logo-icon">🍌</div>
-        <div class="logo-text">
-          <h1>Nano Pro <span class="badge">V10.7</span></h1>
-          <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
+    <div class="card">
+      <div style="margin-bottom:8px;font-weight:700;">Prompt</div>
+      <textarea id="prompt" placeholder="輸入提示詞（支援中文）"></textarea>
+
+      <div style="margin-top:12px;" class="row">
+        <div>
+          <div style="margin-bottom:6px;font-weight:700;">Negative</div>
+          <input id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" />
         </div>
-      </div>
-
-      <div class="control-group">
-        <div class="label-row">
-          <label>Prompt</label>
-          <button class="tool-btn" id="randomBtn" title="隨機靈感">🎲 靈感骰子</button>
-        </div>
-        <textarea id="prompt" rows="4" placeholder="描述你想像中的畫面... (支援中文)"></textarea>
-      </div>
-
-      <div class="control-group">
-        <label style="margin-bottom:10px; display:block">畫布比例</label>
-        <div class="ratio-grid">
-          <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形"><div class="ratio-shape" style="width:14px; height:14px;"></div></div>
-          <div class="ratio-item" data-w="1080" data-h="1350" title="4:5 IG"><div class="ratio-shape" style="width:12px; height:15px;"></div></div>
-          <div class="ratio-item" data-w="1080" data-h="1920" title="9:16 限動"><div class="ratio-shape" style="width:9px; height:16px;"></div></div>
-          <div class="ratio-item" data-w="1920" data-h="1080" title="16:9 桌布"><div class="ratio-shape" style="width:16px; height:9px;"></div></div>
-          <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影"><div class="ratio-shape" style="width:18px; height:7px;"></div></div>
-        </div>
-        <input type="hidden" id="width" value="1024">
-        <input type="hidden" id="height" value="1024">
-      </div>
-
-      <div class="control-group">
-        <label style="margin-bottom:10px; display:block">風格</label>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div>
+          <div style="margin-bottom:6px;font-weight:700;">Style</div>
           <select id="style">
-            <option value="none">✨ 智能無風格</option>
-            <option value="photorealistic">📷 寫實照片</option>
-            <option value="anime">🌸 日系動漫</option>
-            <option value="3d-render">🧊 3D 渲染</option>
-            <option value="cyberpunk">🌃 賽博龐克</option>
-            <option value="manga">📖 黑白漫畫</option>
-            <option value="oil-painting">🎨 古典油畫</option>
+            <option value="none">None</option>
+            <option value="photorealistic">Photorealistic</option>
+            <option value="anime">Anime</option>
+            <option value="3d-render">3D Render</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="manga">Manga</option>
+            <option value="oil-painting">Oil Painting</option>
           </select>
-          <div style="position:relative">
-            <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px">
-            <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;" class="row3">
+        <div>
+          <div style="margin-bottom:6px;font-weight:700;">Width</div>
+          <input id="width" type="number" value="1024" min="256" max="2048" />
+        </div>
+        <div>
+          <div style="margin-bottom:6px;font-weight:700;">Height</div>
+          <input id="height" type="number" value="1024" min="256" max="2048" />
+        </div>
+        <div>
+          <div style="margin-bottom:6px;font-weight:700;">Seed</div>
+          <input id="seed" type="number" value="-1" disabled />
+          <div class="muted" style="margin-top:6px;">
+            <button id="toggleSeed" style="width:auto;padding:6px 10px;">切換隨機/鎖定</button>
           </div>
         </div>
       </div>
 
-      <div class="control-group">
-        <label>排除 (Negative)</label>
-        <input type="text" id="negative" value="nsfw, ugly, text, watermark, low quality, bad anatomy" style="font-size:12px; color:#aaa">
+      <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+        <button id="genBtn" class="btn">Generate</button>
+        <div class="muted" id="cooldownText"></div>
       </div>
 
-      <button id="genBtn" class="gen-btn">
-        <span>生成圖像</span>
-        <span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
-      </button>
-
-      <div class="quota-box">
-        <div class="quota-info">
-          <span>每小時能量</span>
-          <span id="quotaText" class="quota-text">5 / 5</span>
-        </div>
-        <div class="quota-bar"><div id="quotaFill" class="quota-fill"></div></div>
+      <div class="muted" style="margin-top:10px;">
+        注意：此頁面會送出 <code>X-Source: nano-page</code>，後端才允許呼叫 nanobanana-pro。
       </div>
     </div>
 
-    <div class="main-stage">
-      <div class="placeholder-text">NANOPRO</div>
-      <img id="resultImg" alt="Generated Image" title="點擊放大">
-
-      <div class="loading-overlay">
-        <div class="banana-loader">🍌</div>
-        <div class="loading-text">正在注入 AI 能量...</div>
+    <div style="margin-top:16px;" class="card">
+      <div style="font-weight:700;margin-bottom:8px;">Result</div>
+      <div id="status" class="muted" style="margin-bottom:10px;">Idle.</div>
+      <img id="img" style="display:none;" />
+      <div style="margin-top:10px; display:flex; gap:10px;">
+        <button id="downloadBtn" style="width:auto;display:none;">Download</button>
+        <a href="/" style="color:#9ca3af;align-self:center;">Back to main</a>
       </div>
-
-      <div class="history-dock" id="historyStrip"></div>
-    </div>
-  </div>
-
-  <div class="lightbox" id="lightbox">
-    <div class="lightbox-close" id="lbClose">×</div>
-    <img id="lbImg" src="">
-    <div class="lightbox-actions">
-      <a id="lbDownload" class="action-btn" download="nano-banana-art.png" href="#">📥 保存圖片</a>
-      <button class="action-btn" onclick="document.getElementById('lbClose').click()">❌ 關閉</button>
     </div>
   </div>
 
 <script>
+  var COOLDOWN_KEY = 'nano_cooldown_ts_v1';
+  var COOLDOWN_SEC = 180;
+  var cooldownTimer = null;
+
+  var seedLocked = false;
   var els = {
     prompt: document.getElementById('prompt'),
     negative: document.getElementById('negative'),
     style: document.getElementById('style'),
-    seed: document.getElementById('seed'),
     width: document.getElementById('width'),
     height: document.getElementById('height'),
+    seed: document.getElementById('seed'),
+    toggleSeed: document.getElementById('toggleSeed'),
     genBtn: document.getElementById('genBtn'),
-    img: document.getElementById('resultImg'),
-    loader: document.querySelector('.loading-overlay'),
-    history: document.getElementById('historyStrip'),
-    lockSeed: document.getElementById('lockSeedBtn'),
-    randomBtn: document.getElementById('randomBtn'),
-    ratios: document.querySelectorAll('.ratio-item'),
-    quotaText: document.getElementById('quotaText'),
-    quotaFill: document.getElementById('quotaFill'),
-    lightbox: document.getElementById('lightbox'),
-    lbImg: document.getElementById('lbImg'),
-    lbClose: document.getElementById('lbClose'),
-    lbDownload: document.getElementById('lbDownload')
+    cooldownText: document.getElementById('cooldownText'),
+    status: document.getElementById('status'),
+    img: document.getElementById('img'),
+    downloadBtn: document.getElementById('downloadBtn'),
   };
 
-  var currentQuota = 5;
-  var maxQuota = 5;
-  var COOLDOWN_KEY = 'nano_cooldown_timestamp';
-  var COOLDOWN_SEC = 180;
-  var cooldownInterval = null;
-
-  function toast(msg) {
-    var t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.display = 'block';
-    setTimeout(function() { t.style.display = 'none'; }, 3000);
-  }
-
-  function checkAndStartCooldown() {
-    var lastTime = localStorage.getItem(COOLDOWN_KEY);
-    if (!lastTime) return;
-    var now = Date.now();
-    var diff = Math.floor((now - parseInt(lastTime)) / 1000);
-    if (diff < COOLDOWN_SEC) startCooldownTimer(COOLDOWN_SEC - diff);
-  }
-
-  function startCooldownTimer(seconds) {
-    if (cooldownInterval) clearInterval(cooldownInterval);
+  function setCooldown(seconds) {
+    if (cooldownTimer) clearInterval(cooldownTimer);
     els.genBtn.disabled = true;
-    updateCooldownText(seconds);
+
     var left = seconds;
-    cooldownInterval = setInterval(function() {
+    els.cooldownText.textContent = 'Cooldown: ' + left + 's';
+
+    cooldownTimer = setInterval(function() {
       left--;
       if (left <= 0) {
-        clearInterval(cooldownInterval);
+        clearInterval(cooldownTimer);
         localStorage.removeItem(COOLDOWN_KEY);
-        if (currentQuota > 0) {
-          els.genBtn.disabled = false;
-          els.genBtn.innerHTML = '<span>生成圖像</span><span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>';
-        } else {
-          updateQuotaUI();
-        }
+        els.cooldownText.textContent = '';
+        els.genBtn.disabled = false;
       } else {
-        updateCooldownText(left);
+        els.cooldownText.textContent = 'Cooldown: ' + left + 's';
       }
     }, 1000);
   }
 
-  function updateCooldownText(sec) {
-    els.genBtn.innerHTML = '<span>⚡ 能量回充中... (' + sec + 's)</span>';
+  function resumeCooldownIfAny() {
+    var ts = localStorage.getItem(COOLDOWN_KEY);
+    if (!ts) return;
+    var diff = Math.floor((Date.now() - parseInt(ts, 10)) / 1000);
+    if (diff < COOLDOWN_SEC) setCooldown(COOLDOWN_SEC - diff);
   }
 
-  var now = new Date();
-  var currentHourStr = now.toDateString() + '-' + now.getHours();
-  var stored = localStorage.getItem('nano_quota_hourly_v2');
-  if (stored) {
-    var data = JSON.parse(stored);
-    if (data.hour === currentHourStr) currentQuota = data.val;
-    else {
-      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: currentHourStr, val: maxQuota }));
-      currentQuota = maxQuota;
-    }
-  } else {
-    localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: currentHourStr, val: maxQuota }));
-  }
-
-  function updateQuotaUI() {
-    els.quotaText.textContent = currentQuota + ' / ' + maxQuota;
-    var pct = (currentQuota / maxQuota) * 100;
-    els.quotaFill.style.width = pct + '%';
-    if (currentQuota <= 0) {
-      els.quotaFill.style.background = '#ef4444';
-      els.genBtn.disabled = true;
-      els.genBtn.innerHTML = '<span>本小時能量已耗盡</span><span style="display:block;font-size:12px;font-weight:400;margin-top:4px">請稍後再來</span>';
-    }
-  }
-
-  function consumeQuota() {
-    if (currentQuota > 0) {
-      currentQuota--;
-      var n = new Date();
-      var h = n.toDateString() + '-' + n.getHours();
-      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: h, val: currentQuota }));
-      updateQuotaUI();
-    }
-  }
-
-  updateQuotaUI();
-  checkAndStartCooldown();
-
-  els.ratios.forEach(function(r) {
-    r.onclick = function() {
-      els.ratios.forEach(function(i) { i.classList.remove('active'); });
-      r.classList.add('active');
-      els.width.value = r.dataset.w;
-      els.height.value = r.dataset.h;
-    };
-  });
-
-  var isSeedRandom = true;
-  els.lockSeed.onclick = function() {
-    isSeedRandom = !isSeedRandom;
-    if (isSeedRandom) {
+  els.toggleSeed.onclick = function() {
+    seedLocked = !seedLocked;
+    if (seedLocked) {
+      els.seed.disabled = false;
+      if (els.seed.value === '-1') els.seed.value = Math.floor(Math.random() * 1000000);
+    } else {
       els.seed.value = '-1';
       els.seed.disabled = true;
-      els.lockSeed.textContent = '🎲';
-      els.lockSeed.classList.remove('active');
-    } else {
-      if (els.seed.value == '-1') els.seed.value = Math.floor(Math.random() * 1000000);
-      els.seed.disabled = false;
-      els.lockSeed.textContent = '🔒';
-      els.lockSeed.classList.add('active');
     }
   };
 
-  var prompts = [
-    "Cyberpunk street vendor making noodles, neon rain, detailed, 8k",
-    "A translucent glass banana floating in space, nebula background",
-    "Cute isometric room, gaming setup, pastel colors, 3d render",
-    "Portrait of a futuristic warrior, gold and black armor, cinematic lighting",
-    "Traditional Japanese village in winter, snow, ukiyo-e style",
-    "Macro shot of a mechanical eye, gears, steampunk"
-  ];
-  els.randomBtn.onclick = function() {
-    els.prompt.value = prompts[Math.floor(Math.random() * prompts.length)];
-    els.prompt.focus();
+  els.downloadBtn.onclick = function() {
+    var a = document.createElement('a');
+    a.href = els.img.src;
+    a.download = 'nano-banana.png';
+    a.click();
   };
-
-  function openLightbox(url) {
-    els.lbImg.src = url;
-    els.lbDownload.href = url;
-    els.lightbox.classList.add('show');
-  }
-  els.lbClose.onclick = function() { els.lightbox.classList.remove('show'); };
-  els.img.onclick = function() { if (els.img.src) openLightbox(els.img.src); };
-
-  function addHistory(url) {
-    var div = document.createElement('div');
-    div.className = 'history-item';
-    div.innerHTML = '<img src="' + url + '">';
-    div.onclick = function() {
-      els.img.src = url;
-      document.querySelectorAll('.history-item').forEach(function(i) { i.classList.remove('active'); });
-      div.classList.add('active');
-    };
-    els.history.prepend(div);
-    if (els.history.children.length > 10) els.history.lastChild.remove();
-    document.querySelectorAll('.history-item').forEach(function(i) { i.classList.remove('active'); });
-    div.classList.add('active');
-  }
 
   els.genBtn.onclick = async function() {
     var p = els.prompt.value.trim();
-    if (!p) return toast("⚠️ 請輸入提示詞");
-    if (currentQuota <= 0) return toast("🚫 本小時能量已耗盡，請稍後再來！");
+    if (!p) { els.status.textContent = 'Prompt required.'; return; }
 
+    els.status.textContent = 'Generating...';
     els.genBtn.disabled = true;
-    els.loader.style.display = 'flex';
-    els.img.style.opacity = '0.5';
 
     try {
       var res = await fetch('/_internal/generate', {
@@ -1543,28 +1285,19 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
           prompt: p,
           negative_prompt: els.negative.value,
           model: 'nanobanana-pro',
-          width: parseInt(els.width.value),
-          height: parseInt(els.height.value),
+          width: parseInt(els.width.value, 10),
+          height: parseInt(els.height.value, 10),
           style: els.style.value,
-          seed: parseInt(els.seed.value),
+          seed: parseInt(els.seed.value, 10),
           n: 1,
           nologo: true
         })
       });
 
-      if (res.status === 429) {
-        var err = await res.json();
-        currentQuota = 0;
-        var n = new Date();
-        var h = n.toDateString() + '-' + n.getHours();
-        localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: h, val: 0 }));
-        updateQuotaUI();
-        throw new Error((err.error && err.error.message) ? err.error.message : '限額已滿');
-      }
-
       if (!res.ok) {
-        var err = await res.json();
-        throw new Error((err.error && err.error.message) ? err.error.message : '生成失敗');
+        var errJson = null;
+        try { errJson = await res.json(); } catch {}
+        throw new Error(errJson?.error?.message || ('HTTP ' + res.status));
       }
 
       var blob = await res.blob();
@@ -1572,25 +1305,26 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
       els.img.src = url;
       els.img.style.display = 'block';
-      els.img.style.opacity = '1';
-      document.querySelector('.placeholder-text').style.display = 'none';
+      els.downloadBtn.style.display = 'inline-block';
 
-      var realSeed = res.headers.get('X-Seed');
-      if (!isSeedRandom) els.seed.value = realSeed;
+      els.status.textContent = 'Done. Provider=' + (res.headers.get('X-Provider') || '') + ', seed=' + (res.headers.get('X-Seed') || '');
 
-      addHistory(url);
-      consumeQuota();
-
+      // 啟動冷卻
       localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
-      startCooldownTimer(COOLDOWN_SEC);
+      setCooldown(COOLDOWN_SEC);
 
+      // 如果鎖 seed，回填實際 seed
+      if (seedLocked) {
+        var realSeed = res.headers.get('X-Seed');
+        if (realSeed) els.seed.value = realSeed;
+      }
     } catch (e) {
-      toast("❌ " + e.message);
-      if (currentQuota > 0 && !String(e.message).includes('限額')) els.genBtn.disabled = false;
-    } finally {
-      els.loader.style.display = 'none';
+      els.status.textContent = 'Error: ' + e.message;
+      els.genBtn.disabled = false;
     }
   };
+
+  resumeCooldownIfAny();
 </script>
 </body>
 </html>`;
@@ -1602,25 +1336,22 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     }
   });
 }
+
 // =================================================================================
-//  主頁 UI：handleUI() - Part 1 (HTML/CSS/Body)
+//  主頁 UI：handleUI()（已修復：JSON 注入在模板字串內，不會被 Wrangler 當成 Worker JS）
 // =================================================================================
 
 function handleUI(request) {
-  // Provider 狀態提示
   const providerStatusHTML = Object.entries(CONFIG.PROVIDERS)
     .filter(([key, cfg]) => cfg.enabled)
     .map(([key, cfg]) => {
       const authEnabled = key === 'pollinations' ? CONFIG.POLLINATIONS_AUTH.enabled : CONFIG.INFIP_AUTH.enabled;
       const statusColor = authEnabled ? '#22c55e' : '#f59e0b';
-      const statusIcon = authEnabled ? '🔐' : '⚠️';
-      const statusText = authEnabled ? '已認證' : '需要 API Key';
-      return '<div style="font-size:11px;color:' + statusColor + ';font-weight:600;margin-left:8px">' +
-        statusIcon + ' ' + cfg.name + ': ' + statusText +
-      '</div>';
+      const statusText = authEnabled ? 'Auth OK' : 'Need API Key';
+      return '<div style="font-size:11px;color:' + statusColor + ';font-weight:700;margin-left:8px">' + cfg.name + ': ' + statusText + '</div>';
     }).join('');
 
-  // 風格選單
+  // style options
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
 
@@ -1638,16 +1369,17 @@ function handleUI(request) {
     }
   }
 
-  const ENABLED_PROVIDERS = Object.entries(CONFIG.PROVIDERS)
+  // 前端要用的 provider/model 資料（注意：這是 Worker 端 const，不會輸出到全域重複宣告）
+  const ENABLED_PROVIDERS_DATA = Object.entries(CONFIG.PROVIDERS)
     .filter(([id, p]) => p.enabled)
     .map(([id, p]) => ({ id: id, name: p.name, supports_seed: id !== 'infip' }));
 
-  const MODELS_BY_PROVIDER = Object.fromEntries(
+  const MODELS_BY_PROVIDER_DATA = Object.fromEntries(
     Object.entries(CONFIG.PROVIDERS)
       .filter(([id, p]) => p.enabled)
       .map(([id, p]) => {
-        const models = (p.models || []).filter(m => m.id !== 'nanobanana-pro'); // 主頁不顯示 nano
-        return [id, models.map(m => ({ id: m.id, name: m.name || m.id, category: m.category || 'default' }))];
+        const models = (p.models || []).filter(m => m.id !== 'nanobanana-pro');
+        return [id, models.map(m => ({ id: m.id, name: m.name || m.id }))];
       })
   );
 
@@ -1656,726 +1388,403 @@ function handleUI(request) {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${CONFIG.PROJECT_NAME} v${CONFIG.PROJECT_VERSION}</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
-.container{max-width:100%;margin:0;padding:0;height:100vh;display:flex;flex-direction:column}
-.top-nav{background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,0.1);padding:15px 25px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
-.nav-left{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.logo{color:#f59e0b;font-size:24px;font-weight:800;text-shadow:0 0 20px rgba(245,158,11,0.6);display:flex;align-items:center;gap:10px}
-.badge{background:linear-gradient(135deg,#10b981 0%,#059669 100%);padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600}
-.api-status{display:flex;gap:5px;flex-wrap:wrap}
-.nav-menu{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.nav-btn{padding:8px 16px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#9ca3af;cursor:pointer;font-size:14px;font-weight:600;transition:all 0.3s;display:flex;align-items:center;gap:6px;text-decoration:none}
-.nav-btn:hover{border-color:#f59e0b;color:#fff}
-.nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
-.nav-btn.nano-btn:hover{border-color:#FACC15;background:rgba(250,204,21,0.1);color:#FACC15;box-shadow:0 0 10px rgba(250,204,21,0.2)}
-.lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
-
-.main-content{flex:1;display:flex;overflow:hidden}
-.left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
-.center-panel{flex:1;padding:20px;overflow-y:auto}
-.right-panel{width:380px;background:rgba(255,255,255,0.03);border-left:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
-
-@media(max-width:1024px){
-  .main-content{flex-direction:column}
-  .left-panel,.right-panel{width:100%;border:none;border-bottom:1px solid rgba(255,255,255,0.1)}
-}
-
-.page{display:none}
-.page.active{display:block}
-.page.active .main-content{display:flex}
-
-.form-group{margin-bottom:16px}
-label{display:block;margin-bottom:6px;font-weight:600;font-size:13px;color:#e5e7eb}
-input,textarea,select{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:13px;transition:all 0.3s}
-input:focus,textarea:focus,select:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.1)}
-select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer}
-
-.btn{padding:12px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.3s;display:inline-flex;align-items:center;gap:8px;justify-content:center;width:100%}
-.btn-primary{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;box-shadow:0 4px 15px rgba(245,158,11,0.3)}
-.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
-
-.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.gallery-item{background:rgba(0,0,0,0.4);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);transition:all 0.3s}
-.gallery-item img{width:100%;height:280px;object-fit:cover;display:block;cursor:pointer}
-.gallery-info{padding:15px}
-.gallery-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:5px}
-.model-badge,.seed-badge,.style-badge,.provider-badge{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(255,255,255,0.1)}
-.provider-badge{background:rgba(16,185,129,0.2);color:#10b981}
-.gallery-actions{display:flex;gap:8px;margin-top:10px}
-.action-btn{padding:6px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:12px;color:#fff;cursor:pointer;flex:1}
-.action-btn:hover{background:rgba(255,255,255,0.2)}
-
-.spinner{border:3px solid rgba(255,255,255,0.1);border-top:3px solid #f59e0b;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 15px}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-
-.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:20px;background:rgba(255,255,255,0.03);border-radius:12px}
-.history-stats{display:flex;gap:20px;font-size:14px}
-
-.modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.9);align-items:center;justify-content:center}
-.modal.show{display:flex}
-.modal-content img{max-width:90vw;max-height:90vh;border-radius:8px}
-.modal-close{position:absolute;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer}
-
-.empty-state{text-align:center;padding:80px 20px;color:#6b7280}
-.empty-state p{font-size:18px;margin-bottom:10px}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0b0b0f;color:#fff;margin:0}
+  .top{padding:14px 18px;border-bottom:1px solid rgba(255,255,255,.12);display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,.04)}
+  .logo{font-weight:900;color:#f59e0b}
+  .wrap{max-width:1200px;margin:0 auto;padding:18px}
+  .grid{display:grid;grid-template-columns: 330px 1fr; gap:16px}
+  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px}
+  label{display:block;margin:10px 0 6px;font-size:12px;color:#cbd5e1;font-weight:700}
+  input,textarea,select,button{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.25);color:#fff}
+  textarea{resize:vertical;min-height:110px}
+  .btn{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);border:none;font-weight:900;cursor:pointer}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .muted{color:#94a3b8;font-size:12px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  img{max-width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.12)}
+  .actions{display:flex;gap:10px;margin-top:10px}
+  .actions button{width:auto}
+  .historyItem{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid rgba(255,255,255,.10);border-radius:12px;margin-top:10px;background:rgba(0,0,0,.18)}
+  .historyItem img{width:110px;height:110px;object-fit:cover}
 </style>
 </head>
-
 <body>
-<div class="container">
-
-  <div class="top-nav">
-    <div class="nav-left">
-      <div class="logo">🎨 ${CONFIG.PROJECT_NAME} <span class="badge">v${CONFIG.PROJECT_VERSION}</span></div>
-      <div class="api-status">${providerStatusHTML}</div>
+  <div class="top">
+    <div>
+      <div class="logo">${CONFIG.PROJECT_NAME} <span style="font-weight:700;color:#94a3b8">v${CONFIG.PROJECT_VERSION}</span></div>
+      <div class="muted" style="margin-top:4px;display:flex;gap:8px;flex-wrap:wrap;">${providerStatusHTML}</div>
     </div>
-
-    <div class="nav-menu">
-      <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">🍌 Nano版</a>
-      <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
-      <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
-      <button class="lang-btn" id="langSwitch">EN / 繁中</button>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a href="/nano" style="color:#FACC15;text-decoration:none;border:1px solid rgba(250,204,21,.35);padding:8px 10px;border-radius:10px;background:rgba(250,204,21,.08)">Nano</a>
+      <button id="openHistory" style="width:auto;">History</button>
+      <span class="muted">Records: <span id="historyCount">0</span></span>
     </div>
   </div>
 
-  <div id="generatePage" class="page active">
-    <div class="main-content">
+  <div class="wrap">
+    <div class="grid">
+      <div class="card">
+        <label>Provider</label>
+        <select id="provider"></select>
 
-      <div class="left-panel">
-        <div class="section-title" data-t="settings_title" style="font-size:16px;font-weight:700;margin-bottom:20px;color:#f59e0b">⚙️ 生成參數</div>
+        <label>Model</label>
+        <select id="model"></select>
 
-        <form id="generateForm">
-          <div class="form-group">
-            <label data-t="provider_label">🌐 API 供應商</label>
-            <select id="provider"></select>
+        <div class="row">
+          <div>
+            <label>Width</label>
+            <input id="width" type="number" value="1024" min="256" max="2048">
           </div>
-
-          <div class="form-group">
-            <label data-t="model_label">🤖 模型選擇</label>
-            <select id="model"></select>
+          <div>
+            <label>Height</label>
+            <input id="height" type="number" value="1024" min="256" max="2048">
           </div>
+        </div>
 
-          <div class="form-group">
-            <label data-t="size_label">📐 尺寸預設</label>
-            <select id="size">
-              <option value="square-1k" selected>Square 1024x1024</option>
-              <option value="square-1.5k">Square 1536x1536</option>
-              <option value="portrait-9-16-hd">Portrait 1080x1920</option>
-              <option value="landscape-16-9-hd">Landscape 1920x1080</option>
-            </select>
-          </div>
+        <label>Style</label>
+        <select id="style">${styleOptionsHTML}</select>
 
-          <div class="form-group">
-            <label data-t="style_label">🎨 藝術風格</label>
-            <select id="style">${styleOptionsHTML}</select>
-          </div>
+        <label>Quality</label>
+        <select id="qualityMode">
+          <option value="economy">Economy</option>
+          <option value="standard" selected>Standard</option>
+          <option value="ultra">Ultra</option>
+        </select>
 
-          <div class="form-group">
-            <label data-t="quality_label">⚡ 質量模式</label>
-            <select id="qualityMode">
-              <option value="economy">Economy</option>
-              <option value="standard" selected>Standard</option>
-              <option value="ultra">Ultra HD</option>
-            </select>
-          </div>
+        <label>Seed (toggle to unlock)</label>
+        <div class="row">
+          <input id="seed" type="number" value="-1" disabled>
+          <button id="toggleSeed" style="width:auto;">Toggle</button>
+        </div>
 
-          <div class="form-group">
-            <label data-t="seed_label">🎲 Seed (種子碼)</label>
-            <div style="display:flex; gap:10px;">
-              <input type="number" id="seed" value="-1" placeholder="Random (-1)" disabled style="flex:1; opacity:0.7; cursor:not-allowed; font-family: monospace;">
-              <button type="button" id="seedToggleBtn" class="btn" style="width:auto; padding:0 15px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">🎲</button>
+        <label>Prompt</label>
+        <textarea id="prompt" placeholder="Describe your image..."></textarea>
+
+        <label>Negative (optional)</label>
+        <textarea id="negativePrompt" placeholder="What to avoid..."></textarea>
+
+        <label>Reference Images (Kontext only)</label>
+        <textarea id="referenceImages" placeholder="comma separated URLs"></textarea>
+
+        <div style="margin-top:12px;">
+          <button id="genBtn" class="btn">Generate</button>
+          <div id="status" class="muted" style="margin-top:10px;">Idle.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="font-weight:900;margin-bottom:10px;">Result</div>
+        <img id="img" style="display:none;">
+        <div class="actions">
+          <button id="downloadBtn" style="display:none;">Download</button>
+        </div>
+
+        <div id="historyPanel" style="display:none;margin-top:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:900;">History</div>
+            <div class="actions">
+              <button id="exportBtn">Export</button>
+              <button id="clearBtn">Clear</button>
             </div>
           </div>
-
-          <div class="form-group" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-top:15px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <label for="autoOptimize" style="margin:0; cursor:pointer;" data-t="auto_opt_label">✨ 自動優化</label>
-                <div style="font-size:11px; color:#9ca3af; margin-top:2px;" data-t="auto_opt_desc">自動調整 Steps 與 Guidance</div>
-              </div>
-              <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
-            </div>
-
-            <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
-              <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
-              <div class="form-group">
-                <label data-t="steps_label">生成步數 (Steps)</label>
-                <input type="number" id="steps" value="25" min="1" max="50">
-              </div>
-              <div class="form-group">
-                <label data-t="guidance_label">引導係數 (Guidance)</label>
-                <input type="number" id="guidanceScale" value="7.5" step="0.1" min="1" max="20">
-              </div>
-            </div>
-          </div>
-
-          <button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px;">🎨 開始生成</button>
-        </form>
-      </div>
-
-      <div class="center-panel">
-        <div id="results">
-          <div class="empty-state">
-            <p data-t="empty_title">尚未生成任何圖像</p>
-            <p style="font-size:14px;color:#4b5563">選擇供應商和模型，輸入提示詞後點擊生成</p>
-          </div>
+          <div class="muted" style="margin-top:6px;">Storage: <span id="storageSize">0 KB</span></div>
+          <div id="historyList"></div>
         </div>
       </div>
-
-      <div class="right-panel">
-        <div class="form-group">
-          <label data-t="pos_prompt">💬 正面提示詞</label>
-          <textarea id="prompt" placeholder="Describe your image..." required rows="6"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label data-t="neg_prompt">🚫 負面提示詞 (可選)</label>
-          <textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label data-t="ref_img">🖼️ 參考圖像 URL (Kontext 專用)</label>
-          <textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea>
-        </div>
-      </div>
-
     </div>
   </div>
-
-  <div id="historyPage" class="page">
-    <div class="main-content" style="flex-direction:column;padding:20px">
-      <div class="history-header">
-        <div class="history-stats">
-          <div class="stat-item">
-            <div class="label" data-t="stat_total">📊 總記錄數</div>
-            <div class="value" id="historyTotal">0</div>
-          </div>
-          <div class="stat-item">
-            <div class="label" data-t="stat_storage">💾 存儲空間 (永久)</div>
-            <div class="value" id="storageSize">0 KB</div>
-          </div>
-        </div>
-        <div class="history-actions">
-          <button class="btn btn-secondary" id="exportBtn" style="width:auto;padding:10px 20px;background:rgba(59,130,246,0.2);color:#60a5fa" data-t="btn_export">📥 導出</button>
-          <button class="btn btn-danger" id="clearBtn" style="width:auto;padding:10px 20px;background:rgba(239,68,68,0.2);color:#f87171" data-t="btn_clear">🗑️ 清空</button>
-        </div>
-      </div>
-      <div id="historyList" style="padding:0 20px"><p>Loading history...</p></div>
-    </div>
-  </div>
-
-  <div id="imageModal" class="modal">
-    <span class="modal-close" id="modalCloseBtn">×</span>
-    <div class="modal-content"><img id="modalImage" src=""></div>
-  </div>
-
-</div>
 
 <script>
-`;
-// 這是 Part 6/6：接續 Part 5 的 <script> 標籤內容
-// ========= 配置與常數 =========
-var ENABLED_PROVIDERS = ${JSON.stringify(ENABLED_PROVIDERS)};
-var MODELS_BY_PROVIDER = ${JSON.stringify(MODELS_BY_PROVIDER)};
-var PRESET_SIZES = ${JSON.stringify(CONFIG.PRESET_SIZES)};
+  // ====== 注入資料（修復點：這些必須在模板字串裡）======
+  var ENABLED_PROVIDERS = ${JSON.stringify(ENABLED_PROVIDERS_DATA)};
+  var MODELS_BY_PROVIDER = ${JSON.stringify(MODELS_BY_PROVIDER_DATA)};
 
-// ========= IndexedDB (FIXED - Version 2) =========
-var DB_NAME = 'FluxAI_DB';
-var STORE_NAME = 'images';
-var DB_VERSION = 2; // 升級版本，觸發 onupgradeneeded 重建 store
+  // ====== IndexedDB (FIXED) ======
+  var DB_NAME = 'FluxAI_DB';
+  var STORE_NAME = 'images';
+  var DB_VERSION = 2;
 
-function idbReqToPromise(req) {
-  return new Promise(function(resolve, reject) {
-    req.onsuccess = function() { resolve(req.result); };
-    req.onerror = function() { reject(req.error); };
+  function idbReqToPromise(req) {
+    return new Promise(function(resolve, reject) {
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    });
+  }
+  function txDone(tx) {
+    return new Promise(function(resolve, reject) {
+      tx.oncomplete = function() { resolve(); };
+      tx.onerror = function() { reject(tx.error); };
+      tx.onabort = function() { reject(tx.error || new Error('Transaction aborted')); };
+    });
+  }
+
+  var dbPromise = new Promise(function(resolve, reject) {
+    var req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (db.objectStoreNames.contains(STORE_NAME)) db.deleteObjectStore(STORE_NAME);
+      db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+    };
+    req.onsuccess = function(e) { resolve(e.target.result); };
+    req.onerror = function(e) { reject(e.target.error); };
   });
-}
 
-function txDone(tx) {
-  return new Promise(function(resolve, reject) {
-    tx.oncomplete = function() { resolve(); };
-    tx.onerror = function() { reject(tx.error); };
-    tx.onabort = function() { reject(tx.error || new Error('Transaction aborted')); };
-  });
-}
+  async function dbAddImage(doc) {
+    var db = await dbPromise;
+    var tx = db.transaction(STORE_NAME, 'readwrite');
+    var store = tx.objectStore(STORE_NAME);
+    var clean = Object.assign({}, doc);
+    delete clean.id;
+    var id = await idbReqToPromise(store.add(clean));
+    await txDone(tx);
+    return id;
+  }
 
-var dbPromise = new Promise(function(resolve, reject) {
-  var req = indexedDB.open(DB_NAME, DB_VERSION);
+  async function dbGetAllImages() {
+    var db = await dbPromise;
+    var tx = db.transaction(STORE_NAME, 'readonly');
+    var store = tx.objectStore(STORE_NAME);
+    var list = await idbReqToPromise(store.getAll());
+    await txDone(tx);
+    return list || [];
+  }
 
-  req.onupgradeneeded = function(e) {
-    var db = e.target.result;
+  async function dbDeleteImageById(id) {
+    var db = await dbPromise;
+    var tx = db.transaction(STORE_NAME, 'readwrite');
+    var store = tx.objectStore(STORE_NAME);
+    await idbReqToPromise(store.delete(id));
+    await txDone(tx);
+  }
 
-    // 直接重建 schema（最穩），避免舊 store 沒 autoIncrement 造成 keyPath 錯誤
-    if (db.objectStoreNames.contains(STORE_NAME)) {
-      db.deleteObjectStore(STORE_NAME);
-    }
+  async function dbClearAllImages() {
+    var db = await dbPromise;
+    var tx = db.transaction(STORE_NAME, 'readwrite');
+    var store = tx.objectStore(STORE_NAME);
+    await idbReqToPromise(store.clear());
+    await txDone(tx);
+  }
 
-    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+  function escapeHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  async function updateHistoryCount() {
+    var images = await dbGetAllImages();
+    document.getElementById('historyCount').textContent = images.length;
+
+    var total = images.reduce(function(sum, img) { return sum + (img.size || 0); }, 0);
+    document.getElementById('storageSize').textContent = (total / 1024).toFixed(2) + ' KB';
+  }
+
+  async function loadHistory() {
+    var images = await dbGetAllImages();
+    var list = document.getElementById('historyList');
+    list.innerHTML = '';
+    images.slice().reverse().forEach(function(img) {
+      var div = document.createElement('div');
+      div.className = 'historyItem';
+      div.innerHTML =
+        '<img src="' + img.url + '">' +
+        '<div style="flex:1">' +
+          '<div style="font-weight:800;">' + escapeHtml(img.provider) + ' / ' + escapeHtml(img.model) + '</div>' +
+          '<div class="muted">Seed: ' + escapeHtml(img.seed) + ' | ' + escapeHtml(img.width) + 'x' + escapeHtml(img.height) + '</div>' +
+          '<div class="muted" style="margin-top:6px;">' + escapeHtml((img.prompt || '').slice(0, 120)) + '</div>' +
+          '<div class="actions" style="margin-top:8px;">' +
+            '<button data-id="' + img.id + '" class="delBtn">Delete</button>' +
+          '</div>' +
+        '</div>';
+      list.appendChild(div);
+    });
+
+    list.querySelectorAll('.delBtn').forEach(function(btn) {
+      btn.onclick = async function() {
+        var id = parseInt(btn.getAttribute('data-id'), 10);
+        await dbDeleteImageById(id);
+        await updateHistoryCount();
+        await loadHistory();
+      };
+    });
+  }
+
+  // ====== UI wiring ======
+  var els = {
+    provider: document.getElementById('provider'),
+    model: document.getElementById('model'),
+    width: document.getElementById('width'),
+    height: document.getElementById('height'),
+    style: document.getElementById('style'),
+    qualityMode: document.getElementById('qualityMode'),
+    seed: document.getElementById('seed'),
+    toggleSeed: document.getElementById('toggleSeed'),
+    prompt: document.getElementById('prompt'),
+    negativePrompt: document.getElementById('negativePrompt'),
+    referenceImages: document.getElementById('referenceImages'),
+    genBtn: document.getElementById('genBtn'),
+    status: document.getElementById('status'),
+    img: document.getElementById('img'),
+    downloadBtn: document.getElementById('downloadBtn'),
+    openHistory: document.getElementById('openHistory'),
+    historyPanel: document.getElementById('historyPanel'),
+    exportBtn: document.getElementById('exportBtn'),
+    clearBtn: document.getElementById('clearBtn'),
   };
 
-  req.onsuccess = function(e) { resolve(e.target.result); };
-  req.onerror = function(e) { reject(e.target.error); };
-});
-
-async function dbAddImage(doc) {
-  var db = await dbPromise;
-  var tx = db.transaction(STORE_NAME, 'readwrite');
-  var store = tx.objectStore(STORE_NAME);
-
-  // 不要自己塞 id；讓 autoIncrement 生成
-  var clean = Object.assign({}, doc);
-  delete clean.id;
-
-  var id = await idbReqToPromise(store.add(clean));
-  await txDone(tx);
-  return id;
-}
-
-async function dbGetAllImages() {
-  var db = await dbPromise;
-  var tx = db.transaction(STORE_NAME, 'readonly');
-  var store = tx.objectStore(STORE_NAME);
-
-  var list = await idbReqToPromise(store.getAll());
-  await txDone(tx);
-  return list || [];
-}
-
-async function dbDeleteImageById(id) {
-  var db = await dbPromise;
-  var tx = db.transaction(STORE_NAME, 'readwrite');
-  var store = tx.objectStore(STORE_NAME);
-
-  await idbReqToPromise(store.delete(id));
-  await txDone(tx);
-}
-
-async function dbClearAllImages() {
-  var db = await dbPromise;
-  var tx = db.transaction(STORE_NAME, 'readwrite');
-  var store = tx.objectStore(STORE_NAME);
-
-  await idbReqToPromise(store.clear());
-  await txDone(tx);
-}
-
-async function updateHistoryCount() {
-  var images = await dbGetAllImages();
-  document.getElementById('historyCount').textContent = images.length;
-
-  var total = images.reduce(function(sum, img) { return sum + (img.size || 0); }, 0);
-  document.getElementById('storageSize').textContent = (total / 1024).toFixed(2) + ' KB';
-}
-
-// ========= UI 控制 =========
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-async function saveImage(imageData) {
-  await dbAddImage(imageData);
-  await updateHistoryCount();
-}
-
-async function loadHistory() {
-  var images = await dbGetAllImages();
-  var listDiv = document.getElementById('historyList');
-  var totalDiv = document.getElementById('historyTotal');
-
-  totalDiv.textContent = images.length;
-
-  if (images.length === 0) {
-    listDiv.innerHTML = '<div class="empty-state"><p data-t="empty_his">暫無歷史記錄</p></div>';
-    return;
-  }
-
-  listDiv.innerHTML = '<div class="gallery"></div>';
-  var gallery = listDiv.querySelector('.gallery');
-
-  images.slice().reverse().forEach(function(img) {
-    var safePrompt = escapeHtml(img.prompt || '');
-    var promptShort = safePrompt.length > 60 ? (safePrompt.substring(0, 60) + '...') : safePrompt;
-
-    var card = document.createElement('div');
-    card.className = 'gallery-item';
-
-    card.innerHTML =
-      '<img src="' + img.url + '" onclick="openModal(this.src)">' +
-      '<div class="gallery-info">' +
-        '<div class="gallery-meta">' +
-          '<span class="provider-badge">' + escapeHtml(img.provider) + '</span>' +
-          '<span class="model-badge">' + escapeHtml(img.model) + '</span>' +
-        '</div>' +
-        '<div class="gallery-meta">' +
-          '<span class="seed-badge">Seed: ' + escapeHtml(img.seed) + '</span>' +
-          '<span class="style-badge">' + escapeHtml(img.style_name) + '</span>' +
-        '</div>' +
-        '<div style="font-size:11px;color:#9ca3af;margin:8px 0">' + promptShort + '</div>' +
-        '<div class="gallery-actions">' +
-          '<button class="action-btn" onclick="downloadImage(\\'' + img.url + '\\',\\'flux-' + escapeHtml(img.seed) + '.png\\')">💾 保存</button>' +
-          '<button class="action-btn" onclick="uiDeleteHistoryItem(' + img.id + ')">🗑️ 刪除</button>' +
-        '</div>' +
-      '</div>';
-
-    gallery.appendChild(card);
-  });
-}
-
-window.uiDeleteHistoryItem = async function(id) {
-  if (!confirm('確定刪除此圖像？')) return;
-  await dbDeleteImageById(id);
-  await updateHistoryCount();
-  await loadHistory();
-};
-
-document.getElementById('clearBtn').onclick = async function() {
-  if (!confirm('確定清空所有歷史記錄？此操作不可撤銷！')) return;
-  await dbClearAllImages();
-  await updateHistoryCount();
-  await loadHistory();
-};
-
-document.getElementById('exportBtn').onclick = async function() {
-  var images = await dbGetAllImages();
-  var data = images.map(function(img) {
-    return {
-      id: img.id,
-      prompt: img.prompt,
-      provider: img.provider,
-      model: img.model,
-      seed: img.seed,
-      width: img.width,
-      height: img.height,
-      style: img.style_name,
-      quality: img.quality_mode,
-      timestamp: new Date(img.timestamp).toISOString()
-    };
-  });
-
-  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'flux-ai-history-' + Date.now() + '.json';
-  a.click();
-};
-
-// ========= 頁面切換 =========
-var navBtns = document.querySelectorAll('.nav-btn[data-page]');
-navBtns.forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    var targetPage = btn.dataset.page;
-    
-    navBtns.forEach(function(b) { b.classList.remove('active'); });
-    btn.classList.add('active');
-
-    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
-    document.getElementById(targetPage + 'Page').classList.add('active');
-
-    if (targetPage === 'history') loadHistory();
-  });
-});
-
-// ========= Seed 鎖定 =========
-var seedInput = document.getElementById('seed');
-var seedToggleBtn = document.getElementById('seedToggleBtn');
-var seedLocked = false;
-
-seedToggleBtn.addEventListener('click', function(e) {
-  e.preventDefault();
-  seedLocked = !seedLocked;
-  
-  if (seedLocked) {
-    seedInput.disabled = false;
-    seedInput.style.opacity = '1';
-    seedInput.style.cursor = 'text';
-    if (seedInput.value === '-1') seedInput.value = Math.floor(Math.random() * 1000000);
-    seedToggleBtn.textContent = '🔒';
-    seedToggleBtn.style.background = 'rgba(245,158,11,0.2)';
-    seedToggleBtn.style.borderColor = '#f59e0b';
-  } else {
-    seedInput.disabled = true;
-    seedInput.style.opacity = '0.7';
-    seedInput.style.cursor = 'not-allowed';
-    seedInput.value = '-1';
-    seedToggleBtn.textContent = '🎲';
-    seedToggleBtn.style.background = 'rgba(255,255,255,0.1)';
-    seedToggleBtn.style.borderColor = 'rgba(255,255,255,0.2)';
-  }
-});
-
-// ========= 自動優化切換 =========
-var autoOptimizeCheck = document.getElementById('autoOptimize');
-var advancedParamsDiv = document.getElementById('advancedParams');
-
-autoOptimizeCheck.addEventListener('change', function() {
-  advancedParamsDiv.style.display = this.checked ? 'none' : 'block';
-});
-
-// ========= Provider / Model 聯動 =========
-var providerSelect = document.getElementById('provider');
-var modelSelect = document.getElementById('model');
-
-function populateProviders() {
-  providerSelect.innerHTML = '';
-  ENABLED_PROVIDERS.forEach(function(p) {
-    var opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.name;
-    providerSelect.appendChild(opt);
-  });
-  updateModelsForProvider(providerSelect.value);
-}
-
-function updateModelsForProvider(providerId) {
-  modelSelect.innerHTML = '';
-  var models = MODELS_BY_PROVIDER[providerId] || [];
-  if (models.length === 0) {
-    modelSelect.innerHTML = '<option value="">No models available</option>';
-    return;
-  }
-  models.forEach(function(m) {
-    var opt = document.createElement('option');
-    opt.value = m.id;
-    opt.textContent = m.name;
-    modelSelect.appendChild(opt);
-  });
-}
-
-providerSelect.addEventListener('change', function() {
-  updateModelsForProvider(this.value);
-});
-
-// ========= 尺寸預設聯動 =========
-var sizeSelect = document.getElementById('size');
-sizeSelect.addEventListener('change', function() {
-  var presetKey = this.value;
-  var preset = PRESET_SIZES[presetKey];
-  if (preset) {
-    document.getElementById('width').value = preset.width;
-    document.getElementById('height').value = preset.height;
-  }
-});
-
-// ========= 生成表單提交 =========
-var generateForm = document.getElementById('generateForm');
-var generateBtn = document.getElementById('generateBtn');
-var resultsDiv = document.getElementById('results');
-
-generateForm.addEventListener('submit', async function(e) {
-  e.preventDefault();
-
-  var prompt = document.getElementById('prompt').value.trim();
-  if (!prompt) {
-    alert('請輸入提示詞');
-    return;
-  }
-
-  var provider = providerSelect.value;
-  var model = modelSelect.value;
-  var sizeKey = sizeSelect.value;
-  var preset = PRESET_SIZES[sizeKey];
-  var width = preset ? preset.width : 1024;
-  var height = preset ? preset.height : 1024;
-
-  var style = document.getElementById('style').value;
-  var qualityMode = document.getElementById('qualityMode').value;
-  var seed = parseInt(seedInput.value);
-  var negativePrompt = document.getElementById('negativePrompt').value.trim();
-  var referenceImagesText = document.getElementById('referenceImages').value.trim();
-
-  var referenceImages = [];
-  if (referenceImagesText) {
-    referenceImages = referenceImagesText.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
-  }
-
-  var autoOptimize = autoOptimizeCheck.checked;
-  var steps = autoOptimize ? null : parseInt(document.getElementById('steps').value);
-  var guidanceScale = autoOptimize ? null : parseFloat(document.getElementById('guidanceScale').value);
-
-  generateBtn.disabled = true;
-  generateBtn.innerHTML = '<div class="spinner"></div> <span>生成中...</span>';
-
-  resultsDiv.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><p style="margin-top:20px;color:#9ca3af">正在生成圖像，請稍候...</p></div>';
-
-  try {
-    var payload = {
-      prompt: prompt,
-      negative_prompt: negativePrompt,
-      provider: provider,
-      model: model,
-      width: width,
-      height: height,
-      style: style,
-      quality_mode: qualityMode,
-      seed: seed,
-      n: 1,
-      auto_optimize: autoOptimize,
-      auto_hd: true,
-      reference_images: referenceImages
-    };
-
-    if (!autoOptimize) {
-      if (steps) payload.steps = steps;
-      if (guidanceScale) payload.guidance_scale = guidanceScale;
-    }
-
-    var response = await fetch('/_internal/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  function populateProviders() {
+    els.provider.innerHTML = '';
+    ENABLED_PROVIDERS.forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      els.provider.appendChild(opt);
     });
+    updateModelsForProvider(els.provider.value);
+  }
 
-    if (!response.ok) {
-      var errorData = await response.json();
-      throw new Error(errorData.error?.message || 'Generation failed');
+  function updateModelsForProvider(providerId) {
+    els.model.innerHTML = '';
+    var models = MODELS_BY_PROVIDER[providerId] || [];
+    if (!models.length) {
+      els.model.innerHTML = '<option value="">No models</option>';
+      return;
     }
-
-    var blob = await response.blob();
-    var imageUrl = URL.createObjectURL(blob);
-
-    var genSeed = response.headers.get('X-Seed') || seed;
-    var genProvider = response.headers.get('X-Provider') || provider;
-    var genModel = response.headers.get('X-Model') || model;
-    var genWidth = response.headers.get('X-Width') || width;
-    var genHeight = response.headers.get('X-Height') || height;
-    var genStyle = response.headers.get('X-Style') || style;
-    var genStyleName = response.headers.get('X-Style-Name') || style;
-    var genQuality = response.headers.get('X-Quality-Mode') || qualityMode;
-
-    resultsDiv.innerHTML = '<div class="gallery"><div class="gallery-item">' +
-      '<img src="' + imageUrl + '" onclick="openModal(this.src)" style="cursor:pointer">' +
-      '<div class="gallery-info">' +
-        '<div class="gallery-meta">' +
-          '<span class="provider-badge">' + escapeHtml(genProvider) + '</span>' +
-          '<span class="model-badge">' + escapeHtml(genModel) + '</span>' +
-        '</div>' +
-        '<div class="gallery-meta">' +
-          '<span class="seed-badge">Seed: ' + escapeHtml(genSeed) + '</span>' +
-          '<span class="style-badge">' + escapeHtml(genStyleName) + '</span>' +
-        '</div>' +
-        '<div style="font-size:11px;color:#9ca3af;margin:8px 0">' + escapeHtml(prompt.substring(0, 80)) + '</div>' +
-        '<div class="gallery-actions">' +
-          '<button class="action-btn" onclick="downloadImage(\\'' + imageUrl + '\\',\\'flux-' + genSeed + '.png\\')">💾 下載</button>' +
-        '</div>' +
-      '</div>' +
-    '</div></div>';
-
-    await saveImage({
-      url: imageUrl,
-      blob: blob,
-      size: blob.size,
-      timestamp: Date.now(),
-      prompt: prompt,
-      negative_prompt: negativePrompt,
-      provider: genProvider,
-      model: genModel,
-      seed: genSeed,
-      width: genWidth,
-      height: genHeight,
-      style: genStyle,
-      style_name: genStyleName,
-      quality_mode: genQuality
+    models.forEach(function(m) {
+      var opt = document.createElement('option');
+      opt.value = m.id;
+      opt.textContent = m.name;
+      els.model.appendChild(opt);
     });
-
-  } catch (error) {
-    resultsDiv.innerHTML = '<div class="empty-state"><p style="color:#ef4444">❌ ' + escapeHtml(error.message) + '</p></div>';
-  } finally {
-    generateBtn.disabled = false;
-    generateBtn.innerHTML = '<span data-t="gen_btn">🎨 開始生成</span>';
   }
-});
 
-// ========= Modal =========
-var modal = document.getElementById('imageModal');
-var modalImg = document.getElementById('modalImage');
-var modalCloseBtn = document.getElementById('modalCloseBtn');
+  els.provider.onchange = function() {
+    updateModelsForProvider(els.provider.value);
+  };
 
-window.openModal = function(src) {
-  modal.classList.add('show');
-  modalImg.src = src;
-};
+  var seedLocked = false;
+  els.toggleSeed.onclick = function() {
+    seedLocked = !seedLocked;
+    if (seedLocked) {
+      els.seed.disabled = false;
+      if (els.seed.value === '-1') els.seed.value = Math.floor(Math.random() * 1000000);
+    } else {
+      els.seed.value = '-1';
+      els.seed.disabled = true;
+    }
+  };
 
-modalCloseBtn.onclick = function() {
-  modal.classList.remove('show');
-};
+  els.downloadBtn.onclick = function() {
+    var a = document.createElement('a');
+    a.href = els.img.src;
+    a.download = 'flux-image.png';
+    a.click();
+  };
 
-modal.onclick = function(e) {
-  if (e.target === modal) modal.classList.remove('show');
-};
+  els.openHistory.onclick = async function() {
+    var show = els.historyPanel.style.display !== 'none';
+    els.historyPanel.style.display = show ? 'none' : 'block';
+    if (!show) {
+      await updateHistoryCount();
+      await loadHistory();
+    }
+  };
 
-// ========= 下載圖片 =========
-window.downloadImage = function(url, filename) {
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-};
+  els.clearBtn.onclick = async function() {
+    if (!confirm('Clear all history?')) return;
+    await dbClearAllImages();
+    await updateHistoryCount();
+    await loadHistory();
+  };
 
-// ========= 多語言 =========
-var TEXTS = {
-  'zh-TW': {
-    nav_gen: '🎨 生成圖像', nav_his: '📚 歷史記錄',
-    settings_title: '⚙️ 生成參數',
-    provider_label: '🌐 API 供應商', model_label: '🤖 模型選擇',
-    size_label: '📐 尺寸預設', style_label: '🎨 藝術風格',
-    quality_label: '⚡ 質量模式', seed_label: '🎲 Seed (種子碼)',
-    auto_opt_label: '✨ 自動優化', auto_opt_desc: '自動調整 Steps 與 Guidance',
-    adv_settings: '🛠️ 進階參數', steps_label: '生成步數 (Steps)',
-    guidance_label: '引導係數 (Guidance)', gen_btn: '🎨 開始生成',
-    pos_prompt: '💬 正面提示詞', neg_prompt: '🚫 負面提示詞 (可選)',
-    ref_img: '🖼️ 參考圖像 URL (Kontext 專用)',
-    empty_title: '尚未生成任何圖像', empty_his: '暫無歷史記錄',
-    stat_total: '📊 總記錄數', stat_storage: '💾 存儲空間 (永久)',
-    btn_export: '📥 導出', btn_clear: '🗑️ 清空'
-  },
-  'en': {
-    nav_gen: '🎨 Generate', nav_his: '📚 History',
-    settings_title: '⚙️ Parameters',
-    provider_label: '🌐 API Provider', model_label: '🤖 Model',
-    size_label: '📐 Size Preset', style_label: '🎨 Art Style',
-    quality_label: '⚡ Quality Mode', seed_label: '🎲 Seed',
-    auto_opt_label: '✨ Auto Optimize', auto_opt_desc: 'Auto-adjust Steps & Guidance',
-    adv_settings: '🛠️ Advanced', steps_label: 'Steps',
-    guidance_label: 'Guidance Scale', gen_btn: '🎨 Generate',
-    pos_prompt: '💬 Prompt', neg_prompt: '🚫 Negative Prompt',
-    ref_img: '🖼️ Reference Images (Kontext)',
-    empty_title: 'No images generated yet', empty_his: 'No history',
-    stat_total: '📊 Total Records', stat_storage: '💾 Storage (Forever)',
-    btn_export: '📥 Export', btn_clear: '🗑️ Clear'
-  }
-};
+  els.exportBtn.onclick = async function() {
+    var images = await dbGetAllImages();
+    var blob = new Blob([JSON.stringify(images, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'flux-history-' + Date.now() + '.json';
+    a.click();
+  };
 
-var currentLang = 'zh-TW';
-var langSwitchBtn = document.getElementById('langSwitch');
+  els.genBtn.onclick = async function() {
+    var p = els.prompt.value.trim();
+    if (!p) { els.status.textContent = 'Prompt required.'; return; }
 
-langSwitchBtn.addEventListener('click', function() {
-  currentLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
-  applyLanguage(currentLang);
-});
+    els.genBtn.disabled = true;
+    els.status.textContent = 'Generating...';
+    try {
+      var refs = els.referenceImages.value.trim();
+      var refList = refs ? refs.split(',').map(function(s){return s.trim();}).filter(Boolean) : [];
 
-function applyLanguage(lang) {
-  var texts = TEXTS[lang];
-  document.querySelectorAll('[data-t]').forEach(function(el) {
-    var key = el.getAttribute('data-t');
-    if (texts[key]) el.textContent = texts[key];
-  });
-}
+      var payload = {
+        prompt: p,
+        negative_prompt: els.negativePrompt.value.trim(),
+        provider: els.provider.value,
+        model: els.model.value,
+        width: parseInt(els.width.value, 10),
+        height: parseInt(els.height.value, 10),
+        style: els.style.value,
+        quality_mode: els.qualityMode.value,
+        seed: parseInt(els.seed.value, 10),
+        n: 1,
+        auto_optimize: true,
+        auto_hd: true,
+        reference_images: refList
+      };
 
-// ========= 初始化 =========
-populateProviders();
-updateHistoryCount();
-applyLanguage(currentLang);
+      var res = await fetch('/_internal/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
+      if (!res.ok) {
+        var errJson = null;
+        try { errJson = await res.json(); } catch {}
+        throw new Error(errJson?.error?.message || ('HTTP ' + res.status));
+      }
+
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+
+      els.img.src = url;
+      els.img.style.display = 'block';
+      els.downloadBtn.style.display = 'inline-block';
+
+      var meta = {
+        url: url,
+        size: blob.size,
+        timestamp: Date.now(),
+        prompt: p,
+        negative_prompt: payload.negative_prompt,
+        provider: res.headers.get('X-Provider') || payload.provider,
+        model: res.headers.get('X-Model') || payload.model,
+        seed: res.headers.get('X-Seed') || payload.seed,
+        width: res.headers.get('X-Width') || payload.width,
+        height: res.headers.get('X-Height') || payload.height,
+        style: res.headers.get('X-Style') || payload.style,
+        style_name: res.headers.get('X-Style-Name') || payload.style,
+        quality_mode: res.headers.get('X-Quality-Mode') || payload.quality_mode
+      };
+
+      await dbAddImage(meta);
+      await updateHistoryCount();
+
+      els.status.textContent = 'Done. Provider=' + meta.provider + ', model=' + meta.model + ', seed=' + meta.seed;
+    } catch (e) {
+      els.status.textContent = 'Error: ' + e.message;
+    } finally {
+      els.genBtn.disabled = false;
+    }
+  };
+
+  populateProviders();
+  updateHistoryCount();
 </script>
 </body>
 </html>`;
@@ -2387,4 +1796,3 @@ applyLanguage(currentLang);
     }
   });
 }
-</script>
