@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - Multi-Provider Edition
-//  版本: 10.7.0
+//  版本: 10.7.1 (修復 IndexedDB keyPath 錯誤)
 //  更新: 支持 Pollinations + Infip.pro 多供應商，自動獲取模型
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.7.0",
+  PROJECT_VERSION: "10.7.1",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -882,276 +882,243 @@ export default {
     const url = new URL(request.url);
     const startTime = Date.now();
     const clientIP = getClientIP(request);
-    
-    // 初始化 Pollinations API
-    if (env.POLLINATIONS_API_KEY) { 
-      CONFIG.POLLINATIONS_AUTH.enabled = true; 
-      CONFIG.POLLINATIONS_AUTH.token = env.POLLINATIONS_API_KEY; 
-    } else { 
-      console.warn("⚠️ POLLINATIONS_API_KEY not set");
-      CONFIG.POLLINATIONS_AUTH.enabled = false; 
-      CONFIG.POLLINATIONS_AUTH.token = ""; 
+
+    // 初始化 Pollinations API Key（從 env 注入）
+    if (env.POLLINATIONS_API_KEY) {
+      CONFIG.POLLINATIONS_AUTH.enabled = true;
+      CONFIG.POLLINATIONS_AUTH.token = env.POLLINATIONS_API_KEY;
+    } else {
+      CONFIG.POLLINATIONS_AUTH.enabled = false;
+      CONFIG.POLLINATIONS_AUTH.token = "";
     }
-    
-    // 初始化 Infip API 並自動獲取模型
+
+    // 初始化 Infip API Key（從 env 注入）
     if (env.INFIP_API_KEY) {
       CONFIG.INFIP_AUTH.enabled = true;
       CONFIG.INFIP_AUTH.token = env.INFIP_API_KEY;
       CONFIG.PROVIDERS.infip.enabled = true;
-      
+
+      // 自動抓模型（失敗就維持空列表）
       try {
         const models = await fetchInfipModels(env.INFIP_API_KEY);
-        if (models.length > 0) {
-          CONFIG.PROVIDERS.infip.models = models;
-          console.log("✅ Loaded " + models.length + " Infip models");
-        }
+        if (models && models.length > 0) CONFIG.PROVIDERS.infip.models = models;
       } catch (e) {
-        console.error("❌ Failed to load Infip models:", e.message);
+        console.error("Failed to fetch infip models:", e.message);
       }
     } else {
       CONFIG.INFIP_AUTH.enabled = false;
+      CONFIG.INFIP_AUTH.token = "";
       CONFIG.PROVIDERS.infip.enabled = false;
-      console.log("ℹ️ INFIP_API_KEY not set, Infip provider disabled");
+      CONFIG.PROVIDERS.infip.models = [];
     }
-    
+
+    // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
-    
+
     try {
       let response;
-      
-      if (url.pathname === '/nano') { 
-        response = handleNanoPage(request); 
-      } 
-      else if (url.pathname === '/' || url.pathname === '') { 
-        response = handleUI(request); 
-      } 
-      else if (url.pathname === '/_internal/generate') { 
-        response = await handleInternalGenerate(request, env, ctx); 
-      } 
-      else if (url.pathname === '/health') {
-        const availableProviders = Object.entries(CONFIG.PROVIDERS)
-          .filter(([key, config]) => config.enabled)
-          .map(([key, config]) => ({
-            id: key,
-            name: config.name,
-            endpoint: config.endpoint,
-            authenticated: key === 'pollinations' ? CONFIG.POLLINATIONS_AUTH.enabled : CONFIG.INFIP_AUTH.enabled,
-            models_count: config.models.length,
-            models: config.models.map(m => ({ id: m.id, name: m.name, category: m.category }))
+
+      if (url.pathname === '/' || url.pathname === '') {
+        response = handleUI(request);
+      } else if (url.pathname === '/nano') {
+        response = handleNanoPage(request);
+      } else if (url.pathname === '/_internal/generate') {
+        response = await handleInternalGenerate(request, env, ctx);
+      } else if (url.pathname === '/health') {
+        const providers = Object.entries(CONFIG.PROVIDERS)
+          .filter(([_, cfg]) => cfg.enabled)
+          .map(([id, cfg]) => ({
+            id,
+            name: cfg.name,
+            endpoint: cfg.endpoint,
+            authenticated: id === 'pollinations' ? CONFIG.POLLINATIONS_AUTH.enabled : CONFIG.INFIP_AUTH.enabled,
+            models_count: (cfg.models || []).length
           }));
-        
+
         response = new Response(JSON.stringify({
-          status: 'ok', 
-          version: CONFIG.PROJECT_VERSION, 
+          status: "ok",
+          version: CONFIG.PROJECT_VERSION,
           timestamp: new Date().toISOString(),
-          providers: availableProviders,
-          styles_count: Object.keys(CONFIG.STYLE_PRESETS).length,
-          total_models: availableProviders.reduce((sum, p) => sum + p.models_count, 0)
-        }), { 
-          headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+          client_ip: clientIP,
+          providers
+        }), {
+          headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
         });
-      } 
-      else {
-        response = new Response(JSON.stringify({ 
-          error: 'Not Found', 
-          message: '此 Worker 僅提供 Web UI 界面', 
-          available_paths: ['/', '/health', '/_internal/generate', '/nano'] 
-        }), { 
-          status: 404, 
-          headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      } else {
+        response = new Response(JSON.stringify({
+          error: "Not Found",
+          available_paths: ["/", "/nano", "/_internal/generate", "/health"]
+        }), {
+          status: 404,
+          headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
         });
       }
-      
+
+      // 統一加上 trace header
       const duration = Date.now() - startTime;
       const headers = new Headers(response.headers);
       headers.set('X-Response-Time', duration + 'ms');
       headers.set('X-Worker-Version', CONFIG.PROJECT_VERSION);
-      headers.set('X-Providers-Enabled', Object.entries(CONFIG.PROVIDERS).filter(([k,v]) => v.enabled).map(([k]) => k).join(','));
-      
-      return new Response(response.body, { 
-        status: response.status, 
-        headers: headers 
-      });
+
+      return new Response(response.body, { status: response.status, headers });
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error('Worker error:', error);
-      return new Response(JSON.stringify({ 
-        error: { 
-          message: error.message, 
-          type: 'worker_error', 
-          timestamp: new Date().toISOString(), 
-          duration_ms: duration 
-        } 
-      }), { 
-        status: 500, 
-        headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+      return new Response(JSON.stringify({
+        error: {
+          message: error.message,
+          type: "worker_error",
+          duration_ms: duration
+        }
+      }), {
+        status: 500,
+        headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
       });
     }
   }
 };
 
 // =================================================================================
-//  後端生成 API：/_internal/generate
+//  內部生成 API：/_internal/generate
 // =================================================================================
 
 async function handleInternalGenerate(request, env, ctx) {
   const logger = new Logger();
   const startTime = Date.now();
   const clientIP = getClientIP(request);
-  
-  try {
-    const body = await request.json();
-    const prompt = body.prompt;
-    if (!prompt || !prompt.trim()) throw new Error("Prompt is required");
 
-    // NanoBanana Pro 限流檢查
+  try {
+    if (request.method !== 'POST') {
+      return new Response(JSON.stringify({ error: { message: "Method not allowed" } }), {
+        status: 405,
+        headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
+      });
+    }
+
+    const body = await request.json();
+    const prompt = (body.prompt || '').trim();
+    if (!prompt) throw new Error("Prompt is required");
+
+    // NanoBanana Pro：只允許 /nano 頁面呼叫 + KV 限流
     if (body.model === 'nanobanana-pro') {
       const source = request.headers.get('X-Source');
       if (source !== 'nano-page') {
-        return new Response(JSON.stringify({ 
-          error: { 
-            message: "🍌 Nano Banana Pro 模型僅限於獨立頁面使用！", 
-            type: 'access_denied' 
-          } 
-        }), { 
-          status: 403, 
-          headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+        return new Response(JSON.stringify({ error: { message: "🍌 Nano Banana Pro 模型僅限 /nano 使用", type: "access_denied" } }), {
+          status: 403,
+          headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
         });
       }
-      
-      if (body.n && body.n > 1) { body.n = 1; }
 
       const limiter = new RateLimiter(env);
       const check = await limiter.checkLimit(clientIP);
-      
       if (!check.allowed) {
-        return new Response(JSON.stringify({ 
-          error: { 
-            message: check.reason, 
-            type: 'rate_limit_exceeded' 
-          } 
-        }), { 
-          status: 429, 
-          headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+        return new Response(JSON.stringify({ error: { message: check.reason, type: "rate_limit_exceeded" } }), {
+          status: 429,
+          headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
         });
       }
     }
-    
-    let width = 1024, height = 1024;
-    if (body.width) width = body.width;
-    if (body.height) height = body.height;
-    
-    let referenceImages = [];
-    if (body.reference_images && Array.isArray(body.reference_images)) {
-      referenceImages = body.reference_images.filter(u => { 
-        try { new URL(u); return true; } catch { return false; } 
-      });
-    }
-    
+
+    // size
+    const width = Math.min(Math.max(parseInt(body.width || 1024), 256), 2048);
+    const height = Math.min(Math.max(parseInt(body.height || 1024), 256), 2048);
+
+    // seed
     const seedInput = body.seed !== undefined ? body.seed : -1;
     let seedValue = -1;
-    if (seedInput !== -1) { 
-      const parsedSeed = parseInt(seedInput); 
-      if (!isNaN(parsedSeed)) seedValue = parsedSeed; 
+    if (seedInput !== -1) {
+      const parsed = parseInt(seedInput);
+      if (!isNaN(parsed)) seedValue = parsed;
     }
-    
+
+    // ref images
+    let referenceImages = [];
+    if (Array.isArray(body.reference_images)) {
+      referenceImages = body.reference_images
+        .map(s => String(s || '').trim())
+        .filter(Boolean)
+        .filter(u => { try { new URL(u); return true; } catch { return false; } });
+    }
+
     const autoOptimize = body.auto_optimize !== false;
     const userSteps = body.steps ? parseInt(body.steps) : null;
     const userGuidance = body.guidance_scale ? parseFloat(body.guidance_scale) : null;
 
-    const options = { 
-      provider: body.provider || null, 
-      model: body.model || "gptimage", 
-      width: Math.min(Math.max(width, 256), 2048), 
-      height: Math.min(Math.max(height, 256), 2048), 
-      numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
-      seed: seedValue, 
-      negativePrompt: body.negative_prompt || "", 
-      guidance: autoOptimize ? null : userGuidance, 
-      steps: autoOptimize ? null : userSteps, 
-      enhance: body.enhance === true, 
-      nologo: body.nologo !== false, 
-      privateMode: body.private !== false, 
-      style: body.style || "none", 
-      autoOptimize: autoOptimize, 
-      autoHD: body.auto_hd !== false, 
-      qualityMode: body.quality_mode || 'standard', 
-      referenceImages: referenceImages
+    const options = {
+      provider: body.provider || null,
+      model: body.model || "gptimage",
+      width,
+      height,
+      numOutputs: Math.min(Math.max(parseInt(body.n || 1), 1), 4),
+      seed: seedValue,
+      negativePrompt: body.negative_prompt || "",
+      guidance: autoOptimize ? null : userGuidance,
+      steps: autoOptimize ? null : userSteps,
+      enhance: body.enhance === true,
+      nologo: body.nologo !== false,
+      privateMode: body.private !== false,
+      style: body.style || "none",
+      autoOptimize,
+      autoHD: body.auto_hd !== false,
+      qualityMode: body.quality_mode || "standard",
+      referenceImages
     };
-    
+
     const router = new MultiProviderRouter({}, env);
     const results = await router.generate(prompt, options, logger);
     const duration = Date.now() - startTime;
-    
-    // 單張圖片：直接返回二進制
+
+    // 單張：回傳 image binary
     if (results.length === 1 && results[0].imageData) {
-      const result = results[0];
-      return new Response(result.imageData, {
-        headers: { 
-          'Content-Type': result.contentType || 'image/png', 
-          'Content-Disposition': 'inline; filename="flux-ai-' + result.seed + '.png"', 
-          'X-Provider': result.provider,
-          'X-Model': result.model, 
-          'X-Seed': String(result.seed), 
-          'X-Width': String(result.width), 
-          'X-Height': String(result.height), 
-          'X-Generation-Time': duration + 'ms', 
-          'X-Quality-Mode': result.quality_mode, 
-          'X-Style': result.style, 
-          'X-Style-Name': result.style_name || result.style, 
-          'X-Authenticated': result.authenticated ? 'true' : 'false',
-          ...corsHeaders() 
+      const r = results[0];
+      return new Response(r.imageData, {
+        headers: {
+          'Content-Type': r.contentType || 'image/png',
+          'Content-Disposition': 'inline; filename="flux-ai-' + r.seed + '.png"',
+          'X-Provider': r.provider,
+          'X-Model': r.model,
+          'X-Seed': String(r.seed),
+          'X-Width': String(r.width),
+          'X-Height': String(r.height),
+          'X-Quality-Mode': r.quality_mode || 'standard',
+          'X-Style': r.style || 'none',
+          'X-Style-Name': r.style_name || r.style || 'none',
+          'X-Generation-Time': duration + 'ms',
+          ...corsHeaders()
         }
       });
     }
-    
-    // 多張圖片：JSON + base64
-    const imagesData = await Promise.all(results.map(async (r) => {
-      if (r.imageData) {
-        const uint8Array = new Uint8Array(r.imageData);
-        let binary = '';
-        for (let i = 0; i < uint8Array.byteLength; i++) binary += String.fromCharCode(uint8Array[i]);
-        return { 
-          image: 'data:' + r.contentType + ';base64,' + btoa(binary), 
-          provider: r.provider,
-          model: r.model, 
-          seed: r.seed, 
-          width: r.width, 
-          height: r.height, 
-          quality_mode: r.quality_mode, 
-          style: r.style, 
-          style_name: r.style_name || r.style, 
-          authenticated: r.authenticated 
-        };
-      }
-      return null;
+
+    // 多張：base64 JSON（目前 UI 用不到，但保留）
+    const data = await Promise.all(results.map(async (r) => {
+      const u8 = new Uint8Array(r.imageData);
+      let bin = '';
+      for (let i = 0; i < u8.byteLength; i++) bin += String.fromCharCode(u8[i]);
+      return {
+        image: 'data:' + (r.contentType || 'image/png') + ';base64,' + btoa(bin),
+        provider: r.provider,
+        model: r.model,
+        seed: r.seed,
+        width: r.width,
+        height: r.height
+      };
     }));
-    
-    return new Response(JSON.stringify({ 
-      created: Math.floor(Date.now() / 1000), 
-      data: imagesData.filter(d => d !== null), 
+
+    return new Response(JSON.stringify({
+      created: Math.floor(Date.now() / 1000),
       generation_time_ms: duration,
-      providers_available: router.getAvailableProviders(),
-      styles_available: Object.keys(CONFIG.STYLE_PRESETS).length 
-    }), { 
-      headers: corsHeaders({ 
-        'Content-Type': 'application/json', 
-        'X-Generation-Time': duration + 'ms',
-        'X-Styles-Count': String(Object.keys(CONFIG.STYLE_PRESETS).length) 
-      }) 
+      data
+    }), {
+      headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
     });
   } catch (e) {
     logger.add("❌ Error", { message: e.message });
-    return new Response(JSON.stringify({ 
-      error: { 
-        message: e.message, 
-        debug_logs: logger.get()
-      } 
-    }), { 
-      status: 400, 
-      headers: corsHeaders({ 'Content-Type': 'application/json' }) 
+    return new Response(JSON.stringify({
+      error: { message: e.message, debug_logs: logger.get() }
+    }), {
+      status: 400,
+      headers: corsHeaders({ 'Content-Type': 'application/json;charset=UTF-8' })
     });
   }
 }
@@ -1391,7 +1358,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   </div>
 
 <script>
-  const els = {
+  var els = {
     prompt: document.getElementById('prompt'),
     negative: document.getElementById('negative'),
     style: document.getElementById('style'),
@@ -1413,45 +1380,38 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     lbDownload: document.getElementById('lbDownload')
   };
 
-  let currentQuota = 5;
-  const maxQuota = 5;
-
-  const COOLDOWN_KEY = 'nano_cooldown_timestamp';
-  const COOLDOWN_SEC = 180;
-  let cooldownInterval = null;
+  var currentQuota = 5;
+  var maxQuota = 5;
+  var COOLDOWN_KEY = 'nano_cooldown_timestamp';
+  var COOLDOWN_SEC = 180;
+  var cooldownInterval = null;
 
   function toast(msg) {
-    const t = document.getElementById('toast');
+    var t = document.getElementById('toast');
     t.textContent = msg;
     t.style.display = 'block';
-    setTimeout(() => t.style.display = 'none', 3000);
+    setTimeout(function() { t.style.display = 'none'; }, 3000);
   }
 
   function checkAndStartCooldown() {
-    const lastTime = localStorage.getItem(COOLDOWN_KEY);
-    if(!lastTime) return;
-
-    const now = Date.now();
-    const diff = Math.floor((now - parseInt(lastTime)) / 1000);
-
-    if (diff < COOLDOWN_SEC) {
-      startCooldownTimer(COOLDOWN_SEC - diff);
-    }
+    var lastTime = localStorage.getItem(COOLDOWN_KEY);
+    if (!lastTime) return;
+    var now = Date.now();
+    var diff = Math.floor((now - parseInt(lastTime)) / 1000);
+    if (diff < COOLDOWN_SEC) startCooldownTimer(COOLDOWN_SEC - diff);
   }
 
   function startCooldownTimer(seconds) {
-    if(cooldownInterval) clearInterval(cooldownInterval);
-
+    if (cooldownInterval) clearInterval(cooldownInterval);
     els.genBtn.disabled = true;
     updateCooldownText(seconds);
-
-    let left = seconds;
-    cooldownInterval = setInterval(() => {
+    var left = seconds;
+    cooldownInterval = setInterval(function() {
       left--;
-      if(left <= 0) {
+      if (left <= 0) {
         clearInterval(cooldownInterval);
         localStorage.removeItem(COOLDOWN_KEY);
-        if(currentQuota > 0) {
+        if (currentQuota > 0) {
           els.genBtn.disabled = false;
           els.genBtn.innerHTML = '<span>生成圖像</span><span style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>';
         } else {
@@ -1467,26 +1427,25 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     els.genBtn.innerHTML = '<span>⚡ 能量回充中... (' + sec + 's)</span>';
   }
 
-  // 每小時前端 quota
-  const now = new Date();
-  const currentHourStr = now.toDateString() + '-' + now.getHours();
-  const stored = localStorage.getItem('nano_quota_hourly_v2'); 
-  if(stored) {
-    const data = JSON.parse(stored);
-    if(data.hour === currentHourStr) currentQuota = data.val;
+  var now = new Date();
+  var currentHourStr = now.toDateString() + '-' + now.getHours();
+  var stored = localStorage.getItem('nano_quota_hourly_v2');
+  if (stored) {
+    var data = JSON.parse(stored);
+    if (data.hour === currentHourStr) currentQuota = data.val;
     else {
-      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: currentHourStr, val: maxQuota }));
       currentQuota = maxQuota;
     }
   } else {
-    localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: currentHourStr, val: maxQuota}));
+    localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: currentHourStr, val: maxQuota }));
   }
 
   function updateQuotaUI() {
     els.quotaText.textContent = currentQuota + ' / ' + maxQuota;
-    const pct = (currentQuota / maxQuota) * 100;
+    var pct = (currentQuota / maxQuota) * 100;
     els.quotaFill.style.width = pct + '%';
-    if(currentQuota <= 0) {
+    if (currentQuota <= 0) {
       els.quotaFill.style.background = '#ef4444';
       els.genBtn.disabled = true;
       els.genBtn.innerHTML = '<span>本小時能量已耗盡</span><span style="display:block;font-size:12px;font-weight:400;margin-top:4px">請稍後再來</span>';
@@ -1494,11 +1453,11 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   }
 
   function consumeQuota() {
-    if(currentQuota > 0) {
+    if (currentQuota > 0) {
       currentQuota--;
-      const n = new Date();
-      const h = n.toDateString() + '-' + n.getHours();
-      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: currentQuota}));
+      var n = new Date();
+      var h = n.toDateString() + '-' + n.getHours();
+      localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: h, val: currentQuota }));
       updateQuotaUI();
     }
   }
@@ -1506,32 +1465,32 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   updateQuotaUI();
   checkAndStartCooldown();
 
-  els.ratios.forEach(r => {
-    r.onclick = () => {
-      els.ratios.forEach(i => i.classList.remove('active'));
+  els.ratios.forEach(function(r) {
+    r.onclick = function() {
+      els.ratios.forEach(function(i) { i.classList.remove('active'); });
       r.classList.add('active');
       els.width.value = r.dataset.w;
       els.height.value = r.dataset.h;
     };
   });
 
-  let isSeedRandom = true;
-  els.lockSeed.onclick = () => {
+  var isSeedRandom = true;
+  els.lockSeed.onclick = function() {
     isSeedRandom = !isSeedRandom;
-    if(isSeedRandom) {
+    if (isSeedRandom) {
       els.seed.value = '-1';
       els.seed.disabled = true;
       els.lockSeed.textContent = '🎲';
       els.lockSeed.classList.remove('active');
     } else {
-      if(els.seed.value == '-1') els.seed.value = Math.floor(Math.random() * 1000000);
+      if (els.seed.value == '-1') els.seed.value = Math.floor(Math.random() * 1000000);
       els.seed.disabled = false;
       els.lockSeed.textContent = '🔒';
       els.lockSeed.classList.add('active');
     }
   };
 
-  const prompts = [
+  var prompts = [
     "Cyberpunk street vendor making noodles, neon rain, detailed, 8k",
     "A translucent glass banana floating in space, nebula background",
     "Cute isometric room, gaming setup, pastel colors, 3d render",
@@ -1539,7 +1498,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     "Traditional Japanese village in winter, snow, ukiyo-e style",
     "Macro shot of a mechanical eye, gears, steampunk"
   ];
-  els.randomBtn.onclick = () => {
+  els.randomBtn.onclick = function() {
     els.prompt.value = prompts[Math.floor(Math.random() * prompts.length)];
     els.prompt.focus();
   };
@@ -1549,35 +1508,35 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     els.lbDownload.href = url;
     els.lightbox.classList.add('show');
   }
-  els.lbClose.onclick = () => els.lightbox.classList.remove('show');
-  els.img.onclick = () => { if(els.img.src) openLightbox(els.img.src); };
+  els.lbClose.onclick = function() { els.lightbox.classList.remove('show'); };
+  els.img.onclick = function() { if (els.img.src) openLightbox(els.img.src); };
 
   function addHistory(url) {
-    const div = document.createElement('div');
+    var div = document.createElement('div');
     div.className = 'history-item';
     div.innerHTML = '<img src="' + url + '">';
-    div.onclick = () => {
+    div.onclick = function() {
       els.img.src = url;
-      document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.history-item').forEach(function(i) { i.classList.remove('active'); });
       div.classList.add('active');
     };
     els.history.prepend(div);
-    if(els.history.children.length > 10) els.history.lastChild.remove();
-    document.querySelectorAll('.history-item').forEach(i => i.classList.remove('active'));
+    if (els.history.children.length > 10) els.history.lastChild.remove();
+    document.querySelectorAll('.history-item').forEach(function(i) { i.classList.remove('active'); });
     div.classList.add('active');
   }
 
-  els.genBtn.onclick = async () => {
-    const p = els.prompt.value.trim();
-    if(!p) return toast("⚠️ 請輸入提示詞");
-    if(currentQuota <= 0) return toast("🚫 本小時能量已耗盡，請稍後再來！");
+  els.genBtn.onclick = async function() {
+    var p = els.prompt.value.trim();
+    if (!p) return toast("⚠️ 請輸入提示詞");
+    if (currentQuota <= 0) return toast("🚫 本小時能量已耗盡，請稍後再來！");
 
     els.genBtn.disabled = true;
     els.loader.style.display = 'flex';
     els.img.style.opacity = '0.5';
 
     try {
-      const res = await fetch('/_internal/generate', {
+      var res = await fetch('/_internal/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Source': 'nano-page' },
         body: JSON.stringify({
@@ -1593,31 +1552,31 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         })
       });
 
-      if(res.status === 429) {
-        const err = await res.json();
+      if (res.status === 429) {
+        var err = await res.json();
         currentQuota = 0;
-        const n = new Date();
-        const h = n.toDateString() + '-' + n.getHours();
-        localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({hour: h, val: 0}));
+        var n = new Date();
+        var h = n.toDateString() + '-' + n.getHours();
+        localStorage.setItem('nano_quota_hourly_v2', JSON.stringify({ hour: h, val: 0 }));
         updateQuotaUI();
         throw new Error((err.error && err.error.message) ? err.error.message : '限額已滿');
       }
 
-      if(!res.ok) {
-        const err = await res.json();
+      if (!res.ok) {
+        var err = await res.json();
         throw new Error((err.error && err.error.message) ? err.error.message : '生成失敗');
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
 
       els.img.src = url;
       els.img.style.display = 'block';
       els.img.style.opacity = '1';
       document.querySelector('.placeholder-text').style.display = 'none';
 
-      const realSeed = res.headers.get('X-Seed');
-      if(!isSeedRandom) els.seed.value = realSeed;
+      var realSeed = res.headers.get('X-Seed');
+      if (!isSeedRandom) els.seed.value = realSeed;
 
       addHistory(url);
       consumeQuota();
@@ -1625,9 +1584,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
       localStorage.setItem(COOLDOWN_KEY, Date.now().toString());
       startCooldownTimer(COOLDOWN_SEC);
 
-    } catch(e) {
+    } catch (e) {
       toast("❌ " + e.message);
-      if(currentQuota > 0 && !String(e.message).includes('限額')) els.genBtn.disabled = false;
+      if (currentQuota > 0 && !String(e.message).includes('限額')) els.genBtn.disabled = false;
     } finally {
       els.loader.style.display = 'none';
     }
@@ -1636,43 +1595,44 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 </body>
 </html>`;
 
-  return new Response(html, { 
-    headers: { 
-      'Content-Type': 'text/html;charset=UTF-8', 
-      ...corsHeaders() 
-    } 
+  return new Response(html, {
+    headers: {
+      'Content-Type': 'text/html;charset=UTF-8',
+      ...corsHeaders()
+    }
   });
 }
 // =================================================================================
-//  主頁 UI：handleUI() - 已修復所有內層 backtick 問題
+//  主頁 UI：handleUI() - Part 1 (HTML/CSS/Body)
 // =================================================================================
 
 function handleUI(request) {
   // Provider 狀態提示
   const providerStatusHTML = Object.entries(CONFIG.PROVIDERS)
-    .filter(([key, config]) => config.enabled)
-    .map(([key, config]) => {
+    .filter(([key, cfg]) => cfg.enabled)
+    .map(([key, cfg]) => {
       const authEnabled = key === 'pollinations' ? CONFIG.POLLINATIONS_AUTH.enabled : CONFIG.INFIP_AUTH.enabled;
       const statusColor = authEnabled ? '#22c55e' : '#f59e0b';
       const statusIcon = authEnabled ? '🔐' : '⚠️';
       const statusText = authEnabled ? '已認證' : '需要 API Key';
       return '<div style="font-size:11px;color:' + statusColor + ';font-weight:600;margin-left:8px">' +
-        statusIcon + ' ' + config.name + ': ' + statusText + '</div>';
+        statusIcon + ' ' + cfg.name + ': ' + statusText +
+      '</div>';
     }).join('');
 
   // 風格選單
   const styleCategories = CONFIG.STYLE_CATEGORIES;
   const stylePresets = CONFIG.STYLE_PRESETS;
+
   let styleOptionsHTML = '';
   const sortedCategories = Object.entries(styleCategories).sort((a, b) => a[1].order - b[1].order);
-  
   for (const [categoryKey, categoryInfo] of sortedCategories) {
-    const stylesInCategory = Object.entries(stylePresets).filter(([key, style]) => style.category === categoryKey);
+    const stylesInCategory = Object.entries(stylePresets).filter(([k, s]) => s.category === categoryKey);
     if (stylesInCategory.length > 0) {
       styleOptionsHTML += '<optgroup label="' + categoryInfo.icon + ' ' + categoryInfo.name + '">';
-      for (const [styleKey, styleConfig] of stylesInCategory) {
+      for (const [styleKey, styleCfg] of stylesInCategory) {
         const selected = styleKey === 'none' ? ' selected' : '';
-        styleOptionsHTML += '<option value="' + styleKey + '"' + selected + '>' + styleConfig.icon + ' ' + styleConfig.name + '</option>';
+        styleOptionsHTML += '<option value="' + styleKey + '"' + selected + '>' + styleCfg.icon + ' ' + styleCfg.name + '</option>';
       }
       styleOptionsHTML += '</optgroup>';
     }
@@ -1686,7 +1646,7 @@ function handleUI(request) {
     Object.entries(CONFIG.PROVIDERS)
       .filter(([id, p]) => p.enabled)
       .map(([id, p]) => {
-        const models = (p.models || []).filter(m => m.id !== 'nanobanana-pro');
+        const models = (p.models || []).filter(m => m.id !== 'nanobanana-pro'); // 主頁不顯示 nano
         return [id, models.map(m => ({ id: m.id, name: m.name || m.id, category: m.category || 'default' }))];
       })
   );
@@ -1697,6 +1657,7 @@ function handleUI(request) {
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${CONFIG.PROJECT_NAME} v${CONFIG.PROJECT_VERSION}</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);color:#fff;min-height:100vh}
@@ -1712,22 +1673,31 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
 .nav-btn.nano-btn:hover{border-color:#FACC15;background:rgba(250,204,21,0.1);color:#FACC15;box-shadow:0 0 10px rgba(250,204,21,0.2)}
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px}
+
 .main-content{flex:1;display:flex;overflow:hidden}
 .left-panel{width:320px;background:rgba(255,255,255,0.03);border-right:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
 .center-panel{flex:1;padding:20px;overflow-y:auto}
 .right-panel{width:380px;background:rgba(255,255,255,0.03);border-left:1px solid rgba(255,255,255,0.1);overflow-y:auto;padding:20px;flex-shrink:0}
-@media(max-width:1024px){.main-content{flex-direction:column}.left-panel,.right-panel{width:100%;border:none;border-bottom:1px solid rgba(255,255,255,0.1)}}
+
+@media(max-width:1024px){
+  .main-content{flex-direction:column}
+  .left-panel,.right-panel{width:100%;border:none;border-bottom:1px solid rgba(255,255,255,0.1)}
+}
+
 .page{display:none}
 .page.active{display:block}
 .page.active .main-content{display:flex}
+
 .form-group{margin-bottom:16px}
 label{display:block;margin-bottom:6px;font-weight:600;font-size:13px;color:#e5e7eb}
 input,textarea,select{width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:#fff;font-size:13px;transition:all 0.3s}
 input:focus,textarea:focus,select:focus{outline:none;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.1)}
 select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer}
+
 .btn{padding:12px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.3s;display:inline-flex;align-items:center;gap:8px;justify-content:center;width:100%}
 .btn-primary{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;box-shadow:0 4px 15px rgba(245,158,11,0.3)}
 .btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+
 .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
 .gallery-item{background:rgba(0,0,0,0.4);border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);transition:all 0.3s}
 .gallery-item img{width:100%;height:280px;object-fit:cover;display:block;cursor:pointer}
@@ -1738,26 +1708,32 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 .gallery-actions{display:flex;gap:8px;margin-top:10px}
 .action-btn{padding:6px 12px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:12px;color:#fff;cursor:pointer;flex:1}
 .action-btn:hover{background:rgba(255,255,255,0.2)}
-.loading{text-align:center;padding:60px 20px;color:#9ca3af}
+
 .spinner{border:3px solid rgba(255,255,255,0.1);border-top:3px solid #f59e0b;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 15px}
 @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
 .history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:20px;background:rgba(255,255,255,0.03);border-radius:12px}
 .history-stats{display:flex;gap:20px;font-size:14px}
+
 .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.9);align-items:center;justify-content:center}
 .modal.show{display:flex}
 .modal-content img{max-width:90vw;max-height:90vh;border-radius:8px}
 .modal-close{position:absolute;top:20px;right:20px;color:#fff;font-size:32px;cursor:pointer}
+
 .empty-state{text-align:center;padding:80px 20px;color:#6b7280}
 .empty-state p{font-size:18px;margin-bottom:10px}
 </style>
 </head>
+
 <body>
 <div class="container">
+
   <div class="top-nav">
     <div class="nav-left">
       <div class="logo">🎨 ${CONFIG.PROJECT_NAME} <span class="badge">v${CONFIG.PROJECT_VERSION}</span></div>
       <div class="api-status">${providerStatusHTML}</div>
     </div>
+
     <div class="nav-menu">
       <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">🍌 Nano版</a>
       <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
@@ -1768,17 +1744,21 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 
   <div id="generatePage" class="page active">
     <div class="main-content">
+
       <div class="left-panel">
         <div class="section-title" data-t="settings_title" style="font-size:16px;font-weight:700;margin-bottom:20px;color:#f59e0b">⚙️ 生成參數</div>
+
         <form id="generateForm">
           <div class="form-group">
             <label data-t="provider_label">🌐 API 供應商</label>
             <select id="provider"></select>
           </div>
+
           <div class="form-group">
             <label data-t="model_label">🤖 模型選擇</label>
             <select id="model"></select>
           </div>
+
           <div class="form-group">
             <label data-t="size_label">📐 尺寸預設</label>
             <select id="size">
@@ -1788,10 +1768,12 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
               <option value="landscape-16-9-hd">Landscape 1920x1080</option>
             </select>
           </div>
+
           <div class="form-group">
             <label data-t="style_label">🎨 藝術風格</label>
             <select id="style">${styleOptionsHTML}</select>
           </div>
+
           <div class="form-group">
             <label data-t="quality_label">⚡ 質量模式</label>
             <select id="qualityMode">
@@ -1800,23 +1782,26 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
               <option value="ultra">Ultra HD</option>
             </select>
           </div>
+
           <div class="form-group">
             <label data-t="seed_label">🎲 Seed (種子碼)</label>
-            <div style="display:flex;gap:10px">
-              <input type="number" id="seed" value="-1" placeholder="Random (-1)" disabled style="flex:1;opacity:0.7;cursor:not-allowed;font-family:monospace">
-              <button type="button" id="seedToggleBtn" class="btn" style="width:auto;padding:0 15px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2)">🎲</button>
+            <div style="display:flex; gap:10px;">
+              <input type="number" id="seed" value="-1" placeholder="Random (-1)" disabled style="flex:1; opacity:0.7; cursor:not-allowed; font-family: monospace;">
+              <button type="button" id="seedToggleBtn" class="btn" style="width:auto; padding:0 15px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);">🎲</button>
             </div>
           </div>
-          <div class="form-group" style="background:rgba(255,255,255,0.05);padding:10px;border-radius:8px;margin-top:15px">
-            <div style="display:flex;justify-content:space-between;align-items:center">
+
+          <div class="form-group" style="background:rgba(255,255,255,0.05); padding:10px; border-radius:8px; margin-top:15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
               <div>
-                <label for="autoOptimize" style="margin:0;cursor:pointer" data-t="auto_opt_label">✨ 自動優化</label>
-                <div style="font-size:11px;color:#9ca3af;margin-top:2px" data-t="auto_opt_desc">自動調整 Steps 與 Guidance</div>
+                <label for="autoOptimize" style="margin:0; cursor:pointer;" data-t="auto_opt_label">✨ 自動優化</label>
+                <div style="font-size:11px; color:#9ca3af; margin-top:2px;" data-t="auto_opt_desc">自動調整 Steps 與 Guidance</div>
               </div>
-              <input type="checkbox" id="autoOptimize" checked style="width:auto;width:20px;height:20px;cursor:pointer">
+              <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
             </div>
-            <div id="advancedParams" style="display:none;margin-top:15px;border-top:1px solid rgba(255,255,255,0.1);padding-top:15px">
-              <div style="font-size:12px;color:#f59e0b;margin-bottom:10px;font-weight:bold" data-t="adv_settings">🛠️ 進階參數</div>
+
+            <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+              <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
               <div class="form-group">
                 <label data-t="steps_label">生成步數 (Steps)</label>
                 <input type="number" id="steps" value="25" min="1" max="50">
@@ -1827,7 +1812,8 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
               </div>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px">🎨 開始生成</button>
+
+          <button type="submit" class="btn btn-primary" id="generateBtn" data-t="gen_btn" style="margin-top:10px;">🎨 開始生成</button>
         </form>
       </div>
 
@@ -1845,15 +1831,18 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
           <label data-t="pos_prompt">💬 正面提示詞</label>
           <textarea id="prompt" placeholder="Describe your image..." required rows="6"></textarea>
         </div>
+
         <div class="form-group">
           <label data-t="neg_prompt">🚫 負面提示詞 (可選)</label>
           <textarea id="negativePrompt" placeholder="What to avoid..." rows="4"></textarea>
         </div>
+
         <div class="form-group">
           <label data-t="ref_img">🖼️ 參考圖像 URL (Kontext 專用)</label>
           <textarea id="referenceImages" placeholder="Image URLs separated by comma" rows="3"></textarea>
         </div>
       </div>
+
     </div>
   </div>
 
@@ -1883,346 +1872,519 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <span class="modal-close" id="modalCloseBtn">×</span>
     <div class="modal-content"><img id="modalImage" src=""></div>
   </div>
+
 </div>
 
 <script>
 `;
-  // 接續 Part 5 的 <script> 標籤後
-  const scriptContent = `
-var DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=1;
-var dbPromise=new Promise(function(resolve,reject){
-  var req=indexedDB.open(DB_NAME,DB_VERSION);
-  req.onupgradeneeded=function(e){
-    var db=e.target.result;
-    if(!db.objectStoreNames.contains(STORE_NAME)){
-      db.createObjectStore(STORE_NAME,{keyPath:'id',autoIncrement:true});
+// 這是 Part 6/6：接續 Part 5 的 <script> 標籤內容
+// ========= 配置與常數 =========
+var ENABLED_PROVIDERS = ${JSON.stringify(ENABLED_PROVIDERS)};
+var MODELS_BY_PROVIDER = ${JSON.stringify(MODELS_BY_PROVIDER)};
+var PRESET_SIZES = ${JSON.stringify(CONFIG.PRESET_SIZES)};
+
+// ========= IndexedDB (FIXED - Version 2) =========
+var DB_NAME = 'FluxAI_DB';
+var STORE_NAME = 'images';
+var DB_VERSION = 2; // 升級版本，觸發 onupgradeneeded 重建 store
+
+function idbReqToPromise(req) {
+  return new Promise(function(resolve, reject) {
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error); };
+  });
+}
+
+function txDone(tx) {
+  return new Promise(function(resolve, reject) {
+    tx.oncomplete = function() { resolve(); };
+    tx.onerror = function() { reject(tx.error); };
+    tx.onabort = function() { reject(tx.error || new Error('Transaction aborted')); };
+  });
+}
+
+var dbPromise = new Promise(function(resolve, reject) {
+  var req = indexedDB.open(DB_NAME, DB_VERSION);
+
+  req.onupgradeneeded = function(e) {
+    var db = e.target.result;
+
+    // 直接重建 schema（最穩），避免舊 store 沒 autoIncrement 造成 keyPath 錯誤
+    if (db.objectStoreNames.contains(STORE_NAME)) {
+      db.deleteObjectStore(STORE_NAME);
     }
+
+    db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
   };
-  req.onsuccess=function(e){resolve(e.target.result);};
-  req.onerror=function(e){reject(e.target.error);};
+
+  req.onsuccess = function(e) { resolve(e.target.result); };
+  req.onerror = function(e) { reject(e.target.error); };
 });
 
-async function saveImage(imageData){
-  var db=await dbPromise;
-  var tx=db.transaction(STORE_NAME,'readwrite');
-  var store=tx.objectStore(STORE_NAME);
-  await store.add(imageData);
+async function dbAddImage(doc) {
+  var db = await dbPromise;
+  var tx = db.transaction(STORE_NAME, 'readwrite');
+  var store = tx.objectStore(STORE_NAME);
+
+  // 不要自己塞 id；讓 autoIncrement 生成
+  var clean = Object.assign({}, doc);
+  delete clean.id;
+
+  var id = await idbReqToPromise(store.add(clean));
+  await txDone(tx);
+  return id;
+}
+
+async function dbGetAllImages() {
+  var db = await dbPromise;
+  var tx = db.transaction(STORE_NAME, 'readonly');
+  var store = tx.objectStore(STORE_NAME);
+
+  var list = await idbReqToPromise(store.getAll());
+  await txDone(tx);
+  return list || [];
+}
+
+async function dbDeleteImageById(id) {
+  var db = await dbPromise;
+  var tx = db.transaction(STORE_NAME, 'readwrite');
+  var store = tx.objectStore(STORE_NAME);
+
+  await idbReqToPromise(store.delete(id));
+  await txDone(tx);
+}
+
+async function dbClearAllImages() {
+  var db = await dbPromise;
+  var tx = db.transaction(STORE_NAME, 'readwrite');
+  var store = tx.objectStore(STORE_NAME);
+
+  await idbReqToPromise(store.clear());
+  await txDone(tx);
+}
+
+async function updateHistoryCount() {
+  var images = await dbGetAllImages();
+  document.getElementById('historyCount').textContent = images.length;
+
+  var total = images.reduce(function(sum, img) { return sum + (img.size || 0); }, 0);
+  document.getElementById('storageSize').textContent = (total / 1024).toFixed(2) + ' KB';
+}
+
+// ========= UI 控制 =========
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+async function saveImage(imageData) {
+  await dbAddImage(imageData);
   await updateHistoryCount();
 }
 
-async function getAllImages(){
-  var db=await dbPromise;
-  var tx=db.transaction(STORE_NAME,'readonly');
-  var store=tx.objectStore(STORE_NAME);
-  return new Promise(function(resolve,reject){
-    var req=store.getAll();
-    req.onsuccess=function(){resolve(req.result);};
-    req.onerror=function(){reject(req.error);};
-  });
-}
+async function loadHistory() {
+  var images = await dbGetAllImages();
+  var listDiv = document.getElementById('historyList');
+  var totalDiv = document.getElementById('historyTotal');
 
-async function deleteImage(id){
-  var db=await dbPromise;
-  var tx=db.transaction(STORE_NAME,'readwrite');
-  var store=tx.objectStore(STORE_NAME);
-  await store.delete(id);
-  await updateHistoryCount();
-}
+  totalDiv.textContent = images.length;
 
-async function clearAllImages(){
-  var db=await dbPromise;
-  var tx=db.transaction(STORE_NAME,'readwrite');
-  var store=tx.objectStore(STORE_NAME);
-  await store.clear();
-  await updateHistoryCount();
-}
-
-async function updateHistoryCount(){
-  var images=await getAllImages();
-  document.getElementById('historyCount').textContent=images.length;
-  var total=images.reduce(function(sum,img){return sum+(img.size||0);},0);
-  document.getElementById('storageSize').textContent=(total/1024).toFixed(2)+' KB';
-}
-
-var PROVIDERS=` + JSON.stringify(ENABLED_PROVIDERS) + `;
-var MODELS=` + JSON.stringify(MODELS_BY_PROVIDER) + `;
-var currentLang='zh';
-var i18n={
-  zh:{nav_gen:'🎨 生成圖像',nav_his:'📚 歷史記錄',settings_title:'⚙️ 生成參數',provider_label:'🌐 API 供應商',model_label:'🤖 模型選擇',size_label:'📐 尺寸預設',style_label:'🎨 藝術風格',quality_label:'⚡ 質量模式',seed_label:'🎲 Seed (種子碼)',auto_opt_label:'✨ 自動優化',auto_opt_desc:'自動調整 Steps 與 Guidance',adv_settings:'🛠️ 進階參數',steps_label:'生成步數 (Steps)',guidance_label:'引導係數 (Guidance)',gen_btn:'🎨 開始生成',pos_prompt:'💬 正面提示詞',neg_prompt:'🚫 負面提示詞 (可選)',ref_img:'🖼️ 參考圖像 URL (Kontext 專用)',empty_title:'尚未生成任何圖像',stat_total:'📊 總記錄數',stat_storage:'💾 存儲空間 (永久)',btn_export:'📥 導出',btn_clear:'🗑️ 清空'},
-  en:{nav_gen:'🎨 Generate',nav_his:'📚 History',settings_title:'⚙️ Generation Settings',provider_label:'🌐 API Provider',model_label:'🤖 Model Selection',size_label:'📐 Size Preset',style_label:'🎨 Art Style',quality_label:'⚡ Quality Mode',seed_label:'🎲 Seed',auto_opt_label:'✨ Auto Optimize',auto_opt_desc:'Auto adjust Steps & Guidance',adv_settings:'🛠️ Advanced',steps_label:'Steps',guidance_label:'Guidance Scale',gen_btn:'🎨 Generate',pos_prompt:'💬 Positive Prompt',neg_prompt:'🚫 Negative Prompt (Optional)',ref_img:'🖼️ Reference Image URLs (Kontext)',empty_title:'No images generated yet',stat_total:'📊 Total Records',stat_storage:'💾 Storage (Permanent)',btn_export:'📥 Export',btn_clear:'🗑️ Clear'}
-};
-
-function switchLang(){
-  currentLang=currentLang==='zh'?'en':'zh';
-  document.querySelectorAll('[data-t]').forEach(function(el){
-    var key=el.getAttribute('data-t');
-    if(i18n[currentLang][key])el.textContent=i18n[currentLang][key];
-  });
-}
-
-document.getElementById('langSwitch').onclick=switchLang;
-
-var providerSelect=document.getElementById('provider');
-var modelSelect=document.getElementById('model');
-var seedInput=document.getElementById('seed');
-var seedToggleBtn=document.getElementById('seedToggleBtn');
-var isSeedLocked=false;
-
-PROVIDERS.forEach(function(p){
-  var opt=document.createElement('option');
-  opt.value=p.id;
-  opt.textContent=p.name;
-  providerSelect.appendChild(opt);
-});
-
-function updateModels(){
-  var pid=providerSelect.value;
-  var models=MODELS[pid]||[];
-  modelSelect.innerHTML='';
-  models.forEach(function(m){
-    var opt=document.createElement('option');
-    opt.value=m.id;
-    opt.textContent=m.name;
-    modelSelect.appendChild(opt);
-  });
-  var provider=PROVIDERS.find(function(p){return p.id===pid;});
-  if(provider&&!provider.supports_seed){
-    seedInput.disabled=true;
-    seedToggleBtn.disabled=true;
-    seedInput.value='-1';
-    isSeedLocked=false;
-  }else if(!isSeedLocked){
-    seedInput.disabled=true;
-  }
-}
-
-providerSelect.onchange=updateModels;
-updateModels();
-
-seedToggleBtn.onclick=function(){
-  var provider=PROVIDERS.find(function(p){return p.id===providerSelect.value;});
-  if(provider&&!provider.supports_seed)return;
-  isSeedLocked=!isSeedLocked;
-  if(isSeedLocked){
-    seedInput.disabled=false;
-    if(seedInput.value==='-1')seedInput.value=Math.floor(Math.random()*1000000);
-    seedToggleBtn.textContent='🔒';
-  }else{
-    seedInput.disabled=true;
-    seedInput.value='-1';
-    seedToggleBtn.textContent='🎲';
-  }
-};
-
-var autoOptimizeCheckbox=document.getElementById('autoOptimize');
-var advancedParams=document.getElementById('advancedParams');
-autoOptimizeCheckbox.onchange=function(){
-  advancedParams.style.display=this.checked?'none':'block';
-};
-
-document.querySelectorAll('.nav-btn').forEach(function(btn){
-  btn.onclick=function(){
-    var page=btn.getAttribute('data-page');
-    document.querySelectorAll('.nav-btn').forEach(function(b){b.classList.remove('active');});
-    btn.classList.add('active');
-    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-    document.getElementById(page+'Page').classList.add('active');
-    if(page==='history')loadHistory();
-  };
-});
-
-document.getElementById('generateForm').onsubmit=async function(e){
-  e.preventDefault();
-  var prompt=document.getElementById('prompt').value.trim();
-  if(!prompt){alert('請輸入提示詞');return;}
-  
-  var btn=document.getElementById('generateBtn');
-  var originalText=btn.innerHTML;
-  btn.disabled=true;
-  btn.innerHTML='<div class="spinner" style="width:20px;height:20px;margin:0 auto"></div>';
-  
-  var sizeKey=document.getElementById('size').value;
-  var sizeConfig=` + JSON.stringify(CONFIG.PRESET_SIZES) + `[sizeKey];
-  
-  var refText=document.getElementById('referenceImages').value.trim();
-  var refImages=[];
-  if(refText){
-    refImages=refText.split(',').map(function(s){return s.trim();}).filter(function(s){return s;});
-  }
-  
-  var payload={
-    prompt:prompt,
-    negative_prompt:document.getElementById('negativePrompt').value,
-    provider:providerSelect.value,
-    model:modelSelect.value,
-    width:sizeConfig.width,
-    height:sizeConfig.height,
-    style:document.getElementById('style').value,
-    quality_mode:document.getElementById('qualityMode').value,
-    seed:parseInt(seedInput.value),
-    auto_optimize:autoOptimizeCheckbox.checked,
-    n:1,
-    nologo:true,
-    reference_images:refImages
-  };
-  
-  if(!autoOptimizeCheckbox.checked){
-    payload.steps=parseInt(document.getElementById('steps').value);
-    payload.guidance_scale=parseFloat(document.getElementById('guidanceScale').value);
-  }
-  
-  try{
-    var res=await fetch('/_internal/generate',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(payload)
-    });
-    
-    if(!res.ok){
-      var err=await res.json();
-      throw new Error(err.error?.message||'Generation failed');
-    }
-    
-    var blob=await res.blob();
-    var url=URL.createObjectURL(blob);
-    
-    var provider=res.headers.get('X-Provider');
-    var model=res.headers.get('X-Model');
-    var seed=res.headers.get('X-Seed');
-    var width=res.headers.get('X-Width');
-    var height=res.headers.get('X-Height');
-    var style=res.headers.get('X-Style');
-    var styleName=res.headers.get('X-Style-Name');
-    var qualityMode=res.headers.get('X-Quality-Mode');
-    
-    await saveImage({
-      url:url,
-      blob:blob,
-      size:blob.size,
-      prompt:prompt,
-      provider:provider,
-      model:model,
-      seed:seed,
-      width:width,
-      height:height,
-      style:style,
-      style_name:styleName,
-      quality_mode:qualityMode,
-      timestamp:Date.now()
-    });
-    
-    displayResult(url,{provider:provider,model:model,seed:seed,width:width,height:height,style:styleName,quality:qualityMode});
-  }catch(err){
-    alert('生成失敗: '+err.message);
-  }finally{
-    btn.disabled=false;
-    btn.innerHTML=originalText;
-  }
-};
-
-function displayResult(url,meta){
-  var resultsDiv=document.getElementById('results');
-  resultsDiv.innerHTML='';
-  
-  var card=document.createElement('div');
-  card.className='gallery-item';
-  card.innerHTML='<img src="'+url+'" alt="Generated" onclick="openModal(this.src)"><div class="gallery-info"><div class="gallery-meta"><span class="provider-badge">'+meta.provider+'</span><span class="model-badge">'+meta.model+'</span></div><div class="gallery-meta"><span class="seed-badge">Seed: '+meta.seed+'</span><span class="style-badge">'+meta.style+'</span></div><div style="font-size:11px;color:#9ca3af;margin-top:8px">'+meta.width+'x'+meta.height+' • '+meta.quality+'</div><div class="gallery-actions"><button class="action-btn" onclick="downloadImage(\\''+url+'\\',\\'flux-'+meta.seed+'.png\\')">💾 保存</button><button class="action-btn" onclick="copyPrompt()">📋 複製</button></div></div>';
-  resultsDiv.appendChild(card);
-}
-
-function openModal(src){
-  document.getElementById('modalImage').src=src;
-  document.getElementById('imageModal').classList.add('show');
-}
-
-document.getElementById('modalCloseBtn').onclick=function(){
-  document.getElementById('imageModal').classList.remove('show');
-};
-
-function downloadImage(url,filename){
-  var a=document.createElement('a');
-  a.href=url;
-  a.download=filename;
-  a.click();
-}
-
-function copyPrompt(){
-  var prompt=document.getElementById('prompt').value;
-  navigator.clipboard.writeText(prompt).then(function(){
-    alert('提示詞已複製');
-  });
-}
-
-async function loadHistory(){
-  var images=await getAllImages();
-  var listDiv=document.getElementById('historyList');
-  var totalDiv=document.getElementById('historyTotal');
-  
-  totalDiv.textContent=images.length;
-  
-  if(images.length===0){
-    listDiv.innerHTML='<div class="empty-state"><p>暫無歷史記錄</p></div>';
+  if (images.length === 0) {
+    listDiv.innerHTML = '<div class="empty-state"><p data-t="empty_his">暫無歷史記錄</p></div>';
     return;
   }
-  
-  listDiv.innerHTML='<div class="gallery"></div>';
-  var gallery=listDiv.querySelector('.gallery');
-  
-  images.reverse().forEach(function(img){
-    var card=document.createElement('div');
-    card.className='gallery-item';
-    card.innerHTML='<img src="'+img.url+'" onclick="openModal(this.src)"><div class="gallery-info"><div class="gallery-meta"><span class="provider-badge">'+img.provider+'</span><span class="model-badge">'+img.model+'</span></div><div class="gallery-meta"><span class="seed-badge">Seed: '+img.seed+'</span><span class="style-badge">'+img.style_name+'</span></div><div style="font-size:11px;color:#9ca3af;margin:8px 0">'+img.prompt.substring(0,60)+'...</div><div class="gallery-actions"><button class="action-btn" onclick="downloadImage(\\''+img.url+'\\',\\'flux-'+img.seed+'.png\\')">💾 保存</button><button class="action-btn" onclick="deleteImage('+img.id+')">🗑️ 刪除</button></div></div>';
+
+  listDiv.innerHTML = '<div class="gallery"></div>';
+  var gallery = listDiv.querySelector('.gallery');
+
+  images.slice().reverse().forEach(function(img) {
+    var safePrompt = escapeHtml(img.prompt || '');
+    var promptShort = safePrompt.length > 60 ? (safePrompt.substring(0, 60) + '...') : safePrompt;
+
+    var card = document.createElement('div');
+    card.className = 'gallery-item';
+
+    card.innerHTML =
+      '<img src="' + img.url + '" onclick="openModal(this.src)">' +
+      '<div class="gallery-info">' +
+        '<div class="gallery-meta">' +
+          '<span class="provider-badge">' + escapeHtml(img.provider) + '</span>' +
+          '<span class="model-badge">' + escapeHtml(img.model) + '</span>' +
+        '</div>' +
+        '<div class="gallery-meta">' +
+          '<span class="seed-badge">Seed: ' + escapeHtml(img.seed) + '</span>' +
+          '<span class="style-badge">' + escapeHtml(img.style_name) + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#9ca3af;margin:8px 0">' + promptShort + '</div>' +
+        '<div class="gallery-actions">' +
+          '<button class="action-btn" onclick="downloadImage(\\'' + img.url + '\\',\\'flux-' + escapeHtml(img.seed) + '.png\\')">💾 保存</button>' +
+          '<button class="action-btn" onclick="uiDeleteHistoryItem(' + img.id + ')">🗑️ 刪除</button>' +
+        '</div>' +
+      '</div>';
+
     gallery.appendChild(card);
   });
 }
 
-window.deleteImage=async function(id){
-  if(!confirm('確定刪除此圖像？'))return;
-  await deleteImage(id);
+window.uiDeleteHistoryItem = async function(id) {
+  if (!confirm('確定刪除此圖像？')) return;
+  await dbDeleteImageById(id);
+  await updateHistoryCount();
   await loadHistory();
 };
 
-document.getElementById('clearBtn').onclick=async function(){
-  if(!confirm('確定清空所有歷史記錄？此操作不可撤銷！'))return;
-  await clearAllImages();
+document.getElementById('clearBtn').onclick = async function() {
+  if (!confirm('確定清空所有歷史記錄？此操作不可撤銷！')) return;
+  await dbClearAllImages();
+  await updateHistoryCount();
   await loadHistory();
 };
 
-document.getElementById('exportBtn').onclick=async function(){
-  var images=await getAllImages();
-  var data=images.map(function(img){
-    return{
-      prompt:img.prompt,
-      provider:img.provider,
-      model:img.model,
-      seed:img.seed,
-      width:img.width,
-      height:img.height,
-      style:img.style_name,
-      quality:img.quality_mode,
-      timestamp:new Date(img.timestamp).toISOString()
+document.getElementById('exportBtn').onclick = async function() {
+  var images = await dbGetAllImages();
+  var data = images.map(function(img) {
+    return {
+      id: img.id,
+      prompt: img.prompt,
+      provider: img.provider,
+      model: img.model,
+      seed: img.seed,
+      width: img.width,
+      height: img.height,
+      style: img.style_name,
+      quality: img.quality_mode,
+      timestamp: new Date(img.timestamp).toISOString()
     };
   });
-  var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='flux-ai-history-'+Date.now()+'.json';
+
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'flux-ai-history-' + Date.now() + '.json';
   a.click();
 };
 
-updateHistoryCount();
-`;
+// ========= 頁面切換 =========
+var navBtns = document.querySelectorAll('.nav-btn[data-page]');
+navBtns.forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var targetPage = btn.dataset.page;
+    
+    navBtns.forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
 
-  const endHtml = `
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    document.getElementById(targetPage + 'Page').classList.add('active');
+
+    if (targetPage === 'history') loadHistory();
+  });
+});
+
+// ========= Seed 鎖定 =========
+var seedInput = document.getElementById('seed');
+var seedToggleBtn = document.getElementById('seedToggleBtn');
+var seedLocked = false;
+
+seedToggleBtn.addEventListener('click', function(e) {
+  e.preventDefault();
+  seedLocked = !seedLocked;
+  
+  if (seedLocked) {
+    seedInput.disabled = false;
+    seedInput.style.opacity = '1';
+    seedInput.style.cursor = 'text';
+    if (seedInput.value === '-1') seedInput.value = Math.floor(Math.random() * 1000000);
+    seedToggleBtn.textContent = '🔒';
+    seedToggleBtn.style.background = 'rgba(245,158,11,0.2)';
+    seedToggleBtn.style.borderColor = '#f59e0b';
+  } else {
+    seedInput.disabled = true;
+    seedInput.style.opacity = '0.7';
+    seedInput.style.cursor = 'not-allowed';
+    seedInput.value = '-1';
+    seedToggleBtn.textContent = '🎲';
+    seedToggleBtn.style.background = 'rgba(255,255,255,0.1)';
+    seedToggleBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+  }
+});
+
+// ========= 自動優化切換 =========
+var autoOptimizeCheck = document.getElementById('autoOptimize');
+var advancedParamsDiv = document.getElementById('advancedParams');
+
+autoOptimizeCheck.addEventListener('change', function() {
+  advancedParamsDiv.style.display = this.checked ? 'none' : 'block';
+});
+
+// ========= Provider / Model 聯動 =========
+var providerSelect = document.getElementById('provider');
+var modelSelect = document.getElementById('model');
+
+function populateProviders() {
+  providerSelect.innerHTML = '';
+  ENABLED_PROVIDERS.forEach(function(p) {
+    var opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    providerSelect.appendChild(opt);
+  });
+  updateModelsForProvider(providerSelect.value);
+}
+
+function updateModelsForProvider(providerId) {
+  modelSelect.innerHTML = '';
+  var models = MODELS_BY_PROVIDER[providerId] || [];
+  if (models.length === 0) {
+    modelSelect.innerHTML = '<option value="">No models available</option>';
+    return;
+  }
+  models.forEach(function(m) {
+    var opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    modelSelect.appendChild(opt);
+  });
+}
+
+providerSelect.addEventListener('change', function() {
+  updateModelsForProvider(this.value);
+});
+
+// ========= 尺寸預設聯動 =========
+var sizeSelect = document.getElementById('size');
+sizeSelect.addEventListener('change', function() {
+  var presetKey = this.value;
+  var preset = PRESET_SIZES[presetKey];
+  if (preset) {
+    document.getElementById('width').value = preset.width;
+    document.getElementById('height').value = preset.height;
+  }
+});
+
+// ========= 生成表單提交 =========
+var generateForm = document.getElementById('generateForm');
+var generateBtn = document.getElementById('generateBtn');
+var resultsDiv = document.getElementById('results');
+
+generateForm.addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  var prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) {
+    alert('請輸入提示詞');
+    return;
+  }
+
+  var provider = providerSelect.value;
+  var model = modelSelect.value;
+  var sizeKey = sizeSelect.value;
+  var preset = PRESET_SIZES[sizeKey];
+  var width = preset ? preset.width : 1024;
+  var height = preset ? preset.height : 1024;
+
+  var style = document.getElementById('style').value;
+  var qualityMode = document.getElementById('qualityMode').value;
+  var seed = parseInt(seedInput.value);
+  var negativePrompt = document.getElementById('negativePrompt').value.trim();
+  var referenceImagesText = document.getElementById('referenceImages').value.trim();
+
+  var referenceImages = [];
+  if (referenceImagesText) {
+    referenceImages = referenceImagesText.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  }
+
+  var autoOptimize = autoOptimizeCheck.checked;
+  var steps = autoOptimize ? null : parseInt(document.getElementById('steps').value);
+  var guidanceScale = autoOptimize ? null : parseFloat(document.getElementById('guidanceScale').value);
+
+  generateBtn.disabled = true;
+  generateBtn.innerHTML = '<div class="spinner"></div> <span>生成中...</span>';
+
+  resultsDiv.innerHTML = '<div style="text-align:center;padding:60px"><div class="spinner"></div><p style="margin-top:20px;color:#9ca3af">正在生成圖像，請稍候...</p></div>';
+
+  try {
+    var payload = {
+      prompt: prompt,
+      negative_prompt: negativePrompt,
+      provider: provider,
+      model: model,
+      width: width,
+      height: height,
+      style: style,
+      quality_mode: qualityMode,
+      seed: seed,
+      n: 1,
+      auto_optimize: autoOptimize,
+      auto_hd: true,
+      reference_images: referenceImages
+    };
+
+    if (!autoOptimize) {
+      if (steps) payload.steps = steps;
+      if (guidanceScale) payload.guidance_scale = guidanceScale;
+    }
+
+    var response = await fetch('/_internal/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      var errorData = await response.json();
+      throw new Error(errorData.error?.message || 'Generation failed');
+    }
+
+    var blob = await response.blob();
+    var imageUrl = URL.createObjectURL(blob);
+
+    var genSeed = response.headers.get('X-Seed') || seed;
+    var genProvider = response.headers.get('X-Provider') || provider;
+    var genModel = response.headers.get('X-Model') || model;
+    var genWidth = response.headers.get('X-Width') || width;
+    var genHeight = response.headers.get('X-Height') || height;
+    var genStyle = response.headers.get('X-Style') || style;
+    var genStyleName = response.headers.get('X-Style-Name') || style;
+    var genQuality = response.headers.get('X-Quality-Mode') || qualityMode;
+
+    resultsDiv.innerHTML = '<div class="gallery"><div class="gallery-item">' +
+      '<img src="' + imageUrl + '" onclick="openModal(this.src)" style="cursor:pointer">' +
+      '<div class="gallery-info">' +
+        '<div class="gallery-meta">' +
+          '<span class="provider-badge">' + escapeHtml(genProvider) + '</span>' +
+          '<span class="model-badge">' + escapeHtml(genModel) + '</span>' +
+        '</div>' +
+        '<div class="gallery-meta">' +
+          '<span class="seed-badge">Seed: ' + escapeHtml(genSeed) + '</span>' +
+          '<span class="style-badge">' + escapeHtml(genStyleName) + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#9ca3af;margin:8px 0">' + escapeHtml(prompt.substring(0, 80)) + '</div>' +
+        '<div class="gallery-actions">' +
+          '<button class="action-btn" onclick="downloadImage(\\'' + imageUrl + '\\',\\'flux-' + genSeed + '.png\\')">💾 下載</button>' +
+        '</div>' +
+      '</div>' +
+    '</div></div>';
+
+    await saveImage({
+      url: imageUrl,
+      blob: blob,
+      size: blob.size,
+      timestamp: Date.now(),
+      prompt: prompt,
+      negative_prompt: negativePrompt,
+      provider: genProvider,
+      model: genModel,
+      seed: genSeed,
+      width: genWidth,
+      height: genHeight,
+      style: genStyle,
+      style_name: genStyleName,
+      quality_mode: genQuality
+    });
+
+  } catch (error) {
+    resultsDiv.innerHTML = '<div class="empty-state"><p style="color:#ef4444">❌ ' + escapeHtml(error.message) + '</p></div>';
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.innerHTML = '<span data-t="gen_btn">🎨 開始生成</span>';
+  }
+});
+
+// ========= Modal =========
+var modal = document.getElementById('imageModal');
+var modalImg = document.getElementById('modalImage');
+var modalCloseBtn = document.getElementById('modalCloseBtn');
+
+window.openModal = function(src) {
+  modal.classList.add('show');
+  modalImg.src = src;
+};
+
+modalCloseBtn.onclick = function() {
+  modal.classList.remove('show');
+};
+
+modal.onclick = function(e) {
+  if (e.target === modal) modal.classList.remove('show');
+};
+
+// ========= 下載圖片 =========
+window.downloadImage = function(url, filename) {
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+};
+
+// ========= 多語言 =========
+var TEXTS = {
+  'zh-TW': {
+    nav_gen: '🎨 生成圖像', nav_his: '📚 歷史記錄',
+    settings_title: '⚙️ 生成參數',
+    provider_label: '🌐 API 供應商', model_label: '🤖 模型選擇',
+    size_label: '📐 尺寸預設', style_label: '🎨 藝術風格',
+    quality_label: '⚡ 質量模式', seed_label: '🎲 Seed (種子碼)',
+    auto_opt_label: '✨ 自動優化', auto_opt_desc: '自動調整 Steps 與 Guidance',
+    adv_settings: '🛠️ 進階參數', steps_label: '生成步數 (Steps)',
+    guidance_label: '引導係數 (Guidance)', gen_btn: '🎨 開始生成',
+    pos_prompt: '💬 正面提示詞', neg_prompt: '🚫 負面提示詞 (可選)',
+    ref_img: '🖼️ 參考圖像 URL (Kontext 專用)',
+    empty_title: '尚未生成任何圖像', empty_his: '暫無歷史記錄',
+    stat_total: '📊 總記錄數', stat_storage: '💾 存儲空間 (永久)',
+    btn_export: '📥 導出', btn_clear: '🗑️ 清空'
+  },
+  'en': {
+    nav_gen: '🎨 Generate', nav_his: '📚 History',
+    settings_title: '⚙️ Parameters',
+    provider_label: '🌐 API Provider', model_label: '🤖 Model',
+    size_label: '📐 Size Preset', style_label: '🎨 Art Style',
+    quality_label: '⚡ Quality Mode', seed_label: '🎲 Seed',
+    auto_opt_label: '✨ Auto Optimize', auto_opt_desc: 'Auto-adjust Steps & Guidance',
+    adv_settings: '🛠️ Advanced', steps_label: 'Steps',
+    guidance_label: 'Guidance Scale', gen_btn: '🎨 Generate',
+    pos_prompt: '💬 Prompt', neg_prompt: '🚫 Negative Prompt',
+    ref_img: '🖼️ Reference Images (Kontext)',
+    empty_title: 'No images generated yet', empty_his: 'No history',
+    stat_total: '📊 Total Records', stat_storage: '💾 Storage (Forever)',
+    btn_export: '📥 Export', btn_clear: '🗑️ Clear'
+  }
+};
+
+var currentLang = 'zh-TW';
+var langSwitchBtn = document.getElementById('langSwitch');
+
+langSwitchBtn.addEventListener('click', function() {
+  currentLang = currentLang === 'zh-TW' ? 'en' : 'zh-TW';
+  applyLanguage(currentLang);
+});
+
+function applyLanguage(lang) {
+  var texts = TEXTS[lang];
+  document.querySelectorAll('[data-t]').forEach(function(el) {
+    var key = el.getAttribute('data-t');
+    if (texts[key]) el.textContent = texts[key];
+  });
+}
+
+// ========= 初始化 =========
+populateProviders();
+updateHistoryCount();
+applyLanguage(currentLang);
+
 </script>
 </body>
 </html>`;
 
-  return new Response(html + scriptContent + endHtml, {
+  return new Response(html, {
     headers: {
       'Content-Type': 'text/html;charset=UTF-8',
       ...corsHeaders()
     }
   });
 }
+</script>
