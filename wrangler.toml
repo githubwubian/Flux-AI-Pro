@@ -1,8 +1,8 @@
 # ============================================
 # Cloudflare Workers 配置文件
 # 項目: Flux AI Pro - NanoBanana Edition
-# 版本: 10.4.0 (Nano Pro Upgrade)
-# 更新: 2026-01-10
+# 版本: 10.8.0 (Infip Batch & Cooldown)
+# 更新: 2026-01-16
 # ============================================
 
 name = "flux-ai-pro"
@@ -28,18 +28,20 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "10.4.0"
-DEFAULT_MODEL = "nano-banana"
+WORKER_VERSION = "10.8.0"
+DEFAULT_MODEL = "flux"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
 MAX_TIMEOUT = 120000
 ENVIRONMENT = "production"
-API_ENDPOINT = "https://gen.pollinations.ai"
 
 # ============================================
 # Secrets 通過 wrangler secret 命令設置
-# 🔐 必需設置 POLLINATIONS_API_KEY
+# 🔐 推薦設置:
+# 1. POLLINATIONS_API_KEY (Pollinations)
+# 2. INFIP_API_KEY (Ghostbot/Infip)
 # ============================================
-# 設置命令：
+# 設置命令範例：
 # npx wrangler secret put POLLINATIONS_API_KEY
+# npx wrangler secret put INFIP_API_KEY
 
