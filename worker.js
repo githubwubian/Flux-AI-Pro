@@ -52,6 +52,27 @@ const CONFIG = {
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
+    },
+    infip: {
+      name: "Ghostbot (Infip)",
+      endpoint: "https://api.infip.pro",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Ghostbot Web API (High Limit)",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
+        { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
+        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
+        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
+      ],
+      rate_limit: { requests: 30, interval: 60 },
+      max_size: { width: 1792, height: 1792 }
     }
   },
   
@@ -493,6 +514,95 @@ class PollinationsProvider {
   }
 }
 
+class InfipProvider {
+  constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
+  
+  async generate(prompt, options, logger) {
+    const { model = "img4", width = 1024, height = 1024, apiKey = "" } = options;
+    
+    if (!apiKey) throw new Error("Infip API Key is required");
+
+    let basePrompt = prompt;
+    let translationLog = { translated: false };
+    if (/[\u4e00-\u9fa5]/.test(prompt)) {
+      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
+      const translation = await translateToEnglish(prompt, this.env);
+      if (translation.translated) {
+        basePrompt = translation.text;
+        translationLog = translation;
+        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
+      }
+    }
+
+    const url = `${this.config.endpoint}/v1/images/generations`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'User-Agent': 'Flux-AI-Pro-Worker'
+    };
+    
+    // Infip supports 1024x1024, 1792x1024, 1024x1792
+    let sizeStr = "1024x1024";
+    if (width > height && width >= 1500) sizeStr = "1792x1024";
+    else if (height > width && height >= 1500) sizeStr = "1024x1792";
+    
+    const body = {
+      model: model,
+      prompt: basePrompt,
+      n: 1,
+      size: sizeStr,
+      response_format: "url"
+    };
+
+    logger.add("📡 Infip Request", { endpoint: url, model: model, size: sizeStr });
+
+    try {
+      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Infip API Error (${response.status}): ${errText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Handle Async Task (if any accidental async model used)
+      if (data.task_id) {
+         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like img4.");
+      }
+      
+      if (data.data && data.data.length > 0 && data.data[0].url) {
+        const imgUrl = data.data[0].url;
+        logger.add("⬇️ Downloading Image", { url: imgUrl });
+        
+        // Download image to return binary
+        const imgResp = await fetch(imgUrl);
+        const imageBuffer = await imgResp.arrayBuffer();
+        const contentType = imgResp.headers.get('content-type') || 'image/png';
+        
+        return { 
+            imageData: imageBuffer, 
+            contentType: contentType, 
+            url: imgUrl, 
+            provider: this.name, 
+            model: model, 
+            seed: -1, // Infip doesn't return seed usually
+            width: width, 
+            height: height, 
+            auto_translated: translationLog.translated,
+            authenticated: true,
+            cost: "QUOTA"
+        };
+      } else {
+        throw new Error("Invalid response format from Infip API");
+      }
+    } catch (e) {
+      logger.add("❌ Infip Failed", { error: e.message });
+      throw e;
+    }
+  }
+}
+
 class MultiProviderRouter {
   constructor(apiKeys = {}, env = null) {
     this.providers = {};
@@ -501,6 +611,7 @@ class MultiProviderRouter {
     for (const [key, config] of Object.entries(CONFIG.PROVIDERS)) {
       if (config.enabled) {
         if (key === 'pollinations') this.providers[key] = new PollinationsProvider(config, env);
+        else if (key === 'infip') this.providers[key] = new InfipProvider(config, env);
       }
     }
   }
@@ -633,6 +744,7 @@ async function handleInternalGenerate(request, env, ctx) {
     const options = { 
       provider: body.provider || null, 
       model: body.model || "gptimage", 
+      apiKey: request.headers.get('X-API-Key') || body.api_key || "",
       width: Math.min(Math.max(width, 256), 2048), 
       height: Math.min(Math.max(height, 256), 2048), 
       numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
@@ -1271,22 +1383,23 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div class="section-title" data-t="settings_title">⚙️ 生成參數</div>
 <form id="generateForm">
 <div class="form-group">
+    <label data-t="provider_label">API Provider (供應商)</label>
+    <select id="provider">
+        <option value="pollinations" selected>Pollinations.ai (Free)</option>
+        <option value="infip">Ghostbot (Infip) 🌟</option>
+    </select>
+</div>
+<div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
+    <label>API Key <span style="font-weight:normal;opacity:0.7">(Stored locally)</span></label>
+    <input type="password" id="apiKey" placeholder="Paste your API Key here">
+    <div style="font-size:11px;color:#ccc;margin-top:6px">
+        Get free key from <a href="https://infip.pro/api-keys" target="_blank" style="color:#f59e0b;text-decoration:underline">infip.pro/api-keys</a>
+    </div>
+</div>
+<div class="form-group">
     <label data-t="model_label">模型選擇</label>
     <select id="model">
-        <optgroup label="🤖 GPT-Image Series">
-        <option value="gptimage" selected>GPT-Image 🎨</option>
-        <option value="gptimage-large">GPT-Image Large 🌟</option>
-        </optgroup>
-        <optgroup label="⚡ Z-Image Series">
-        <option value="zimage">Z-Image Turbo ⚡ (6B)</option>
-        </optgroup>
-        <optgroup label="🎨 Flux Series">
-        <option value="flux">Flux Standard</option>
-        <option value="turbo">Flux Turbo ⚡</option>
-        </optgroup>
-        <optgroup label="🖼️ Kontext Series">
-        <option value="kontext">Kontext 🎨 (Img2Img)</option>
-        </optgroup>
+        <!-- JS will populate this -->
     </select>
 </div>
 <div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size"><option value="square-1k" selected>Square 1024x1024</option><option value="square-1.5k">Square 1536x1536</option><option value="portrait-9-16-hd">Portrait 1080x1920</option><option value="landscape-16-9-hd">Landscape 1920x1080</option></select></div>
@@ -1393,11 +1506,11 @@ async function clearDB(){
 // ====== I18N 與 UI 邏輯 ======
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
         cooldown_msg: "⏳ 請等待冷卻時間..."
     },
     en:{
-        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
+        nav_gen:"🎨 Create", nav_his:"📚 History", settings_title:"⚙️ Settings", provider_label:"API Provider", model_label:"Model", size_label:"Size", style_label:"Art Style 🎨", quality_label:"Quality", seed_label:"Seed", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Auto adjust Steps & Guidance", adv_settings:"🛠️ Advanced", steps_label:"Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Generate", empty_title:"No images yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt", ref_img:"Reference Image URL", stat_total:"📊 Total", stat_storage:"💾 Storage", btn_export:"📥 Export", btn_clear:"🗑️ Clear", no_history:"No history found", btn_reuse:"🔄 Reuse", btn_dl:"💾 Save",
         cooldown_msg: "⏳ Cooldown..."
     }
 };
@@ -1455,8 +1568,52 @@ function updateSeedUI() {
 seedToggleBtn.addEventListener('click', () => { isSeedRandom = !isSeedRandom; updateSeedUI(); });
 autoOptCheckbox.addEventListener('change', () => { advParamsDiv.style.display = autoOptCheckbox.checked ? 'none' : 'block'; });
 
+const providerSelect = document.getElementById('provider');
+const apiKeyGroup = document.getElementById('apiKeyGroup');
+const apiKeyInput = document.getElementById('apiKey');
+const modelSelect = document.getElementById('model');
+
+function updateModelOptions() {
+    const p = providerSelect.value;
+    const config = PROVIDERS[p];
+    if(!config) return;
+    
+    if(config.requires_key && config.auth_mode === 'bearer') {
+        apiKeyGroup.style.display = 'block';
+        apiKeyInput.value = localStorage.getItem('infip_api_key') || '';
+    } else {
+        apiKeyGroup.style.display = 'none';
+    }
+
+    modelSelect.innerHTML = '';
+    const models = config.models;
+    const groups = {};
+    models.forEach(m => {
+        const cat = m.category || 'other';
+        if(!groups[cat]) groups[cat] = [];
+        groups[cat].push(m);
+    });
+    
+    for(const [cat, list] of Object.entries(groups)) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = cat.toUpperCase();
+        list.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            optgroup.appendChild(opt);
+        });
+        modelSelect.appendChild(optgroup);
+    }
+}
+
+providerSelect.addEventListener('change', updateModelOptions);
+apiKeyInput.addEventListener('input', (e) => localStorage.setItem('infip_api_key', e.target.value));
+updateModelOptions();
+
 const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
 const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
+const PROVIDERS=${JSON.stringify(CONFIG.PROVIDERS)};
 
 async function addToHistory(item){
     let base64Data = item.image;
@@ -1549,7 +1706,9 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 steps: isAutoOpt ? null : parseInt(document.getElementById('steps').value),
                 guidance_scale: isAutoOpt ? null : parseFloat(document.getElementById('guidanceScale').value),
                 negative_prompt:document.getElementById('negativePrompt').value,
-                reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim())
+                reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim()),
+                provider: document.getElementById('provider').value,
+                api_key: document.getElementById('apiKey').value
             })
         });
         
