@@ -1513,6 +1513,19 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <input type="checkbox" id="autoOptimize" checked style="width:auto; width:20px; height:20px; cursor:pointer;">
     </div>
     
+    <div id="batchGroup" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;">🖼️ 批量生成</div>
+        <div class="form-group">
+            <label>生成數量 (Batch Size)</label>
+            <select id="batchSize">
+                <option value="1">1 張</option>
+                <option value="2">2 張</option>
+                <option value="3">3 張</option>
+                <option value="4">4 張</option>
+            </select>
+        </div>
+    </div>
+
     <div id="advancedParams" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
         <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;" data-t="adv_settings">🛠️ 進階參數</div>
         
@@ -1686,11 +1699,16 @@ function updateModelOptions() {
     
     // Logic: Show NSFW Toggle only for Infip
     const nsfwGroup = document.getElementById('nsfwGroup');
+    const batchGroup = document.getElementById('batchGroup');
+    
     if (p === 'infip') {
         nsfwGroup.style.display = 'flex';
+        batchGroup.style.display = 'block';
     } else {
         nsfwGroup.style.display = 'none';
+        batchGroup.style.display = 'none';
         document.getElementById('nsfwToggle').checked = false;
+        document.getElementById('batchSize').value = '1';
     }
 
     modelSelect.innerHTML = '';
@@ -1814,6 +1832,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
     const isNSFW = document.getElementById('nsfwToggle').checked;
+    const batchSize = parseInt(document.getElementById('batchSize').value) || 1;
     
     let finalNegative = document.getElementById('negativePrompt').value;
     if (isNSFW && document.getElementById('provider').value === 'infip') {
@@ -1837,7 +1856,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim()),
                 provider: document.getElementById('provider').value,
                 api_key: document.getElementById('apiKey').value,
-                nsfw: isNSFW
+                nsfw: isNSFW,
+                n: batchSize
             })
         });
         
