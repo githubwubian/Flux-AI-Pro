@@ -1,12 +1,12 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 10.6.5 (Nano Cooldown)
-//  更新: Nano Pro 頁面加入 180 秒強制冷卻機制 (抗重整)
+//  版本: 10.7.0 (Infip NSFW)
+//  更新: 加入 Infip NSFW 支援與 Server-side API Key 機制
 // =================================================================================
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "10.6.5",
+  PROJECT_VERSION: "10.7.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -517,7 +517,7 @@ class InfipProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
   async generate(prompt, options, logger) {
-    const { model = "img4", width = 1024, height = 1024, apiKey = "" } = options;
+    const { model = "img4", width = 1024, height = 1024, apiKey = "", nsfw = false } = options;
     
     // Prefer environment variable if available
     const finalApiKey = this.env.INFIP_API_KEY || apiKey;
@@ -555,6 +555,12 @@ class InfipProvider {
       size: sizeStr,
       response_format: "url"
     };
+
+    if (nsfw) {
+        body.safety_check = false;
+        body.censor_nsfw = false;
+        logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
+    }
 
     logger.add("📡 Infip Request", { endpoint: url, model: model, size: sizeStr });
 
@@ -761,7 +767,8 @@ async function handleInternalGenerate(request, env, ctx) {
       autoOptimize: autoOptimize, 
       autoHD: body.auto_hd !== false, 
       qualityMode: body.quality_mode || 'standard', 
-      referenceImages: referenceImages
+      referenceImages: referenceImages,
+      nsfw: body.nsfw === true
     };
     
     const router = new MultiProviderRouter({}, env);
@@ -1399,6 +1406,15 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         Get free key from <a href="https://infip.pro/api-keys" target="_blank" style="color:#f59e0b;text-decoration:underline">infip.pro/api-keys</a>
     </div>
 </div>
+
+<div class="form-group" id="nsfwGroup" style="display:none; align-items:center; justify-content:space-between; background:rgba(239, 68, 68, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(239, 68, 68, 0.3);">
+    <div>
+        <label for="nsfwToggle" style="margin:0; cursor:pointer; color:#f87171;">🔞 解除成人內容限制 (NSFW)</label>
+        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">啟用此選項將允許生成成人內容 (僅 Infip)</div>
+    </div>
+    <input type="checkbox" id="nsfwToggle" style="width:20px; height:20px; cursor:pointer;">
+</div>
+
 <div class="form-group">
     <label data-t="model_label">模型選擇</label>
     <select id="model">
@@ -1592,6 +1608,15 @@ function updateModelOptions() {
     } else {
         apiKeyGroup.style.display = 'none';
     }
+    
+    // Logic: Show NSFW Toggle only for Infip
+    const nsfwGroup = document.getElementById('nsfwGroup');
+    if (p === 'infip') {
+        nsfwGroup.style.display = 'flex';
+    } else {
+        nsfwGroup.style.display = 'none';
+        document.getElementById('nsfwToggle').checked = false;
+    }
 
     modelSelect.innerHTML = '';
     const models = config.models;
@@ -1707,6 +1732,16 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
+    const isNSFW = document.getElementById('nsfwToggle').checked;
+    
+    let finalNegative = document.getElementById('negativePrompt').value;
+    if (isNSFW && document.getElementById('provider').value === 'infip') {
+        // Filter out common NSFW keywords from negative prompt
+        const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
+        let negParts = finalNegative.split(',').map(s => s.trim());
+        negParts = negParts.filter(p => !nsfwKeywords.some(k => p.toLowerCase().includes(k)));
+        finalNegative = negParts.join(', ');
+    }
 
     try{
         const res=await fetch('/_internal/generate',{
@@ -1717,10 +1752,11 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 seed: currentSeed, auto_optimize: isAutoOpt,
                 steps: isAutoOpt ? null : parseInt(document.getElementById('steps').value),
                 guidance_scale: isAutoOpt ? null : parseFloat(document.getElementById('guidanceScale').value),
-                negative_prompt:document.getElementById('negativePrompt').value,
+                negative_prompt: finalNegative,
                 reference_images:document.getElementById('referenceImages').value.split(',').filter(u=>u.trim()),
                 provider: document.getElementById('provider').value,
-                api_key: document.getElementById('apiKey').value
+                api_key: document.getElementById('apiKey').value,
+                nsfw: isNSFW
             })
         });
         
