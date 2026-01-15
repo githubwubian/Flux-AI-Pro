@@ -1,24 +1,22 @@
 # 🎨 Flux AI Pro - Serverless AI Image Generator
 
-![Version](https://img.shields.io/badge/Version-10.6.3-FACC15?style=flat-square)
+![Version](https://img.shields.io/badge/Version-10.8.0-FACC15?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
-![Engine](https://img.shields.io/badge/Engine-Pollinations.ai%20(Direct)-blue?style=flat-square)
+![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 
-**Flux AI Pro** 是一個部署在 Cloudflare Workers 上的單檔式 AI 繪圖應用。它利用 Pollinations.ai 的最新 Direct API 提供無伺服器、低延遲的圖像生成服務。
+**Flux AI Pro** 是一個部署在 Cloudflare Workers 上的單檔式 AI 繪圖應用。支援多供應商架構（Pollinations.ai 與 Infip/Ghostbot），提供無伺服器、低延遲的圖像生成服務。
 
 本專案包含兩套獨立介面：**完整專業版 UI** 與 **NanoBanana Pro 極簡版 UI**。
 
 ---
 
-## 🔥 v10.6.3 更新亮點 (NanoBanana Edition)
+## 🔥 v10.8.0 更新亮點 (Infip Batch Edition)
 
-- **🚀 核心升級**：全面改用 `gen.pollinations.ai` 直連 API，支援 API Key 認證，提升穩定度與隱私。
-- **🍌 Nano 模式**：新增 `/nano` 獨立入口，專為 `nanobanana-pro` 模型設計的極簡介面。
-- **🛡️ 智能限流**：整合 Cloudflare KV，實現基於 IP 的速率限制（預設每小時 5 張），防止濫用。
-- **🧠 智能優化**：
-  - **自動翻譯**：內建 Google Translate 邏輯，自動將中文提示詞轉為英文。
-  - **參數調優**：根據提示詞複雜度自動調整 Steps 與 Guidance Scale。
-  - **HD Upscale**：自動檢測並優化高解析度輸出的細節與尺寸。
+- **�️ 多圖批次生成**：Ghostbot (Infip) 供應商現在支援一次生成最多 4 張圖片。
+- **⚡ 智慧冷卻系統**：針對不同供應商實施差異化冷卻時間（Infip 縮短至 30 秒，標準版 60 秒）。
+- **🎨 風格修復**：修正 Infip 供應商無法正確應用藝術風格的問題。
+- **� 供應商精簡**：移除不穩定或需要繁瑣 Key 的供應商，專注於 Pollinations 與 Infip 雙核心。
+- **🚀 核心優化**：改進 API 路由與錯誤處理機制。
 
 ---
 
@@ -28,17 +26,21 @@
 - **主介面 (`/`)**：功能完整的控制台，支援所有模型、數十種藝術風格、歷史紀錄管理 (IndexedDB)、參數微調。
 - **Nano 介面 (`/nano`)**：類似 App 的沉浸式體驗，包含燈箱效果、剩餘額度顯示、隨機靈感骰子。
 
-### 2. 多模型支援
-支援 Pollinations 生態系下的多種模型：
-- **Flux Series**: `Flux Standard`, `Flux Turbo` (極速)
-- **GPT Series**: `GPT-Image`, `GPT-Image Large` (高品質)
+### 2. 多模型與供應商支援
+- **Pollinations.ai (Free)**: 
+  - `Flux Standard`, `Flux Turbo` (極速)
+  - `GPT-Image`, `GPT-Image Large` (高品質)
+- **Ghostbot / Infip (Premium)**:
+  - `img4` (Flux Pro), `img3` (Flux Dev)
+  - 支援 **NSFW** 選項（需自備 Key）
+  - 支援批次生成 (Batch Size: 1-4)
 - **Special**: `Nano Banana Pro` (專屬模型), `Kontext` (支援圖生圖/參考圖)
-- **Experimental**: `Z-Image Turbo`
 
 ### 3. 進階圖像處理
 - **風格預設**：內建 40+ 種風格（動漫、寫實、油畫、賽博龐克、浮世繪等）。
 - **參考圖 (Img2Img)**：支援輸入圖片 URL 進行參考生成（僅限特定模型如 Kontext）。
 - **畫布比例**：預設多種社群媒體常用比例 (IG, 16:9, 桌布)。
+- **自動優化**：內建提示詞增強與自動翻譯功能。
 
 ---
 
