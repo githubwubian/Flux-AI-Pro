@@ -1,7 +1,7 @@
 # ============================================
 # Cloudflare Workers 配置文件
 # 項目: Flux AI Pro - NanoBanana Edition
-# 版本: 10.8.0 (Infip Batch & Cooldown)
+# 版本: 10.9.0 (SeeDream Models & Online Count)
 # 更新: 2026-01-16
 # ============================================
 
@@ -28,7 +28,7 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "10.8.0"
+WORKER_VERSION = "10.9.0"
 DEFAULT_MODEL = "flux"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
