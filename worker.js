@@ -1873,7 +1873,7 @@ async function updateHistoryDisplay(){
         d.querySelector('.download-btn').onclick=()=>{
             const a=document.createElement('a');
             a.href=imgSrc;
-            a.download=`${item.model}-${item.seed}.png`;
+            a.download=`\${item.model}-\${item.seed}.png`;
             a.click();
         };
         d.querySelector('.delete-btn').onclick=()=>deleteFromDB(item.id);
