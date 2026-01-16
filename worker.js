@@ -1625,7 +1625,20 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 </div>
 <div id="historyList" style="padding:0 20px"><p>Loading history...</p></div>
 </div></div>
-<div id="imageModal" class="modal"><span class="modal-close" id="modalCloseBtn">×</span><div class="modal-content"><img id="modalImage" src=""></div></div>
+<div id="imageModal" class="modal">
+    <div class="modal-content" style="position:relative; display:flex; flex-direction:column; align-items:center;">
+        <img id="modalImage" src="" style="max-height:85vh; margin-bottom:15px;">
+        <div style="display:flex; gap:15px;">
+            <a id="modalDownload" href="#" class="btn btn-primary" download="image.png" style="text-decoration:none; width:auto; padding:10px 25px;">
+                📥 保存圖片
+            </a>
+            <button class="btn" onclick="document.getElementById('imageModal').classList.remove('show')" style="width:auto; background:rgba(255,255,255,0.1);">
+                ❌ 關閉
+            </button>
+        </div>
+    </div>
+    <div class="modal-close" id="modalCloseBtn">×</div>
+</div>
 <script>
 // ====== IndexedDB 管理核心 (解決死圖) ======
 const DB_NAME='FluxAI_DB',STORE_NAME='images',DB_VERSION=2;
@@ -1873,7 +1886,7 @@ async function updateHistoryDisplay(){
         d.querySelector('.download-btn').onclick=()=>{
             const a=document.createElement('a');
             a.href=imgSrc;
-            a.download=`\${item.model}-\${item.seed}.png`;
+            a.download=\`\${item.model}-\${item.seed}.png\`;
             a.click();
         };
         d.querySelector('.delete-btn').onclick=()=>deleteFromDB(item.id);
@@ -1882,7 +1895,17 @@ async function updateHistoryDisplay(){
     list.innerHTML=''; list.appendChild(div);
 }
 
-function openModal(src){document.getElementById('modalImage').src=src;document.getElementById('imageModal').classList.add('show');}
+function openModal(src){
+    const modalImg = document.getElementById('modalImage');
+    const downloadBtn = document.getElementById('modalDownload');
+    modalImg.src=src;
+    
+    // Auto set download filename
+    downloadBtn.href = src;
+    downloadBtn.download = \`flux-pro-\${Date.now()}.png\`;
+    
+    document.getElementById('imageModal').classList.add('show');
+}
 document.getElementById('modalCloseBtn').onclick=()=>document.getElementById('imageModal').classList.remove('show');
 document.getElementById('clearBtn').onclick=()=>{if(confirm('Clear all history?'))clearDB();};
 document.getElementById('exportBtn').onclick=async()=>{
