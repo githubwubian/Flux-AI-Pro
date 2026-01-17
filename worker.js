@@ -1500,7 +1500,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
 </div>
 <div style="font-size:12px; color:#22c55e; margin-left:20px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none; min-width:80px; min-height:20px;">
-    <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="https://waust.at/s.js"></script>
+    <script id="_wau96x">var _wau = _wau || []; _wau.push(["dynamic", "yrofl40dzz", "96x", "c4302bffffff", "small"]);</script><script async src="https://waust.at/d.js"></script>
 </div>
         <div><div class="api-status">${authStatus}</div></div>
     </div>
