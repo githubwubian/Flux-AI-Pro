@@ -1498,9 +1498,9 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div class="nav-left">
         <div class="logo">
     🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
-    <div style="font-size:12px; color:#22c55e; margin-left:15px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none;">
-        <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
-    </div>
+</div>
+<div style="font-size:12px; color:#22c55e; margin-left:20px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none;">
+    <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
 </div>
         <div><div class="api-status">${authStatus}</div></div>
     </div>
