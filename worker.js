@@ -2055,10 +2055,12 @@ window.onload=()=>{
     updateModelOptions();
 };
 </script>
-<div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5);">
-    Powered by Flux AI Pro • <a href="https://github.com/pollinations/pollinations" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a><br>
-    <span style="opacity:0.7">友情鏈接: </span> <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://github.com" target="_blank">GitHub</a><br>
-    <div style="margin-top:10px"><a href="https://showmebest.ai" target="_blank"><img src="https://showmebest.ai/badge/feature-badge-dark.webp" alt="Featured on ShowMeBestAI" width="220" height="60"></a></div>
+<div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap;">
+    <span>Powered by Flux AI Pro • <a href="https://github.com/pollinations/pollinations" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
+    <span style="opacity:0.5">|</span>
+    <span style="opacity:0.9">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
+    <span style="opacity:0.5">|</span>
+    <a href="https://showmebest.ai" target="_blank" style="display:flex; align-items:center;"><img src="https://showmebest.ai/badge/feature-badge-dark.webp" alt="Featured on ShowMeBestAI" width="165" height="45"></a>
 </div>
 </body>
 </html>`;
