@@ -377,9 +377,7 @@ async function fetchWithTimeout(url, options = {}, timeout = CONFIG.FETCH_TIMEOU
   }
 }
 
-function corsHeaders(additionalHeaders = {}) {
-  return { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Source', 'Access-Control-Max-Age': '86400', ...additionalHeaders };
-}
+
 class PollinationsProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
