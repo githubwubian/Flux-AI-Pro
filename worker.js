@@ -1020,7 +1020,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <h1>Nano Pro <span class="badge">V10.6</span></h1>
                     <p style="color:#666; font-size:12px">Flux Engine • Pro Model</p>
                     <div style="font-size:11px; color:#22c55e; margin-top:4px; display:flex; align-items:center; gap:4px">
-                        <script id="_wauxns">var _wau = _wau || []; _wau.push(["small", "fluxnanopro", "22c55e"]);</script><script async src="//waust.at/s.js"></script>
+                        <script id="_waudw4">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
                     </div>
                 </div>
             </div>
@@ -1499,7 +1499,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <div class="logo">
     🎨 Flux AI Pro <span class="badge">v${CONFIG.PROJECT_VERSION}</span>
     <div style="font-size:12px; color:#22c55e; margin-left:15px; display:flex; align-items:center; gap:6px; font-weight:normal; text-shadow:none;">
-        <script id="_waumain">var _wau = _wau || []; _wau.push(["small", "fluxnanopro", "22c55e"]);</script><script async src="//waust.at/s.js"></script>
+        <script id="_waudw4_main">var _wau = _wau || []; _wau.push(["small", "yuynsazz1f", "dw4"]);</script><script async src="//waust.at/s.js"></script>
     </div>
 </div>
         <div><div class="api-status">${authStatus}</div></div>
