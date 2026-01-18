@@ -1,6 +1,6 @@
 # 🎨 Flux AI Pro - Serverless AI Image Generator
 
-![Version](https://img.shields.io/badge/Version-10.8.0-FACC15?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.2.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 
@@ -10,31 +10,33 @@
 
 ---
 
-## 🔥 v10.8.0 更新亮點 (Infip Batch Edition)
+## 🔥 v11.2.0 更新亮點 (UI Overhaul & Klein Model)
 
-- **�️ 多圖批次生成**：Ghostbot (Infip) 供應商現在支援一次生成最多 4 張圖片。
-- **⚡ 智慧冷卻系統**：針對不同供應商實施差異化冷卻時間（Infip 縮短至 30 秒，標準版 60 秒）。
-- **🎨 風格修復**：修正 Infip 供應商無法正確應用藝術風格的問題。
-- **� 供應商精簡**：移除不穩定或需要繁瑣 Key 的供應商，專注於 Pollinations 與 Infip 雙核心。
-- **🚀 核心優化**：改進 API 路由與錯誤處理機制。
+- **🌌 全新視覺設計**：主介面升級為「深空紫」主題，採用玻璃擬態 (Glassmorphism) 設計，視覺更具現代感與科技感。
+- **🤖 FLUX.2 Klein 4B**：新增強大的 Klein 模型 (4B 參數)，提供更細膩的畫質與細節表現。
+- **✨ 畫質自動升級**：全域實裝「最佳品質策略」，所有生成請求自動強制使用 **Ultra (超高清)** 畫質模式。
+- **👥 真實人數統計**：整合 `whos.amung.us` 第三方統計服務，實時顯示線上活躍人數。
+- **🔗 頁腳優化**：主頁新增包含友情鏈接 (Pollinations, Infip, GitHub) 與 ShowMeBestAI 推薦徽章的單行頁腳；Nano 版保持極簡無頁腳設計。
+- **🖼️ 圖片保存優化**：修復了圖片下載功能，現在支持自定義檔名與燈箱模式直接下載。
 
 ---
 
 ## ✨ 功能特色
 
 ### 1. 雙重操作介面
-- **主介面 (`/`)**：功能完整的控制台，支援所有模型、數十種藝術風格、歷史紀錄管理 (IndexedDB)、參數微調。
+- **主介面 (`/`)**：功能完整的控制台，採用全新深色玻璃主題，支援所有模型、數十種藝術風格、歷史紀錄管理 (IndexedDB)、參數微調。
 - **Nano 介面 (`/nano`)**：類似 App 的沉浸式體驗，包含燈箱效果、剩餘額度顯示、隨機靈感骰子。
 
 ### 2. 多模型與供應商支援
 - **Pollinations.ai (Free)**: 
-  - `Flux Standard`, `Flux Turbo` (極速)
-  - `GPT-Image`, `GPT-Image Large` (高品質)
+  - `FLUX.2 Klein 4B` (✨New! 推薦), `Flux Standard`, `Flux Turbo`
+  - `GPT-Image`, `GPT-Image Large`
+  - `Flux Realism`, `Flux Coda`, `Flux Anime`, `Flux 3D`
 - **Ghostbot / Infip (Premium)**:
-  - `img4` (Flux Pro), `img3` (Flux Dev)
+  - `img4` (Flux Pro), `Flux Schnell`
+  - `SDXL`, `Lucid Origin`
   - 支援 **NSFW** 選項（需自備 Key）
   - 支援批次生成 (Batch Size: 1-4)
-- **Special**: `Nano Banana Pro` (專屬模型), `Kontext` (支援圖生圖/參考圖)
 
 ### 3. 進階圖像處理
 - **風格預設**：內建 40+ 種風格（動漫、寫實、油畫、賽博龐克、浮世繪等）。
@@ -60,7 +62,7 @@ cd Flux-AI-Pro
 ```
 
 ### 2. 配置 Wrangler
-編輯 `wrangler.toml`，確保包含 KV 綁定以啟用限流功能：
+編輯 `wrangler.toml`，確保包含 KV 綁定以啟用限流功能（如需要）：
 
 ```toml
 name = "flux-ai-pro"
@@ -77,11 +79,11 @@ id = "你的_KV_NAMESPACE_ID"
 > 執行 `wrangler kv:namespace create "FLUX_KV"`，將輸出的 ID 填入上述設定。
 
 ### 3. 設定環境變數 (Secrets)
-為了使用 Pollinations 的直連 API，建議設定 API Key（可選，但推薦）：
+為了使用 Infip 的進階功能（如 NSFW），建議設定 API Key：
 
 ```bash
-wrangler secret put POLLINATIONS_API_KEY
-# 輸入你的 Pollinations API Key (若無可跳過，但可能受限)
+wrangler secret put INFIP_API_KEY
+# 輸入你的 Infip API Key
 ```
 
 ### 4. 部署
@@ -101,7 +103,7 @@ Worker 暴露了一個內部的生成 API，供前端呼叫：
 ```json
 {
   "prompt": "a cyberpunk cat",
-  "model": "flux",
+  "model": "klein",
   "width": 1024,
   "height": 1024,
   "style": "anime",
@@ -110,6 +112,14 @@ Worker 暴露了一個內部的生成 API，供前端呼叫：
 ```
 
 > **注意**：`nanobanana-pro` 模型僅允許來自 Nano 頁面的請求 (`X-Source: nano-page`) 且受 KV 限流控制。
+
+---
+
+## 🤝 友情鏈接
+
+- [Pollinations.ai](https://pollinations.ai)
+- [Infip.pro](https://infip.pro)
+- [ShowMeBest.AI](https://showmebest.ai)
 
 ---
 
