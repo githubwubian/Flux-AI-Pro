@@ -55,12 +55,7 @@ const CONFIG = {
         { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream-pro", name: "SeeDream Pro 🌟", confirmed: true, category: "seedream", description: "高品質夢幻圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "flux-realism", name: "Flux Realism", confirmed: true, category: "flux", description: "Enhanced photorealism", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "flux-coda", name: "Flux Coda", confirmed: true, category: "flux", description: "Artistic and creative", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "flux-3d", name: "Flux 3D", confirmed: true, category: "flux", description: "3D render style", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "flux-anime", name: "Flux Anime", confirmed: true, category: "flux", description: "Anime style specialized", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "any-dark", name: "Any Dark", confirmed: true, category: "other", description: "Dark and moody atmosphere", max_size: 2048, input_modalities: ["text"], output_modalities: ["image"] }
+        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -155,12 +150,6 @@ const CONFIG = {
       "zimage": { min: 8, optimal: 15, max: 25 }, 
       "flux": { min: 15, optimal: 20, max: 30 }, 
       "klein": { min: 20, optimal: 25, max: 35 }, 
-      "flux-realism": { min: 20, optimal: 28, max: 35 },
-      "flux-coda": { min: 15, optimal: 20, max: 30 },
-      "flux-3d": { min: 20, optimal: 25, max: 35 },
-      "flux-anime": { min: 15, optimal: 20, max: 30 },
-      "any-dark": { min: 15, optimal: 20, max: 30 },
-      "turbo": { min: 4, optimal: 8, max: 12 }, 
       "kontext": { min: 18, optimal: 25, max: 35 } 
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
@@ -183,11 +172,6 @@ const CONFIG = {
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
       "flux": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.0, recommended_quality: "standard" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "flux-realism": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.05, recommended_quality: "ultra" },
-      "flux-coda": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
-      "flux-3d": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "flux-anime": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
-      "any-dark": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "turbo": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 0.9, guidance_boost: 0.95, recommended_quality: "economy" },
       "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
     }
