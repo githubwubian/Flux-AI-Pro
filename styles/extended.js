@@ -215,14 +215,6 @@ export const EXTENDED_STYLES = {
     icon: "🌸",
     description: "新藝術運動擴展風格"
   },
-  "baroque": {
-    name: "巴洛克",
-    prompt: "baroque art, ornate, dramatic, elaborate, grand, caravaggio, rembrandt, chiaroscuro, religious, 17th century, european",
-    negative: "minimalist, simple, modern, clean",
-    category: "traditional",
-    icon: "👑",
-    description: "17 世紀巴洛克藝術風格"
-  },
   "rococo": {
     name: "洛可可",
     prompt: "rococo art, ornate, delicate, pastel colors, playful, decorative, french, 18th century, fragonard, boucher, elegant",
@@ -334,6 +326,128 @@ export const EXTENDED_STYLES = {
     description: "異世界動漫風格"
   },
 
+  // ====== 日本漫畫作者風格 ======
+  "oda-eiichiro": {
+    name: "尾田榮一郎",
+    prompt: "eiichiro oda style, one piece manga, dynamic action poses, exaggerated expressions, detailed character designs, adventurous, pirate aesthetic, bold linework, vibrant colors, comic book style",
+    negative: "realistic, photograph, 3d, western comic, stiff",
+    category: "manga-author",
+    icon: "🏴‍☠️",
+    description: "《海賊王》作者尾田榮一郎風格"
+  },
+  "kishimoto-masashi": {
+    name: "岸本齊史",
+    prompt: "masashi kishimoto style, naruto manga, ninja aesthetic, dynamic action scenes, detailed ninja gear, chakra effects, dramatic poses, shonen manga style, japanese comic art",
+    negative: "realistic, photograph, western comic, soft",
+    category: "manga-author",
+    icon: "🍥",
+    description: "《火影忍者》作者岸本齊史風格"
+  },
+  "toriyama-akira": {
+    name: "鳥山明",
+    prompt: "akira toriyama style, dragon ball manga, classic shonen, muscular characters, dynamic action poses, martial arts, dragon ball aesthetic, bold outlines, vibrant colors, retro anime",
+    negative: "realistic, photograph, 3d, western comic",
+    category: "manga-author",
+    icon: "🐉",
+    description: "《七龍珠》作者鳥山明風格"
+  },
+  "araki-hirohiko": {
+    name: "荒木飛呂彥",
+    prompt: "hirohiko araki style, jojo's bizarre adventure, unique poses, fashion-forward, stylish, dramatic, bold colors, manga art, distinctive character designs, jojo aesthetic",
+    negative: "realistic, photograph, conventional, boring",
+    category: "manga-author",
+    icon: "✨",
+    description: "《JoJo的奇妙冒險》作者荒木飛呂彥風格"
+  },
+  "kubo-tite": {
+    name: "久保帶人",
+    prompt: "tite kubo style, bleach manga, shinigami aesthetic, detailed character designs, sword fighting, soul reaper, dramatic poses, gothic elements, japanese comic art",
+    negative: "realistic, photograph, western comic, cute",
+    category: "manga-author",
+    icon: "⚔️",
+    description: "《死神》作者久保帶人風格"
+  },
+  "togashi-yoshihiro": {
+    name: "富堅義博",
+    prompt: "yoshihiro togashi style, hunter x hunter manga, detailed character designs, nen abilities, dynamic action, shonen manga, adventure, japanese comic art, intricate details",
+    negative: "realistic, photograph, western comic, simple",
+    category: "manga-author",
+    icon: "🎯",
+    description: "《獵人》作者富堅義博風格"
+  },
+  "aoyama-gosho": {
+    name: "青山剛昌",
+    prompt: "gosho aoyama style, detective conan manga, mystery, detective aesthetic, detailed character designs, crime solving, japanese comic art, classic manga style",
+    negative: "realistic, photograph, western comic, action-heavy",
+    category: "manga-author",
+    icon: "🔍",
+    description: "《名偵探柯南》作者青山剛昌風格"
+  },
+  "takahashi-rumiko": {
+    name: "高橋留美子",
+    prompt: "rumiko takahashi style, ranma 1/2, inuyasha, romantic comedy, fantasy, detailed character designs, classic shojo/shonen blend, japanese comic art, expressive",
+    negative: "realistic, photograph, western comic, dark",
+    category: "manga-author",
+    icon: "🌸",
+    description: "《亂馬1/2》《犬夜叉》作者高橋留美子風格"
+  },
+  "tezuka-osamu": {
+    name: "手塚治蟲",
+    prompt: "osamu tezuka style, astro boy, classic manga, retro anime, black and white manga, detailed linework, manga pioneer, japanese comic art, vintage style",
+    negative: "realistic, photograph, modern, 3d",
+    category: "manga-author",
+    icon: "🤖",
+    description: "《原子小金剛》作者手塚治蟲風格"
+  },
+  "miyazaki-hayao": {
+    name: "宮崎駿",
+    prompt: "hayao miyazaki style, studio ghibli, spirited away, howl's moving castle, anime art, soft colors, detailed backgrounds, whimsical, magical, hand-drawn animation style",
+    negative: "realistic, photograph, western animation, dark",
+    category: "manga-author",
+    icon: "🍃",
+    description: "吉卜力工作室宮崎駿風格"
+  },
+  "shinkai-makoto": {
+    name: "新海誠",
+    prompt: "makoto shinkai style, your name, weathering with you, anime art, photorealistic backgrounds, emotional, atmospheric, detailed scenery, modern anime aesthetic, beautiful lighting",
+    negative: "cartoonish, simple, western animation, flat",
+    category: "manga-author",
+    icon: "☁️",
+    description: "《你的名字》作者新海誠風格"
+  },
+  "isayama-hajime": {
+    name: "諫山創",
+    prompt: "hajime isayama style, attack on titan, dark fantasy, intense action, detailed character designs, titan aesthetic, gritty, dramatic, manga art, horror elements",
+    negative: "cute, cheerful, colorful, lighthearted",
+    category: "manga-author",
+    icon: "🗡️",
+    description: "《進擊的巨人》作者諫山創風格"
+  },
+  "gotouge-koyoharu": {
+    name: "吾峠呼世晴",
+    prompt: "koyoharu gotouge style, demon slayer, kimetsu no yaiba, detailed character designs, demon slayer aesthetic, dynamic action, beautiful art, japanese comic art, fantasy",
+    negative: "realistic, photograph, western comic, simple",
+    category: "manga-author",
+    icon: "🌙",
+    description: "《鬼滅之刃》作者吾峠呼世晴風格"
+  },
+  "fujiko-f-fujio": {
+    name: "藤子·F·不二雄",
+    prompt: "fujiko f fujio style, doraemon, classic manga, retro anime, cute characters, adventure, japanese comic art, family-friendly, nostalgic style",
+    negative: "realistic, photograph, dark, gritty",
+    category: "manga-author",
+    icon: "🐱",
+    description: "《哆啦A夢》作者藤子·F·不二雄風格"
+  },
+  "horikoshi-kohei": {
+    name: "堀越耕平",
+    prompt: "kohei horikoshi style, my hero academia, superhero manga, dynamic action, detailed character designs, hero aesthetic, shonen manga, japanese comic art, vibrant",
+    negative: "realistic, photograph, western comic, dark",
+    category: "manga-author",
+    icon: "💪",
+    description: "《我的英雄學院》作者堀越耕平風格"
+  },
+
   // ====== 繪畫擴展 ======
   "acrylic": {
     name: "丙烯畫",
@@ -379,5 +493,6 @@ export const EXTENDED_CATEGORIES = {
   'academic': { name: '學院風', icon: '📚', order: 20 },
   'royal': { name: '皇室風', icon: '👸', order: 21 },
   'eco': { name: '生態', icon: '☀️', order: 22 },
-  'anime-genre': { name: '動漫類型', icon: '📺', order: 23 }
+  'anime-genre': { name: '動漫類型', icon: '📺', order: 23 },
+  'manga-author': { name: '漫畫作者', icon: '✏️', order: 24 }
 };
