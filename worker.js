@@ -2948,7 +2948,8 @@ const PromptGenerator = {
             }
         }
         
-        this.showStatus(`正在使用 Pollinations (Gemini) 生成專業提示詞...${style !== 'none' ? ` [風格: ${style}]` : ''}`, 'loading');
+        const statusText = style !== 'none' ? '正在使用 Pollinations (Gemini) 生成專業提示詞... [風格: ' + style + ']' : '正在使用 Pollinations (Gemini) 生成專業提示詞...';
+        this.showStatus(statusText, 'loading');
         
         try {
             const response = await fetch('/api/generate-prompt', {
