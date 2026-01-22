@@ -868,8 +868,8 @@ Output format: Output only the optimized prompt, do not include any explanation 
         { role: "user", content: userContent }
     ];
     
-    // Select model: Use 'gemini' for vision tasks (images), 'gemini-search' for text-only
-    const aiModel = finalImageUrl ? 'gemini' : 'gemini-search';
+    // Select model: Always use 'gemini' as requested
+    const aiModel = 'gemini';
     
     // Call Pollinations API
     const response = await fetch('https://text.pollinations.ai/', {
