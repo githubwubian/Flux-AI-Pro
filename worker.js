@@ -825,10 +825,11 @@ async function handlePromptGeneration(request, env) {
   
   try {
     const body = await request.json();
-    const { input, style, imageData, imageUrl } = body;
+    const { input, style, imageUrl, referenceImage } = body;
+    const finalImageUrl = imageUrl || referenceImage;
     
-    // 檢查是否有輸入（文字描述或圖片）
-    if ((!input || !input.trim()) && !imageUrl && !imageData) {
+    // Check inputs
+    if ((!input || !input.trim()) && !finalImageUrl) {
       return new Response(JSON.stringify({ error: 'Input prompt or image is required' }), {
         status: 400,
         headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -849,58 +850,56 @@ Rules:
 
 Output format: Output only the optimized prompt, do not include any explanation or additional text.`;
     
-    let userPrompt = '';
+    const userContent = [];
     
-    // 處理文字輸入
-    if (input && input.trim()) {
-      userPrompt = `Optimize the following image generation prompt: ${input}`;
-    } else {
-      userPrompt = `Generate a detailed image generation prompt based on the provided image.`;
-    }
-    
-    // 添加風格信息
+    let textPrompt = input ? `Optimize this prompt: ${input}` : `Generate a prompt based on the image.`;
     if (style && style !== 'none') {
-      userPrompt += `\n\nTarget style: ${style}`;
+        textPrompt += `\n\nCRITICAL INSTRUCTION: The generated prompt MUST strictly adhere to the "${style}" art style. You must include specific artistic keywords, lighting techniques, color palettes, and composition styles associated with ${style}. Make the style the dominant visual characteristic of the image.`;
     }
     
-    // 添加圖片 URL（優先使用 URL，因為 Pollinations Text API 可以處理 URL）
-    if (imageUrl) {
-      userPrompt += `\n\nReference image URL: ${imageUrl}`;
-      userPrompt += `\n\nPlease analyze this image and generate a detailed prompt that captures its visual elements, style, composition, lighting, and mood.`;
-    } else if (imageData) {
-      // 如果有 Base64 圖片數據，提示用戶需要先上傳獲取 URL
-      userPrompt += `\n\nNote: User has uploaded a reference image. Please generate a prompt based on the visual description they would provide for this image.`;
+    userContent.push({ type: "text", text: textPrompt });
+    
+    if (finalImageUrl) {
+        userContent.push({ type: "image_url", image_url: { url: finalImageUrl } });
     }
     
-    const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
-    const encodedPrompt = encodeURIComponent(fullPrompt);
+    const messages = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userContent }
+    ];
     
-    // 使用 Pollinations 文本生成 API (免費，無需 API Key)
-    const pollinationsUrl = `https://text.pollinations.ai/${encodedPrompt}`;
+    // Select model: Use 'gemini' for vision tasks (images), 'gemini-search' for text-only
+    const aiModel = finalImageUrl ? 'gemini' : 'gemini-search';
     
-    const pollinationsResponse = await fetch(pollinationsUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Flux-AI-Pro-Worker/1.0'
-      }
+    // Call Pollinations API
+    const response = await fetch('https://text.pollinations.ai/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            messages: messages,
+            model: aiModel,
+            seed: Math.floor(Math.random() * 1000000),
+            jsonMode: false
+        })
     });
-    
-    if (!pollinationsResponse.ok) {
-      throw new Error(`Pollinations API Error (${pollinationsResponse.status})`);
+
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Pollinations API Error (${response.status}): ${errText}`);
     }
     
-    const generatedPrompt = await pollinationsResponse.text();
+    const generatedPrompt = await response.text();
     
     if (!generatedPrompt || !generatedPrompt.trim()) {
-      throw new Error('Failed to generate prompt from Pollinations API');
+      throw new Error('Empty response from AI');
     }
     
     return new Response(JSON.stringify({
       success: true,
       prompt: generatedPrompt.trim(),
-      original: input || 'Image analysis',
-      imageUrl: imageUrl || null,
-      model: 'pollinations-text'
+      model: aiModel
     }), {
       status: 200,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -2949,7 +2948,7 @@ const PromptGenerator = {
             }
         }
         
-        this.showStatus('正在使用 Pollinations 生成專業提示詞...', 'loading');
+        this.showStatus(`正在使用 Pollinations (Gemini) 生成專業提示詞...${style !== 'none' ? ` [風格: ${style}]` : ''}`, 'loading');
         
         try {
             const response = await fetch('/api/generate-prompt', {
