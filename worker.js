@@ -809,7 +809,7 @@ async function handleUpload(request) {
 
     // 使用 ImgBB API 上傳圖片
     // ImgBB 免費 API Key (用於測試，生產環境建議使用自己的 API Key)
-    const IMGBB_API_KEY = 'c4a9c3b4f5e6d7a8b9c0d1e2f3a4b5c6'; // 免費測試用 API Key
+    const IMGBB_API_KEY = '8245f772dd33870730fab74e7e236df2'; // 免費測試用 API Key
     
     // 將文件轉換為 Base64（使用分塊處理避免堆疊溢出）
     const arrayBuffer = await file.arrayBuffer();
