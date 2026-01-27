@@ -867,6 +867,11 @@ A serene Japanese garden at sunset, featuring a traditional wooden bridge over a
         textPrompt += `\n\nCRITICAL INSTRUCTION: The generated prompt MUST strictly adhere to the "${style}" art style. You must include specific artistic keywords, lighting techniques, color palettes, and composition styles associated with ${style}. Make the style the dominant visual characteristic of the image.`;
     }
     
+    // 如果有圖片，將圖片 URL 添加到提示詞中
+    if (finalImageUrl) {
+        textPrompt += `\n\nImage URL for analysis: ${finalImageUrl}`;
+    }
+    
     if (finalImageUrl) {
         // 驗證圖片 URL 是否可訪問
         try {
@@ -931,45 +936,22 @@ A serene Japanese garden at sunset, featuring a traditional wooden bridge over a
         });
     }
     
-    // 構建 messages - 確保格式正確
-    const messages = [
-        { role: "system", content: systemPrompt }
-    ];
-    
-    // 如果有圖片，將文本和圖片合併到同一個 user message
-    if (finalImageUrl) {
-        const userContent = [
-            { type: "text", text: textPrompt },
-            { type: "image_url", image_url: { url: finalImageUrl, detail: "high" } }
-        ];
-        messages.push({ role: "user", content: userContent });
-    } else {
-        // 如果沒有圖片，只發送文本
-        messages.push({ role: "user", content: textPrompt });
-    }
-    
     // Select model: Use 'gemini-search' (Google Gemini 3 Flash) for better image analysis
     const aiModel = 'gemini-search';
     
-    // 構建請求 URL - 使用新端點並添加匿名參數
-    const apiUrl = new URL('https://text.pollinations.ai/');
+    // 構建請求 URL - 使用簡單文本端點
+    const apiUrl = new URL(`https://gen.pollinations.ai/text/${encodeURIComponent(textPrompt)}`);
     apiUrl.searchParams.append('model', aiModel);
     apiUrl.searchParams.append('seed', Math.floor(Math.random() * 1000000).toString());
     
-    // 構建請求體
-    const requestBody = {
-        messages: messages,
-        jsonMode: false
-    };
-    
     // 構建請求頭
     const headers = {
-        'Content-Type': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
     };
     
     // 如果有 API Key，添加認證
     if (env.POLLINATIONS_API_KEY) {
-        headers['Authorization'] = `Bearer ${env.POLLINATIONS_API_KEY}`;
+        apiUrl.searchParams.append('key', env.POLLINATIONS_API_KEY);
     }
     
     // Call Pollinations API
@@ -979,14 +961,12 @@ A serene Japanese garden at sunset, featuring a traditional wooden bridge over a
         hasImage: !!finalImageUrl,
         imageUrl: finalImageUrl?.substring(0, 60) + '...',
         hasTextInput: !!input,
-        style: style,
-        messageCount: messages.length
+        style: style
     });
     
     const response = await fetch(apiUrl.toString(), {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(requestBody)
+        method: 'GET',
+        headers: headers
     });
 
     console.log('📥 Received response from Pollinations:', {
