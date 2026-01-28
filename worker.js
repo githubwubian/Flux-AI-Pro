@@ -4371,7 +4371,11 @@ function displayResult(items){
     const div=document.createElement('div');div.className='gallery';
     items.forEach(item=>{
         const d=document.createElement('div');d.className='gallery-item';
-        d.innerHTML=\`<img src="\${item.image||item.url}" onclick="openModal(this.src)">\`;
+        // 使用 onclick 觸發 openModal
+        const img = document.createElement('img');
+        img.src = item.image || item.url;
+        img.onclick = function() { openModal(this.src); };
+        d.appendChild(img);
         div.appendChild(d);
     });
     document.getElementById('results').innerHTML='';
