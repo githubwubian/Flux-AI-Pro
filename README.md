@@ -1,6 +1,6 @@
 # 🎨 Flux AI Pro - NanoBanana Edition
 
-![Version](https://img.shields.io/badge/Version-11.7.0-8B5CF6?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.9.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 ![I18N](https://img.shields.io/badge/I18N-5%20Languages-green?style=flat-square)
@@ -27,15 +27,18 @@
 
 ---
 
-## 🔥 v11.7.0 更新亮點 (Release Highlights)
+## 🔥 v11.9.0 更新亮點 (Release Highlights)
 
+- **🕐 智能時間戳功能**：生成圖片時自動嵌入時間戳，支援多種格式與位置選項。
+- **🎨 時間戳樣式自定義**：可選擇時間戳的顯示位置（左上、右上、左下、右下）、字體大小、顏色與透明度。
+- **📅 多種時間格式**：支援完整日期時間、簡短日期、時間戳等多種格式選擇。
 - **🌍 全球化多語言支援**：新增日文、韓文、阿拉伯語，總計支援 5 種主流語言。
 - **🌐 智慧語言偵測**：系統自動識別瀏覽器語系並切換介面，實現零門檻使用。
 - **🔄 完美 RTL 佈局**：針對阿拉伯語進行深度優化，支援從右到左 (Right-to-Left) 的完整視覺佈局。
 - **🤖 專業提示詞生成器**：整合 Google Gemini 3 Flash，支援文字與圖片分析，自動生成高品質提示詞。
 - **🌌 深空紫玻璃擬態 UI**：主介面全面升級為現代感十足的 Glassmorphism 設計。
 - **✨ 全域 Ultra HD 優化**：實裝「最佳品質優先」策略，自動提升生成細節與解析度。
-- **💾 IndexedDB 永久存儲**：歷史記錄不再隨頁面重新整理消失，支援本地永久保存與數據導出。
+- **💾 IndexedDB 永久存永久存儲**：歷史記錄不再隨頁面重新整理消失，支援本地永久保存與數據導出。
 - **🔞 NSFW 模式切換**：針對特定供應商提供內容過濾開關（需自備 API Key）。
 
 ---
@@ -58,6 +61,7 @@
 *   **懶加載技術**：利用 IntersectionObserver 優化圖片加載速度。
 *   **請求隊列**：智慧管理併發請求，避免瀏覽器卡頓。
 *   **自動翻譯**：內建 Google 翻譯接口，支援中文提示詞自動轉英文。
+*   **實時生成時間追生成時間追蹤**：顯示圖片生成的實時進度與最終耗時，提供透明的性能反饋。
 
 ---
 

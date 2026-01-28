@@ -1,7 +1,49 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.8.0
+//  版本: 11.9.0
 // =================================================================================
+
+// 時間戳格式化函數
+function formatTimestamp(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+}
+
+// 格式化文件名時間戳（用於下載文件名）
+function formatFilenameTimestamp(date) {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+}
+
+// 前端時間戳格式化函數（用於下載文件名）
+const formatFilenameTimestampFrontend = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}_${hours}${minutes}${seconds}`;
+};
+
+// 格式化下載文件名（包含時間戳）
+function formatDownloadFilename(model, timestamp, seed) {
+    const timeStr = formatFilenameTimestampFrontend(new Date(timestamp));
+    return `${model}-${timeStr}-${seed}.png`;
+}
 
 // 導入風格適配器（僅在服務器端使用）
 import { ServerStyleManager } from './utils/style-adapter.js';
@@ -12,7 +54,7 @@ const mergedStyles = styleManager.merge();
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.8.0 (Lite)",
+  PROJECT_VERSION: "11.9.0 (Lite)",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -1621,10 +1663,13 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <div id="nanoPromptGeneratorStatus" style="font-size: 10px; color: #9ca3af; margin-top: 6px; display: none;"></div>
             </div>
 
-            <button id="genBtn" class="gen-btn">
-                <span id="genBtnText">生成圖像</span>
-                <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
-            </button>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button id="genBtn" class="gen-btn">
+                    <span id="genBtnText">生成圖像</span>
+                    <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
+                </button>
+                <div id="liveTimer" style="display:none; color:#FACC15; font-weight:700; font-size:16px; min-width:50px; text-align:center;">0.0s</div>
+            </div>
             
             <div class="quota-box">
                 <div class="quota-info">
@@ -1640,6 +1685,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         <div class="main-stage">
             <div id="placeholderText" class="placeholder-text">NANOPRO</div>
             <img id="resultImg" alt="Generated Image" title="點擊放大">
+            <div id="imageInfo" class="image-info" style="display:none; margin-top:15px; padding:12px; background:rgba(0,0,0,0.5); backdrop-filter:blur(10px); border-radius:12px; border:1px solid rgba(250,204,21,0.2); text-align:center;">
+                <span style="color:#FACC15; font-weight:700; font-size:13px;">📊 生成耗時</span>
+                <span id="generationTime" style="color:#fff; font-weight:600; margin-left:8px;">--</span>
+            </div>
             
             <div class="loading-overlay">
                 <div class="banana-loader">🍌</div>
@@ -1655,6 +1704,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     <div class="lightbox" id="lightbox">
         <div class="lightbox-close" id="lbClose">×</div>
         <img id="lbImg" src="">
+        <div style="text-align:center; margin-top:15px;">
+            <div id="lightboxTime" style="color:#FACC15; font-weight:700; font-size:14px; background:rgba(0,0,0,0.5); padding:8px 16px; border-radius:20px; display:inline-block;">生成時間: --</div>
+        </div>
         <div class="lightbox-actions">
             <a id="lbDownload" class="action-btn" download="nano-banana-art.png" href="#">
                 <span id="lightboxSaveText">📥 保存圖片</span>
@@ -2292,7 +2344,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         lightbox: document.getElementById('lightbox'),
         lbImg: document.getElementById('lbImg'),
         lbClose: document.getElementById('lbClose'),
-        lbDownload: document.getElementById('lbDownload')
+        lbDownload: document.getElementById('lbDownload'),
+        liveTimer: document.getElementById('liveTimer'),
+        imageInfo: document.getElementById('imageInfo'),
+        generationTime: document.getElementById('generationTime')
     };
     
     // UI Quota Logic (Syncs with server limit of 5)
@@ -2343,7 +2398,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     }
 
     function updateCooldownText(sec) {
-        els.genBtn.innerHTML = \`<span>\${nanoT('gen_btn_charging').replace('{s}', sec)}</span>\`;
+        els.genBtn.innerHTML = '<span>' + nanoT('gen_btn_charging').replace('{s}', sec) + '</span>';
     }
     
     const now = new Date();
@@ -2433,6 +2488,16 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     function openLightbox(url) {
         els.lbImg.src = url;
         els.lbDownload.href = url;
+        
+        // 顯示生成時間
+        const timeDisplay = document.getElementById('lightboxTime');
+        const generationTime = els.img.dataset.generationTime;
+        if (generationTime) {
+            timeDisplay.textContent = '生成時間: ' + generationTime;
+        } else {
+            timeDisplay.textContent = '生成時間: --';
+        }
+        
         els.lightbox.classList.add('show');
     }
     els.lbClose.onclick = () => els.lightbox.classList.remove('show');
@@ -2728,6 +2793,17 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         if(!p) return nanoToast('toast_no_prompt', "⚠️ 請輸入提示詞");
         if(currentQuota <= 0) return nanoToast('toast_energy_depleted', "🚫 本小時能量已耗盡，請稍後再來！");
 
+        // 開始計時
+        let timerInterval;
+        let startTime = Date.now();
+        const timerDisplay = document.getElementById('liveTimer');
+        timerDisplay.style.display = 'block';
+        timerDisplay.textContent = '0.0s';
+        timerInterval = setInterval(() => {
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            timerDisplay.textContent = elapsed + 's';
+        }, 100);
+
         els.genBtn.disabled = true;
         els.loader.style.display = 'flex';
         els.img.style.opacity = '0.5';
@@ -2788,6 +2864,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const blob = await res.blob();
             console.log("🍌 Nano Pro: 圖片生成成功", blob.size, "bytes");
             
+            // 停止計時器
+            clearInterval(timerInterval);
+            timerDisplay.style.display = 'none';
+            
             // 檢查是否為有效的圖片數據
             if (blob.size === 0) {
                 throw new Error("生成的圖片為空，請稍後再試");
@@ -2799,6 +2879,18 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             els.img.style.display = 'block';
             els.img.style.opacity = '1';
             document.querySelector('.placeholder-text').style.display = 'none';
+            
+            // 顯示生成時間
+            const generationTime = res.headers.get('X-Generation-Time');
+            const timeDisplay = document.getElementById('imageInfo');
+            const timeText = document.getElementById('generationTime');
+            if (generationTime) {
+                timeDisplay.style.display = 'block';
+                timeText.textContent = generationTime;
+            }
+            
+            // 記錄時間用於燈箱
+            els.img.dataset.generationTime = generationTime;
             
             const realSeed = res.headers.get('X-Seed');
             if(!isSeedRandom && realSeed) els.seed.value = realSeed;
@@ -2813,6 +2905,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         } catch(e) {
             console.error("🍌 Nano Pro: 生成錯誤", e);
             nanoToast('toast_error', "❌ " + e.message);
+            // 停止計時器
+            clearInterval(timerInterval);
+            timerDisplay.style.display = 'none';
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
         } finally {
@@ -4093,7 +4188,8 @@ async function updateHistoryDisplay(){
         d.querySelector('.download-btn').onclick=()=>{
             const a=document.createElement('a');
             a.href=imgSrc;
-            a.download=\`\${item.model}-\${item.seed}.png\`;
+            const timestamp = formatFilenameTimestampFrontend(new Date(item.timestamp || Date.now()));
+            a.download=\`\${item.model}-\${timestamp}-\${item.seed}.png\`;
             a.click();
         };
         d.querySelector('.delete-btn').onclick=()=>deleteFromDB(item.id);
@@ -4109,7 +4205,8 @@ function openModal(src){
     
     // Auto set download filename
     downloadBtn.href = src;
-    downloadBtn.download = \`flux-pro-\${Date.now()}.png\`;
+    const timestamp = formatFilenameTimestampFrontend(new Date());
+    downloadBtn.download = \`flux-pro-\${timestamp}.png\`;
     
     document.getElementById('imageModal').classList.add('show');
 }
