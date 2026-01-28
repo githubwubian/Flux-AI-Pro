@@ -3363,9 +3363,9 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
 <div id="historyList" style="padding:0 20px"><p>Loading history...</p></div>
 </div></div>
 <div id="imageModal" class="modal">
-    <div class="modal-content" style="position:relative; display:flex; flex-direction:column; align-items:center;">
-        <img id="modalImage" src="" style="max-height:85vh; margin-bottom:15px;">
-        <div style="display:flex; gap:15px;">
+    <div class="modal-content" style="position:relative; display:flex; flex-direction:column; align-items:center; overflow:auto; max-height:100vh; max-width:100vw;">
+        <img id="modalImage" src="" style="max-height:85vh; margin-bottom:15px; transform-origin: center center;">
+        <div style="display:flex; gap:15px; position:sticky; bottom:20px; z-index:100;">
             <a id="modalDownload" href="#" class="btn btn-primary" download="image.png" style="text-decoration:none; width:auto; padding:10px 25px;">
                 📥 保存圖片
             </a>
@@ -4206,7 +4206,22 @@ function openModal(src){
     // Auto set download filename
     downloadBtn.href = src;
     const timestamp = formatFilenameTimestampFrontend(new Date());
-    downloadBtn.download = \`flux-pro-\${timestamp}.png\`;
+    downloadBtn.download = `flux-pro-${timestamp}.png`;
+    
+    // 放大功能：切換 CSS class
+    modalImg.style.cursor = 'zoom-in';
+    modalImg.onclick = function() {
+        if (this.style.transform === 'scale(2)') {
+            this.style.transform = 'scale(1)';
+            this.style.cursor = 'zoom-in';
+        } else {
+            this.style.transform = 'scale(2)';
+            this.style.cursor = 'zoom-out';
+        }
+    };
+    // 重置縮放
+    modalImg.style.transform = 'scale(1)';
+    modalImg.style.transition = 'transform 0.3s ease';
     
     document.getElementById('imageModal').classList.add('show');
 }
