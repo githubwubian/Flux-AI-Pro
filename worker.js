@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.7.0 (多語言擴展 & 自動偵測)
-//  更新: 多語言支援 (zh, en, ja, ko, ar)、自動語言偵測、RTL 支援、UI 翻譯修復
+//  版本: 11.8.0 (Aqua API 集成)
+//  更新: 新增 Aqua API (Flux-2, Z-Image, NanoBanana, Imagen4)、風格擴展多語言支援
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
@@ -104,16 +104,10 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "dall-e-3", name: "DALL-E 3 🎨", category: "openai", description: "OpenAI DALL-E 3", max_size: 1024 },
-        { id: "flux", name: "Flux 1", category: "flux", description: "Flux Image Gen", max_size: 1024 },
-        { id: "flux-pro", name: "Flux Pro", category: "flux", description: "Flux Pro", max_size: 1024 },
         { id: "flux-2", name: "Flux 2 ⚡", category: "flux", description: "Flux 2 Generation", max_size: 1024 },
-        { id: "midjourney", name: "Midjourney", category: "other", description: "Midjourney", max_size: 1024 },
-        { id: "rapid", name: "Rapid Gen", category: "other", description: "Rapid Image Model", max_size: 1024 },
         { id: "zimage", name: "Z-Image", category: "other", description: "Z-Image Model", max_size: 1024 },
         { id: "nanobanana", name: "NanoBanana 🍌", category: "flux", description: "NanoBanana Model", max_size: 1024 },
-        { id: "imagen4", name: "Imagen 4", category: "google", description: "Google Imagen 4", max_size: 1024 },
-        { id: "stable-diffusion-3", name: "Stable Diffusion 3", category: "sd", description: "SD3 Image Gen", max_size: 1024 }
+        { id: "imagen4", name: "Imagen 4", category: "google", description: "Google Imagen 4", max_size: 1024 }
       ],
       rate_limit: { requests: 50, interval: 60 },
       max_size: { width: 2048, height: 2048 }
@@ -689,7 +683,7 @@ class AquaProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
   
   async generate(prompt, options, logger) {
-    const { model = "flux", width = 1024, height = 1024, apiKey = "", style = "none", negativePrompt = "" } = options;
+    const { model = "flux-2", width = 1024, height = 1024, apiKey = "", style = "none", negativePrompt = "" } = options;
     const finalApiKey = this.env.AQUA_API_KEY || apiKey;
     if (!finalApiKey) throw new Error("Aqua API Key is required (Set AQUA_API_KEY env var or provide via UI)");
 
@@ -719,33 +713,8 @@ class AquaProvider {
     // Smart Routing
     const isChatModel = ["gemini", "grok", "openai", "gpt", "deepseek", "minimax", "glm", "nova", "kimi"].some(k => model.toLowerCase().includes(k));
 
-    // Strategy 1: Try Image Generation Endpoint (Only if NOT a chat model)
-    if (!isChatModel) {
-        try {
-          const url = `${this.config.endpoint}/v1/images/generations`;
-          const body = { model, prompt: enhancedPrompt, n: 1, size: `${width}x${height}`, response_format: "url" };
-          logger.add("📡 Aqua Request (Image API)", { url, model });
-
-          const response = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body) }, 30000);
-          
-          if (response.ok) {
-              const data = await response.json();
-              console.log("🌊 [AquaProvider] Image Response:", JSON.stringify(data));
-
-              if (data.data && data.data.length > 0) imgUrl = data.data[0].url;
-              else if (data.url) imgUrl = data.url;
-              else if (data.output) imgUrl = Array.isArray(data.output) ? data.output[0] : data.output;
-          } else {
-             throw new Error(`Status ${response.status}: ${await response.text()}`);
-          }
-        } catch (e) {
-          logger.add("⚠️ Image API Failed", { error: e.message });
-          // Fall through to Strategy 2
-        }
-    }
-
-    // Strategy 2: Try Chat Completion Endpoint (Unified)
-    if (!imgUrl) {
+    if (isChatModel) {
+        // Chat API Logic
         try {
             const chatUrl = `${this.config.endpoint}/v1/chat/completions`;
             const chatBody = {
@@ -754,20 +723,44 @@ class AquaProvider {
             };
             logger.add("📡 Aqua Request (Chat API)", { url: chatUrl, model });
 
-            const chatResp = await fetchWithTimeout(chatUrl, { method: 'POST', headers, body: JSON.stringify(chatBody) }, 45000);
+            const chatResp = await fetchWithTimeout(chatUrl, { method: 'POST', headers, body: JSON.stringify(chatBody) }, 60000);
             if (!chatResp.ok) throw new Error(`Chat API Status ${chatResp.status}: ${await chatResp.text()}`);
 
             const chatData = await chatResp.json();
             console.log("🌊 [AquaProvider] Chat Response:", JSON.stringify(chatData));
             
             const content = chatData.choices?.[0]?.message?.content || "";
-            // Extract URL from markdown or text
             const urlMatch = content.match(/https?:\/\/[^\s)"']+/);
             if (urlMatch) imgUrl = urlMatch[0];
             else throw new Error("No URL found in chat content: " + content.substring(0, 100));
+        } catch (e) {
+            throw new Error(`Aqua Chat API Failed: ${e.message}`);
+        }
+    } else {
+        // Image API Logic (No Fallback)
+        try {
+          const url = `${this.config.endpoint}/v1/images/generations`;
+          const body = { model, prompt: enhancedPrompt, n: 1, size: `${width}x${height}`, response_format: "url" };
+          logger.add("📡 Aqua Request (Image API)", { url, model });
 
-        } catch (chatErr) {
-            throw new Error(`Aqua API Failed: Chat Fallback: ${chatErr.message}`);
+          const response = await fetchWithTimeout(url, { method: 'POST', headers, body: JSON.stringify(body) }, 60000);
+          
+          if (!response.ok) {
+             const errText = await response.text();
+             throw new Error(`Status ${response.status}: ${errText}`);
+          }
+          
+          const data = await response.json();
+          console.log("🌊 [AquaProvider] Image Response:", JSON.stringify(data));
+
+          if (data.data && data.data.length > 0) imgUrl = data.data[0].url;
+          else if (data.url) imgUrl = data.url;
+          else if (data.output) imgUrl = Array.isArray(data.output) ? data.output[0] : data.output;
+          
+          if (!imgUrl) throw new Error("No URL in response: " + JSON.stringify(data));
+        } catch (e) {
+          logger.add("⚠️ Image API Failed", { error: e.message });
+          throw new Error(`Aqua Image API Failed: ${e.message}`);
         }
     }
 
