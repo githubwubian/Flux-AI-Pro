@@ -2813,6 +2813,9 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         } catch(e) {
             console.error("🍌 Nano Pro: 生成錯誤", e);
             nanoToast('toast_error', "❌ " + e.message);
+            // 停止計時器
+            clearInterval(timerInterval);
+            timerDisplay.style.display = 'none';
             // On error, re-enable button if quota exists (unless rate limited)
             if(currentQuota > 0 && !e.message.includes('限額')) els.genBtn.disabled = false;
         } finally {
