@@ -3301,10 +3301,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div class="modal-close" id="modalCloseBtn">×</div>
 </div>
 <script>
-// Inject Style Data from Server
-const STYLE_CATEGORIES = ${JSON.stringify(CONFIG.STYLE_CATEGORIES)};
-const STYLE_PRESETS = ${JSON.stringify(CONFIG.STYLE_PRESETS)};
-
 // ====== 性能優化模塊 ======
 const PerformanceOptimizer = {
     // 請求控制器 - 用於取消進行中的請求
@@ -3698,40 +3694,8 @@ function setLanguage(lang) {
     updateLangButton();
 }
 
-// 更新風格選單
-function updateStyleOptions() {
-    const styleSelect = document.getElementById('style');
-    if (!styleSelect) return;
-    
-    const currentVal = styleSelect.value;
-    styleSelect.innerHTML = '';
-    
-    const sortedCategories = Object.entries(STYLE_CATEGORIES).sort((a, b) => a[1].order - b[1].order);
-    
-    for (const [categoryKey, categoryInfo] of sortedCategories) {
-        const stylesInCategory = Object.entries(STYLE_PRESETS).filter(([key, style]) => style.category === categoryKey);
-        
-        if (stylesInCategory.length > 0) {
-            const categoryName = typeof categoryInfo.name === 'object' ? (categoryInfo.name[curLang] || categoryInfo.name.zh || categoryInfo.name) : categoryInfo.name;
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = categoryInfo.icon + ' ' + categoryName;
-            
-            for (const [styleKey, styleConfig] of stylesInCategory) {
-                const styleName = typeof styleConfig.name === 'object' ? (styleConfig.name[curLang] || styleConfig.name.zh || styleConfig.name) : styleConfig.name;
-                const option = document.createElement('option');
-                option.value = styleKey;
-                option.textContent = styleConfig.icon + ' ' + styleName;
-                if (styleKey === currentVal) option.selected = true;
-                optgroup.appendChild(option);
-            }
-            styleSelect.appendChild(optgroup);
-        }
-    }
-}
-
 // 更新所有翻譯
 function updateLang(){
-    updateStyleOptions();
     document.querySelectorAll('[data-t]').forEach(el=>{
         const k=el.getAttribute('data-t');
         if(I18N[curLang][k]){
