@@ -3842,6 +3842,8 @@ function updateModelOptions() {
             const opt = document.createElement('option');
             opt.value = m.id;
             opt.textContent = m.name;
+            // Set default model to FLUX.2 Klein 9B
+            if (m.id === 'klein-large') opt.selected = true;
             optgroup.appendChild(opt);
         });
         modelSelect.appendChild(optgroup);
