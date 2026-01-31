@@ -3828,6 +3828,7 @@ function setLanguage(lang) {
     
     updateLang();
     updateLangButton();
+    updateStyleOptions();
 }
 
 // 更新風格選單
@@ -4471,6 +4472,7 @@ function displayResult(items){
 // Online Count (whos.amung.us widget handled in HTML)
 window.onload=()=>{
     updateLang();
+    updateStyleOptions();
     updateHistoryDisplay();
     updateModelOptions();
 };
