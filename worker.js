@@ -598,9 +598,105 @@ class InfipProvider {
       
       const data = await response.json();
       
-      // Handle Async Task (if any accidental async model used)
+      // Handle Async Task (polling mechanism)
       if (data.task_id) {
-         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like img4.");
+         logger.add("⏳ Async Task Started", { task_id: data.task_id, message: "Model returned task_id, polling for result..." });
+         
+         const taskId = data.task_id;
+         const maxPollAttempts = 30; // 最多輪詢 30 次
+         const pollInterval = 2000; // 每 2 秒輪詢一次
+         let pollUrl = `${this.config.endpoint}/v1/tasks/${taskId}`;
+         
+         for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+            
+            logger.add(`🔄 Polling Attempt ${attempt}/${maxPollAttempts}`, { task_id: taskId });
+            
+            try {
+               const pollResponse = await fetchWithTimeout(pollUrl, {
+                  method: 'GET',
+                  headers: headers
+               }, 10000);
+               
+               if (!pollResponse.ok) {
+                  const errText = await pollResponse.text();
+                  logger.add(`⚠️ Poll Failed (Attempt ${attempt})`, { status: pollResponse.status, error: errText });
+                  if (attempt === maxPollAttempts) {
+                     throw new Error(`Async task polling failed after ${maxPollAttempts} attempts: ${errText}`);
+                  }
+                  continue;
+               }
+               
+               const pollData = await pollResponse.json();
+               logger.add(`📊 Poll Response (Attempt ${attempt})`, { status: pollData.status, task_id: taskId });
+               
+               // 檢查任務狀態
+               if (pollData.status === 'completed' || pollData.status === 'succeeded') {
+                  // 任務完成，獲取圖片 URL
+                  let imgUrl = null;
+                  
+                  // 支援多種回應格式
+                  if (pollData.data && pollData.data.length > 0 && pollData.data[0].url) {
+                     imgUrl = pollData.data[0].url;
+                  } else if (pollData.url) {
+                     imgUrl = pollData.url;
+                  } else if (pollData.output) {
+                     imgUrl = Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
+                  } else if (pollData.result && pollData.result.url) {
+                     imgUrl = pollData.result.url;
+                  }
+                  
+                  if (imgUrl) {
+                     logger.add("✅ Async Task Completed", { task_id: taskId, image_url: imgUrl });
+                     
+                     // 下載圖片
+                     const imgResp = await fetch(imgUrl);
+                     const imageBuffer = await imgResp.arrayBuffer();
+                     const contentType = imgResp.headers.get('content-type') || 'image/png';
+                     
+                     return {
+                        imageData: imageBuffer,
+                        contentType: contentType,
+                        url: imgUrl,
+                        provider: this.name,
+                        model: model,
+                        seed: -1,
+                        width: width,
+                        height: height,
+                        auto_translated: translationLog.translated,
+                        authenticated: true,
+                        cost: "QUOTA"
+                     };
+                  } else {
+                     throw new Error(`Async task completed but no image URL found in response: ${JSON.stringify(pollData)}`);
+                  }
+               } else if (pollData.status === 'failed' || pollData.status === 'error') {
+                  const errorMsg = pollData.error || pollData.message || 'Unknown error';
+                  throw new Error(`Async task failed: ${errorMsg}`);
+               } else if (pollData.status === 'processing' || pollData.status === 'pending' || pollData.status === 'running') {
+                  // 任務仍在處理中，繼續輪詢
+                  if (attempt === maxPollAttempts) {
+                     throw new Error(`Async task timeout after ${maxPollAttempts * pollInterval / 1000} seconds`);
+                  }
+                  continue;
+               } else {
+                  // 未知狀態
+                  logger.add(`⚠️ Unknown Status (Attempt ${attempt})`, { status: pollData.status, task_id: taskId });
+                  if (attempt === maxPollAttempts) {
+                     throw new Error(`Async task polling failed: Unknown status '${pollData.status}'`);
+                  }
+                  continue;
+               }
+            } catch (pollError) {
+               logger.add(`⚠️ Poll Error (Attempt ${attempt})`, { error: pollError.message });
+               if (attempt === maxPollAttempts) {
+                  throw new Error(`Async task polling failed: ${pollError.message}`);
+               }
+               continue;
+            }
+         }
+         
+         throw new Error(`Async task polling failed after ${maxPollAttempts} attempts`);
       }
       
       if (data.data && data.data.length > 0) {
@@ -752,9 +848,87 @@ class AquaProvider {
                     const data = await response.json();
                     console.log("🌊 [AquaProvider] Image Response:", JSON.stringify(data));
 
-                    if (data.data && data.data.length > 0) imgUrl = data.data[0].url;
-                    else if (data.url) imgUrl = data.url;
-                    else if (data.output) imgUrl = Array.isArray(data.output) ? data.output[0] : data.output;
+                    // Handle Async Task (polling mechanism)
+                    if (data.task_id) {
+                        logger.add("⏳ Async Task Started", { task_id: data.task_id, message: "Model returned task_id, polling for result..." });
+                        
+                        const taskId = data.task_id;
+                        const maxPollAttempts = 30;
+                        const pollInterval = 2000;
+                        let pollUrl = `${this.config.endpoint}/v1/tasks/${taskId}`;
+                        
+                        for (let attempt = 1; attempt <= maxPollAttempts; attempt++) {
+                            await new Promise(resolve => setTimeout(resolve, pollInterval));
+                            
+                            logger.add(`🔄 Polling Attempt ${attempt}/${maxPollAttempts}`, { task_id: taskId });
+                            
+                            try {
+                                const pollResponse = await fetchWithTimeout(pollUrl, {
+                                    method: 'GET',
+                                    headers
+                                }, 10000);
+                                
+                                if (!pollResponse.ok) {
+                                    const errText = await pollResponse.text();
+                                    logger.add(`⚠️ Poll Failed (Attempt ${attempt})`, { status: pollResponse.status, error: errText });
+                                    if (attempt === maxPollAttempts) {
+                                        throw new Error(`Async task polling failed after ${maxPollAttempts} attempts: ${errText}`);
+                                    }
+                                    continue;
+                                }
+                                
+                                const pollData = await pollResponse.json();
+                                logger.add(`📊 Poll Response (Attempt ${attempt})`, { status: pollData.status, task_id: taskId });
+                                
+                                if (pollData.status === 'completed' || pollData.status === 'succeeded') {
+                                    if (pollData.data && pollData.data.length > 0 && pollData.data[0].url) {
+                                        imgUrl = pollData.data[0].url;
+                                    } else if (pollData.url) {
+                                        imgUrl = pollData.url;
+                                    } else if (pollData.output) {
+                                        imgUrl = Array.isArray(pollData.output) ? pollData.output[0] : pollData.output;
+                                    } else if (pollData.result && pollData.result.url) {
+                                        imgUrl = pollData.result.url;
+                                    }
+                                    
+                                    if (imgUrl) {
+                                        logger.add("✅ Async Task Completed", { task_id: taskId, image_url: imgUrl });
+                                        break;
+                                    } else {
+                                        throw new Error(`Async task completed but no image URL found: ${JSON.stringify(pollData)}`);
+                                    }
+                                } else if (pollData.status === 'failed' || pollData.status === 'error') {
+                                    const errorMsg = pollData.error || pollData.message || 'Unknown error';
+                                    throw new Error(`Async task failed: ${errorMsg}`);
+                                } else if (pollData.status === 'processing' || pollData.status === 'pending' || pollData.status === 'running') {
+                                    if (attempt === maxPollAttempts) {
+                                        throw new Error(`Async task timeout after ${maxPollAttempts * pollInterval / 1000} seconds`);
+                                    }
+                                    continue;
+                                } else {
+                                    logger.add(`⚠️ Unknown Status (Attempt ${attempt})`, { status: pollData.status, task_id: taskId });
+                                    if (attempt === maxPollAttempts) {
+                                        throw new Error(`Async task polling failed: Unknown status '${pollData.status}'`);
+                                    }
+                                    continue;
+                                }
+                            } catch (pollError) {
+                                logger.add(`⚠️ Poll Error (Attempt ${attempt})`, { error: pollError.message });
+                                if (attempt === maxPollAttempts) {
+                                    throw new Error(`Async task polling failed: ${pollError.message}`);
+                                }
+                                continue;
+                            }
+                        }
+                        
+                        if (imgUrl) break;
+                        throw new Error(`Async task polling failed after ${maxPollAttempts} attempts`);
+                    } else {
+                        // Sync response handling
+                        if (data.data && data.data.length > 0) imgUrl = data.data[0].url;
+                        else if (data.url) imgUrl = data.url;
+                        else if (data.output) imgUrl = Array.isArray(data.output) ? data.output[0] : data.output;
+                    }
                     
                     if (imgUrl) break; // Success
                     throw new Error("No URL in response: " + JSON.stringify(data));
