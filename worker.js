@@ -13,7 +13,7 @@ const mergedStyles = styleManager.merge();
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.8.0",
+  PROJECT_VERSION: "11.7.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -51,17 +51,21 @@ const CONFIG = {
       default: true,
       description: "官方 AI 圖像生成服務",
       features: {
-        private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true, nsfw_filter: true, task_status: true
+        private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "flux-realism", name: "Flux Realism 📸", confirmed: true, category: "flux", description: "寫實風格專用模型", max_size: 2048, pricing: { image_price: 0.00015, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false },
+        { id: "gptimage", name: "GPT-Image 🎨", confirmed: true, category: "gptimage", description: "通用 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "gptimage-large", name: "GPT-Image Large 🌟", confirmed: true, category: "gptimage", description: "高質量 GPT 圖像生成模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "zimage", name: "Z-Image Turbo ⚡", confirmed: true, category: "zimage", description: "快速 6B 參數圖像生成 (Alpha)", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux", name: "Flux 標準版", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "turbo", name: "Flux Turbo ⚡", confirmed: true, category: "flux", description: "超快速圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
-        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false },
-        { id: "klein-large", name: "FLUX.2 Klein 9B 🌟", confirmed: true, category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false },
-        { id: "nanobanana", name: "NanoBanana 🍌", confirmed: true, category: "nanobanana", description: "NanoBanana 高品質模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false, nano_pro_only: true },
-        { id: "seedream", name: "Seedream 💭", confirmed: true, category: "seedream", description: "Seedream 創意模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false },
-        { id: "gptimage", name: "GPTImage 🖼️", confirmed: true, category: "gptimage", description: "GPTImage 智能模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false },
-        { id: "zimage", name: "Z-Image 🌟", confirmed: true, category: "zimage", description: "Z-Image 高品質模型", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"], supports_reference_images: false }
+        { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "seedream-pro", name: "SeeDream Pro 🌟", confirmed: true, category: "seedream", description: "高品質夢幻圖像生成", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "klein", name: "FLUX.2 Klein 4B", confirmed: true, category: "flux", description: "Advanced Flux 2 model", max_size: 2048, pricing: { image_price: 0.0003, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "klein-large", name: "FLUX.2 Klein 9B 🌟", confirmed: true, category: "flux", description: "Advanced Flux 2 Large model - 9B parameters", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "nanobanana-pro", name: "NanoBanana Pro 🍌", confirmed: true, category: "flux", description: "Nano Pro 專用高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "flux-pro", name: "Flux Pro 🚀", confirmed: true, category: "flux", description: "Flux Pro 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] }
       ],
       rate_limit: null,
       max_size: { width: 2048, height: 2048 }
@@ -117,14 +121,14 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: {
-      "flux-realism": { min: 25, optimal: 35, max: 50 },
-      "kontext": { min: 20, optimal: 28, max: 40 },
+      "nanobanana-pro": { min: 20, optimal: 25, max: 40 },
+      "gptimage": { min: 15, optimal: 25, max: 35 },
+      "gptimage-large": { min: 20, optimal: 30, max: 45 },
+      "zimage": { min: 10, optimal: 20, max: 30 },
+      "flux": { min: 20, optimal: 28, max: 40 },
       "klein": { min: 25, optimal: 30, max: 50 },
       "klein-large": { min: 30, optimal: 35, max: 55 },
-      "nanobanana": { min: 25, optimal: 30, max: 50 },
-      "seedream": { min: 25, optimal: 30, max: 50 },
-      "gptimage": { min: 25, optimal: 30, max: 50 },
-      "zimage": { min: 25, optimal: 30, max: 50 }
+      "kontext": { min: 20, optimal: 28, max: 40 }
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -144,14 +148,15 @@ const CONFIG = {
     },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise, jpeg artifacts, watermark, text, signature, mutation, deformed, extra limbs, extra fingers, bad hands, bad feet, poor composition, out of frame, worst quality, normal quality, error, missing fingers, extra digit, fewer digits, cropped",
     MODEL_QUALITY_PROFILES: {
-      "flux-realism": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "kontext": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "nanobanana-pro": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
+      "gptimage-large": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.05, recommended_quality: "ultra" },
+      "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "economy" },
+      "flux": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.1, guidance_boost: 1.0, recommended_quality: "standard" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" },
-      "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "seedream": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "gptimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" }
+      "turbo": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 0.9, guidance_boost: 0.95, recommended_quality: "economy" },
+      "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
     }
   }
 };
@@ -367,15 +372,17 @@ class PollinationsProvider {
   
   async generate(prompt, options, logger) {
     const {
-      model = "flux", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null,
+      model = "zimage", width = 1024, height = 1024, seed = -1, negativePrompt = "", guidance = null, steps = null,
       enhance = false, nologo = true, privateMode = true, style = "none", autoOptimize = true, autoHD = true,
-      qualityMode = 'standard', referenceImages = [], nsfw = false, n = 1, callbackUrl = null
+      qualityMode = 'standard', referenceImages = []
     } = options;
 
     console.log("🍌 [PollinationsProvider] 開始生成:", { model, prompt: prompt.substring(0, 30) + "..." });
 
     // 🔥 模型映射: 將自定義模型名稱映射到實際的 Pollinations API 模型
     const MODEL_MAPPING = {
+      'nanobanana-pro': 'flux',
+      'flux-pro': 'flux',
       'klein-large': 'klein-large'
     };
     let apiModel = MODEL_MAPPING[model] || model;
@@ -468,11 +475,11 @@ class PollinationsProvider {
     
     const encodedPrompt = encodeURIComponent(fullPrompt);
     const pathPrefix = this.config.pathPrefix || "";
+    let baseUrl = this.config.endpoint + pathPrefix + "/" + encodedPrompt;
     
-    // 構建請求參數
     const params = new URLSearchParams();
-    params.append('prompt', fullPrompt);
-    params.append('model', apiModel);
+    // 這裡直接使用 apiModel (即 nanobanana-pro)
+    params.append('model', apiModel); 
     params.append('width', finalWidth.toString());
     params.append('height', finalHeight.toString());
     params.append('seed', currentSeed.toString());
@@ -485,16 +492,8 @@ class PollinationsProvider {
     }
     if (finalGuidance !== 7.5) params.append('guidance', finalGuidance.toString());
     if (finalSteps !== 20) params.append('steps', finalSteps.toString());
-    if (nsfw !== false) params.append('nsfw', nsfw.toString());
-    if (n > 1) params.append('n', n.toString());
-    if (callbackUrl) params.append('callback', callbackUrl);
     
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': n > 1 || callbackUrl ? 'application/json' : 'image/*',
-      'Referer': 'https://pollinations.ai/',
-      'Content-Type': 'application/x-www-form-urlencoded'
-    };
+    const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Accept': 'image/*', 'Referer': 'https://pollinations.ai/' };
     const authConfig = CONFIG.POLLINATIONS_AUTH;
     if (authConfig.enabled && authConfig.token) {
       headers['Authorization'] = `Bearer ${authConfig.token}`;
@@ -503,13 +502,12 @@ class PollinationsProvider {
       logger.add("⚠️ No API Key", { authenticated: false, note: "新 API 端點需要 API Key，請設置 POLLINATIONS_API_KEY 環境變量", endpoint: this.config.endpoint, warning: "未認證的請求可能會失敗" });
     }
     
-    // 使用 POST 請求到 /image 端點
-    const url = this.config.endpoint + '/image';
-    logger.add("📡 API Request", { endpoint: this.config.endpoint, path: '/image', model: apiModel, authenticated: authConfig.enabled && !!authConfig.token, method: 'POST' });
+    const url = baseUrl + '?' + params.toString();
+    logger.add("📡 API Request", { endpoint: this.config.endpoint, path: pathPrefix + "/" + encodedPrompt.substring(0, 50) + "...", model: apiModel, authenticated: authConfig.enabled && !!authConfig.token, full_url: url.substring(0, 100) + "..." });
     
     for (let retry = 0; retry < CONFIG.MAX_RETRIES; retry++) {
       try {
-        const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: params.toString() }, 120000);
+        const response = await fetchWithTimeout(url, { method: 'GET', headers: headers }, 120000);
         if (response.ok) {
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.startsWith('image/')) {
@@ -517,41 +515,9 @@ class PollinationsProvider {
             const imageBlob = await response.blob();
             const imageBuffer = await imageBlob.arrayBuffer();
             return { imageData: imageBuffer, contentType: contentType, url: response.url, provider: this.name, model: model, requested_model: model, seed: currentSeed, style: style, style_name: CONFIG.STYLE_PRESETS[style]?.name || style, style_category: CONFIG.STYLE_PRESETS[style]?.category || 'unknown', steps: finalSteps, guidance: finalGuidance, width: finalWidth, height: finalHeight, quality_mode: qualityMode, prompt_complexity: promptComplexity, hd_optimized: autoHD && hdOptimization?.optimized, hd_details: hdOptimization, auto_translated: translationLog.translated, reference_images: validReferenceImages, reference_images_count: validReferenceImages.length, generation_mode: validReferenceImages.length > 0 ? "圖生圖" : "文生圖", authenticated: authConfig.enabled && !!authConfig.token, cost: "FREE", auto_optimized: autoOptimize };
-          } else if (contentType && contentType.includes('application/json')) {
-            const jsonData = await response.json();
-            logger.add("✅ Task Created", { task_id: jsonData.id, status: jsonData.status, message: "Generation task created. Use the task ID to check status." });
-            return {
-              taskId: jsonData.id,
-              status: jsonData.status,
-              message: "Generation task created. Use the task ID to check status.",
-              provider: this.name,
-              model: model,
-              seed: currentSeed,
-              style: style,
-              style_name: CONFIG.STYLE_PRESETS[style]?.name || style,
-              steps: finalSteps,
-              guidance: finalGuidance,
-              width: finalWidth,
-              height: finalHeight,
-              quality_mode: qualityMode,
-              prompt_complexity: promptComplexity,
-              hd_optimized: autoHD && hdOptimization?.optimized,
-              hd_details: hdOptimization,
-              auto_translated: translationLog.translated,
-              reference_images: validReferenceImages,
-              reference_images_count: validReferenceImages.length,
-              generation_mode: validReferenceImages.length > 0 ? "圖生圖" : "文生圖",
-              authenticated: authConfig.enabled && !!authConfig.token,
-              auto_optimized: autoOptimize
-            };
           } else { throw new Error("Invalid content type: " + contentType); }
-        } else if (response.status === 401) { throw new Error("Authentication failed: Invalid or missing API key. Please set POLLINATIONS_API_KEY"); }
-        else if (response.status === 403) { throw new Error("Access forbidden: API key may lack required permissions"); }
-        else if (response.status === 429) { throw new Error("Rate limit exceeded: Too many requests. Please try again later"); }
-        else if (response.status === 400) {
-          const errorText = await response.text();
-          throw new Error("Bad request: " + errorText);
-        }
+        } else if (response.status === 401) { throw new Error("Authentication failed: Invalid or missing API key. Please set POLLINATIONS_API_KEY"); } 
+        else if (response.status === 403) { throw new Error("Access forbidden: API key may lack required permissions"); } 
         else { throw new Error("HTTP " + response.status + ": " + (await response.text()).substring(0, 200)); }
       } catch (e) {
         logger.add("❌ Request Failed", { error: e.message, model: apiModel, retry: retry + 1, max_retries: CONFIG.MAX_RETRIES, endpoint: this.config.endpoint });
@@ -560,35 +526,6 @@ class PollinationsProvider {
       }
     }
     throw new Error("Model " + model + " failed after " + CONFIG.MAX_RETRIES + " retries");
-  }
-
-  async getTaskStatus(taskId, logger) {
-    const url = `${this.config.endpoint}/task/${taskId}`;
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'application/json'
-    };
-    
-    const authConfig = CONFIG.POLLINATIONS_AUTH;
-    if (authConfig.enabled && authConfig.token) {
-      headers['Authorization'] = `Bearer ${authConfig.token}`;
-    }
-    
-    logger.add("📡 Task Status Request", { task_id: taskId, endpoint: url });
-    
-    try {
-      const response = await fetchWithTimeout(url, { method: 'GET', headers: headers }, 30000);
-      if (response.ok) {
-        const jsonData = await response.json();
-        logger.add("✅ Task Status", { task_id: taskId, status: jsonData.status, progress: jsonData.progress || 'N/A' });
-        return jsonData;
-      } else {
-        throw new Error("Failed to get task status: " + response.status);
-      }
-    } catch (e) {
-      logger.add("❌ Task Status Failed", { error: e.message, task_id: taskId });
-      throw new Error("Failed to get task status: " + e.message);
-    }
   }
 }
 
@@ -894,13 +831,9 @@ class MultiProviderRouter {
              const result = await provider.generate(prompt, batchOptions, logger);
              if (result.batch_results) {
                  results.push(...result.batch_results);
-                 // 追蹤供應商使用
-                 await this.trackProviderUsage(providerName, result.batch_results.length);
                  return results;
              } else {
                  results.push(result);
-                 // 追蹤供應商使用
-                 await this.trackProviderUsage(providerName, 1);
              }
          } catch (e) {
              logger.add("❌ Batch Generation Failed", { error: e.message });
@@ -914,57 +847,7 @@ class MultiProviderRouter {
       const result = await provider.generate(prompt, currentOptions, logger);
       results.push(result);
     }
-    // 追蹤供應商使用
-    await this.trackProviderUsage(providerName, numOutputs);
     return results;
-  }
-
-  // 追蹤供應商使用次數
-  async trackProviderUsage(providerName, count = 1) {
-    if (!this.env || !this.env.FLUX_KV) return;
-    try {
-      const key = `provider_usage:${providerName}`;
-      const current = await this.env.FLUX_KV.get(key);
-      const currentCount = current ? parseInt(current) : 0;
-      const newCount = currentCount + count;
-      await this.env.FLUX_KV.put(key, newCount.toString(), { expirationTtl: 2592000 }); // 30天過期
-      console.log(`📊 [ProviderTracking] ${providerName}: ${currentCount} -> ${newCount}`);
-    } catch (error) {
-      console.error('❌ [ProviderTracking] Error tracking usage:', error);
-    }
-  }
-
-  // 獲取供應商使用統計
-  async getProviderStats() {
-    if (!this.env || !this.env.FLUX_KV) return {};
-    try {
-      const stats = {};
-      for (const providerName of Object.keys(this.providers)) {
-        const key = `provider_usage:${providerName}`;
-        const value = await this.env.FLUX_KV.get(key);
-        stats[providerName] = value ? parseInt(value) : 0;
-      }
-      return stats;
-    } catch (error) {
-      console.error('❌ [ProviderTracking] Error getting stats:', error);
-      return {};
-    }
-  }
-
-  // 重置供應商使用統計
-  async resetProviderStats() {
-    if (!this.env || !this.env.FLUX_KV) return false;
-    try {
-      for (const providerName of Object.keys(this.providers)) {
-        const key = `provider_usage:${providerName}`;
-        await this.env.FLUX_KV.delete(key);
-      }
-      console.log('📊 [ProviderTracking] Stats reset');
-      return true;
-    } catch (error) {
-      console.error('❌ [ProviderTracking] Error resetting stats:', error);
-      return false;
-    }
   }
 }
 // Global Cache for Online Count (To save KV List operations)
@@ -1003,31 +886,14 @@ export default {
       else if (url.pathname === '/api/generate-prompt') {
         response = await handlePromptGeneration(request, env);
       }
-      else if (url.pathname === '/api/provider-stats') {
-        response = await handleProviderStats(request, env);
-      }
       else if (url.pathname === '/health') {
-        const router = new MultiProviderRouter({}, env);
-        const providerStats = await router.getProviderStats();
-        const total = Object.values(providerStats).reduce((sum, count) => sum + count, 0);
-        const providerStatsWithRatio = {};
-        for (const [provider, count] of Object.entries(providerStats)) {
-          providerStatsWithRatio[provider] = {
-            count: count,
-            ratio: total > 0 ? ((count / total) * 100).toFixed(2) + '%' : '0%'
-          };
-        }
         response = new Response(JSON.stringify({
           status: 'ok', version: CONFIG.PROJECT_VERSION, timestamp: new Date().toISOString(),
           styles_count: mergedStyles.stats.total,
           styles_breakdown: mergedStyles.stats,
           api_auth: { enabled: CONFIG.POLLINATIONS_AUTH.enabled, method: CONFIG.POLLINATIONS_AUTH.method, has_token: !!CONFIG.POLLINATIONS_AUTH.token, endpoint: CONFIG.PROVIDERS.pollinations.endpoint },
           models: CONFIG.PROVIDERS.pollinations.models.map(m => ({ id: m.id, name: m.name, category: m.category, supports_reference_images: m.supports_reference_images || false })),
-          style_categories: Object.keys(CONFIG.STYLE_CATEGORIES).map(key => ({ id: key, name: CONFIG.STYLE_CATEGORIES[key].name, icon: CONFIG.STYLE_CATEGORIES[key].icon, count: Object.values(CONFIG.STYLE_PRESETS).filter(s => s.category === key).length })),
-          provider_stats: {
-            total: total,
-            providers: providerStatsWithRatio
-          }
+          style_categories: Object.keys(CONFIG.STYLE_CATEGORIES).map(key => ({ id: key, name: CONFIG.STYLE_CATEGORIES[key].name, icon: CONFIG.STYLE_CATEGORIES[key].icon, count: Object.values(CONFIG.STYLE_PRESETS).filter(s => s.category === key).length }))
         }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
       } else {
         response = new Response(JSON.stringify({ error: 'Not Found', message: '此 Worker 僅提供 Web UI 界面', available_paths: ['/', '/health', '/_internal/generate', '/nano'] }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
@@ -1367,41 +1233,6 @@ A serene Japanese garden at sunset, featuring a traditional wooden bridge over a
     
   } catch (error) {
     console.error('Prompt Generation Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: corsHeaders({ 'Content-Type': 'application/json' })
-    });
-  }
-}
-
-// ====== Provider Stats Handler ======
-async function handleProviderStats(request, env) {
-  try {
-    const router = new MultiProviderRouter({}, env);
-    const stats = await router.getProviderStats();
-    
-    // 計算總數和比例
-    const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
-    const statsWithRatio = {};
-    
-    for (const [provider, count] of Object.entries(stats)) {
-      statsWithRatio[provider] = {
-        count: count,
-        ratio: total > 0 ? ((count / total) * 100).toFixed(2) + '%' : '0%'
-      };
-    }
-    
-    return new Response(JSON.stringify({
-      success: true,
-      total: total,
-      providers: statsWithRatio,
-      timestamp: new Date().toISOString()
-    }), {
-      status: 200,
-      headers: corsHeaders({ 'Content-Type': 'application/json' })
-    });
-  } catch (error) {
-    console.error('Provider Stats Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -1864,19 +1695,10 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <select id="style" id="nanoStyleSelect">
                         <!-- 風格選項將由 JavaScript 動態生成 -->
                     </select>
-                    <select id="nanoModel" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 8px; padding: 10px; color: #fff; font-size: 12px;">
-                        <option value="nanobanana" selected>NanoBanana 🍌</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="control-group">
-                <div class="label-row">
-                    <label>Seed</label>
-                </div>
-                <div style="position:relative">
-                     <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px; width: 100%;">
-                     <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+                    <div style="position:relative">
+                         <input type="number" id="seed" placeholder="Seed" value="-1" disabled style="padding-right:30px">
+                         <button id="lockSeedBtn" class="tool-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%)">🎲</button>
+                    </div>
                 </div>
             </div>
 
@@ -2599,7 +2421,6 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         seed: document.getElementById('seed'),
         width: document.getElementById('width'),
         height: document.getElementById('height'),
-        model: document.getElementById('nanoModel'),
         genBtn: document.getElementById('genBtn'),
         img: document.getElementById('resultImg'),
         loader: document.querySelector('.loading-overlay'),
@@ -3071,7 +2892,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         try {
             console.log("🍌 Nano Pro: 開始生成圖片...", {
                 prompt: p,
-                model: els.model.value,
+                model: 'nanobanana-pro',
                 width: els.width.value,
                 height: els.height.value,
                 style: els.style.value,
@@ -3081,7 +2902,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const requestBody = {
                 prompt: p,
                 negative_prompt: els.negative.value,
-                model: els.model.value,
+                model: 'nanobanana-pro',
                 width: parseInt(els.width.value),
                 height: parseInt(els.height.value),
                 style: els.style.value,
@@ -4187,9 +4008,12 @@ function updateModelOptions() {
     }
 
     modelSelect.innerHTML = '';
-    const models = config.models.filter(m => !m.nano_pro_only);
+    const models = config.models;
     const groups = {};
     models.forEach(m => {
+        // 🔥 過濾掉 nanobanana-pro 模型（僅限 Nano Pro 頁面使用）
+        if (m.id === 'nanobanana-pro') return;
+        
         const cat = m.category || 'other';
         if(!groups[cat]) groups[cat] = [];
         groups[cat].push(m);
@@ -4498,7 +4322,7 @@ function openModal(src){
     
     // Auto set download filename
     downloadBtn.href = src;
-    downloadBtn.download = \`flux-\${Date.now()}.png\`;
+    downloadBtn.download = \`flux-pro-\${Date.now()}.png\`;
     
     document.getElementById('imageModal').classList.add('show');
 }
