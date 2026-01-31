@@ -1,11 +1,11 @@
 # 🎨 Flux AI Pro - NanoBanana Edition
 
-![Version](https://img.shields.io/badge/Version-11.9.0-8B5CF6?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.8.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 ![I18N](https://img.shields.io/badge/I18N-5%20Languages-green?style=flat-square)
 
-**Flux AI Pro - NanoBanana Edition** is a high-performance, single-file AI image generation solution built on Cloudflare Workers. It integrates top-tier AI providers like Pollinations.ai and Infip/Ghostbot to deliver a serverless, lightning-fast, and feature-rich creative experience.
+**Flux AI Pro - NanoBanana Edition** is a high-performance, single-file AI image generation solution built on Cloudflare Workers. It integrates top-tier AI providers like Pollinations.ai, Infip/Ghostbot, and Aqua Server to deliver a serverless, lightning-fast, and feature-rich creative experience.
 
 ---
 
@@ -27,19 +27,14 @@
 
 ---
 
-## 🔥 v11.9.0 更新亮點 (Release Highlights)
+## 🔥 v11.8.0 更新亮點 (Release Highlights)
 
-- **🕐 智能時間戳功能**：生成圖片時自動嵌入時間戳，支援多種格式與位置選項。
-- **🎨 時間戳樣式自定義**：可選擇時間戳的顯示位置（左上、右上、左下、右下）、字體大小、顏色與透明度。
-- **📅 多種時間格式**：支援完整日期時間、簡短日期、時間戳等多種格式選擇。
-- **🌍 全球化多語言支援**：新增日文、韓文、阿拉伯語，總計支援 5 種主流語言。
-- **🌐 智慧語言偵測**：系統自動識別瀏覽器語系並切換介面，實現零門檻使用。
-- **🔄 完美 RTL 佈局**：針對阿拉伯語進行深度優化，支援從右到左 (Right-to-Left) 的完整視覺佈局。
-- **🤖 專業提示詞生成器**：整合 Google Gemini 3 Flash，支援文字與圖片分析，自動生成高品質提示詞。
-- **🌌 深空紫玻璃擬態 UI**：主介面全面升級為現代感十足的 Glassmorphism 設計。
-- **✨ 全域 Ultra HD 優化**：實裝「最佳品質優先」策略，自動提升生成細節與解析度。
-- **💾 IndexedDB 永久存永久存儲**：歷史記錄不再隨頁面重新整理消失，支援本地永久保存與數據導出。
-- **🔞 NSFW 模式切換**：針對特定供應商提供內容過濾開關（需自備 API Key）。
+- **📊 供應商使用統計追蹤**：新增 API 供應商使用比例追蹤功能，自動記錄各供應商的使用次數與比例。
+- **🔄 實時統計數據**：透過 `/api/provider-stats` 端點獲取詳細的供應商使用統計，包含總生成次數與各供應商使用比例。
+- **💾 KV 持久化存儲**：統計數據自動存儲在 KV 中，30天後自動過期，確保數據持久性。
+- **🌍 多語言支援**：供應商統計介面支援繁體中文、英文、日文、韓文、阿拉伯語。
+- **🎨 Aqua Server 供應商**：新增 Aqua Server 作為第三個 API 供應商選項。
+- **📡 Health 端點增強**：`/health` 端點現在包含完整的供應商統計信息。
 
 ---
 
@@ -56,6 +51,8 @@
 ### 3. 多供應商模型庫 (Multi-Model Library)
 *   **Pollinations.ai**：提供 `FLUX.2 Klein`、`Flux Pro`、`Turbo` 等多種免費高品質模型。
 *   **Infip/Ghostbot**：支援 Google `Imagen 4` 與 `Flux Schnell`，具備更強的併發處理能力。
+*   **Aqua Server**：新增供應商選項，提供額外的生成能力。
+*   **供應商統計追蹤**：自動追蹤各供應商的使用次數與比例，透過 API 端點查詢。
 
 ### 4. 性能與優化 (Performance)
 *   **懶加載技術**：利用 IntersectionObserver 優化圖片加載速度。
@@ -83,6 +80,7 @@
     ```bash
     wrangler secret put POLLINATIONS_API_KEY
     wrangler secret put INFIP_API_KEY
+    wrangler secret put AQUA_API_KEY
     wrangler secret put GEMINI_API_KEY
     ```
 4.  **部署**：

@@ -9,6 +9,7 @@ export const TRANSLATIONS = {
     // 導航選項
     nav_gen: "🎨 生成圖像",
     nav_his: "📚 歷史記錄",
+    nav_video: "🎬 生成影片",
     nav_nano: "🍌 Nano版",
     
     // 設定標籤
@@ -86,7 +87,15 @@ export const TRANSLATIONS = {
     // 供應商
     provider_pollinations: "Pollinations.ai (Free)",
     provider_infip: "Ghostbot (Infip) 🌟",
-    provider_aqua: "Aqua API 💧",
+    provider_aqua: "Aqua Server 🌊",
+    
+    // 供應商統計
+    provider_stats_title: "📊 供應商使用統計",
+    provider_stats_total: "總生成次數",
+    provider_stats_ratio: "使用比例",
+    provider_stats_count: "使用次數",
+    provider_stats_refresh: "重新整理",
+    provider_stats_no_data: "暫無統計數據",
     
     // API Key
     api_key_label: "API Key",
@@ -172,7 +181,22 @@ export const TRANSLATIONS = {
     style_gothic: "哥特風格",
     style_art_nouveau: "新藝術",
     style_cyberpunk: "賽博朋克",
-    style_fantasy: "奇幻風格"
+    style_fantasy: "奇幻風格",
+    
+    // 影片生成
+    video_title: "🎬 影片生成",
+    video_model_label: "影片模型",
+    video_duration_label: "影片長度 (秒)",
+    video_size_label: "影片尺寸",
+    video_provider_label: "影片供應商",
+    video_gen_btn: "🎬 開始生成影片",
+    video_generating: "影片生成中...",
+    video_error_no_prompt: "⚠️ 請輸入提示詞",
+    video_error_limit_exceeded: "🚫 影片生成限額已滿",
+    video_error_disabled: "影片生成功能尚未啟用",
+    video_model_svd: "SVD",
+    video_model_svd_xt: "SVD-XT",
+    video_provider_pollinations: "Pollinations.ai"
   },
   
   // ====== 英文 (en) ======
@@ -180,6 +204,7 @@ export const TRANSLATIONS = {
     // Navigation
     nav_gen: "🎨 Generate Image",
     nav_his: "📚 History",
+    nav_video: "🎬 Generate Video",
     nav_nano: "🍌 Nano",
     
     // Settings
@@ -257,7 +282,15 @@ export const TRANSLATIONS = {
     // Providers
     provider_pollinations: "Pollinations.ai (Free)",
     provider_infip: "Ghostbot (Infip) 🌟",
-    provider_aqua: "Aqua API 💧",
+    provider_aqua: "Aqua Server 🌊",
+    
+    // Provider Stats
+    provider_stats_title: "📊 Provider Usage Statistics",
+    provider_stats_total: "Total Generations",
+    provider_stats_ratio: "Usage Ratio",
+    provider_stats_count: "Usage Count",
+    provider_stats_refresh: "Refresh",
+    provider_stats_no_data: "No statistics data available",
     
     // API Key
     api_key_label: "API Key",
@@ -343,7 +376,22 @@ export const TRANSLATIONS = {
     style_gothic: "Gothic",
     style_art_nouveau: "Art Nouveau",
     style_cyberpunk: "Cyberpunk",
-    style_fantasy: "Fantasy Style"
+    style_fantasy: "Fantasy Style",
+    
+    // Video Generation
+    video_title: "🎬 Video Generation",
+    video_model_label: "Video Model",
+    video_duration_label: "Duration (seconds)",
+    video_size_label: "Video Size",
+    video_provider_label: "Video Provider",
+    video_gen_btn: "🎬 Start Video Generation",
+    video_generating: "Generating video...",
+    video_error_no_prompt: "⚠️ Please enter a prompt",
+    video_error_limit_exceeded: "🚫 Video generation limit exceeded",
+    video_error_disabled: "Video generation is not enabled",
+    video_model_svd: "SVD",
+    video_model_svd_xt: "SVD-XT",
+    video_provider_pollinations: "Pollinations.ai"
   },
   
   // ====== 日文 (ja) ======
@@ -351,6 +399,7 @@ export const TRANSLATIONS = {
     // ナビゲーション
     nav_gen: "🎨 画像生成",
     nav_his: "📚 履歴",
+    nav_video: "🎬 動画生成",
     nav_nano: "🍌 Nano版",
     
     // 設定
@@ -428,7 +477,15 @@ export const TRANSLATIONS = {
     // プロバイダー
     provider_pollinations: "Pollinations.ai (無料)",
     provider_infip: "Ghostbot (Infip) 🌟",
-    provider_aqua: "Aqua API 💧",
+    provider_aqua: "Aqua Server 🌊",
+    
+    // プロバイダー統計
+    provider_stats_title: "📊 プロバイダー使用統計",
+    provider_stats_total: "総生成回数",
+    provider_stats_ratio: "使用比率",
+    provider_stats_count: "使用回数",
+    provider_stats_refresh: "更新",
+    provider_stats_no_data: "統計データがありません",
     
     // API Key
     api_key_label: "APIキー",
@@ -514,7 +571,22 @@ export const TRANSLATIONS = {
     style_gothic: "ゴシック",
     style_art_nouveau: "アールヌーボー",
     style_cyberpunk: "サイバーパンク",
-    style_fantasy: "ファンタジースタイル"
+    style_fantasy: "ファンタジースタイル",
+    
+    // 動画生成
+    video_title: "🎬 動画生成",
+    video_model_label: "動画モデル",
+    video_duration_label: "動画長さ (秒)",
+    video_size_label: "動画サイズ",
+    video_provider_label: "動画プロバイダー",
+    video_gen_btn: "🎬 動画生成開始",
+    video_generating: "動画生成中...",
+    video_error_no_prompt: "⚠️ プロンプトを入力してください",
+    video_error_limit_exceeded: "🚫 動画生成の制限を超えました",
+    video_error_disabled: "動画生成機能は有効になっていません",
+    video_model_svd: "SVD",
+    video_model_svd_xt: "SVD-XT",
+    video_provider_pollinations: "Pollinations.ai"
   },
   
   // ====== 韓文 (ko) ======
@@ -522,6 +594,7 @@ export const TRANSLATIONS = {
     // 네비게이션
     nav_gen: "🎨 이미지 생성",
     nav_his: "📚 기록",
+    nav_video: "🎬 동영상 생성",
     nav_nano: "🍌 Nano",
     
     // 설정
@@ -599,7 +672,15 @@ export const TRANSLATIONS = {
     // 공급자
     provider_pollinations: "Pollinations.ai (무료)",
     provider_infip: "Ghostbot (Infip) 🌟",
-    provider_aqua: "Aqua API 💧",
+    provider_aqua: "Aqua Server 🌊",
+    
+    // 공급자 통계
+    provider_stats_title: "📊 공급자 사용 통계",
+    provider_stats_total: "총 생성 횟수",
+    provider_stats_ratio: "사용 비율",
+    provider_stats_count: "사용 횟수",
+    provider_stats_refresh: "새로고침",
+    provider_stats_no_data: "통계 데이터가 없습니다",
     
     // API Key
     api_key_label: "API 키",
@@ -685,7 +766,22 @@ export const TRANSLATIONS = {
     style_gothic: "고딕",
     style_art_nouveau: "아르 누보",
     style_cyberpunk: "사이버펑크",
-    style_fantasy: "판타지 스타일"
+    style_fantasy: "판타지 스타일",
+    
+    // 동영상 생성
+    video_title: "🎬 동영상 생성",
+    video_model_label: "동영상 모델",
+    video_duration_label: "동영상 길이 (초)",
+    video_size_label: "동영상 크기",
+    video_provider_label: "동영상 공급자",
+    video_gen_btn: "🎬 동영상 생성 시작",
+    video_generating: "동영상 생성 중...",
+    video_error_no_prompt: "⚠️ 프롬프트를 입력하세요",
+    video_error_limit_exceeded: "🚫 동영상 생성 한도 초과",
+    video_error_disabled: "동영상 생성 기능이 활성화되지 않았습니다",
+    video_model_svd: "SVD",
+    video_model_svd_xt: "SVD-XT",
+    video_provider_pollinations: "Pollinations.ai"
   },
   
   // ====== 阿拉伯語 (ar) - RTL ======
@@ -693,6 +789,7 @@ export const TRANSLATIONS = {
     // التنقل
     nav_gen: "🎨 إنشاء صورة",
     nav_his: "📚 السجل",
+    nav_video: "🎬 إنشاء فيديو",
     nav_nano: "🍌 Nano",
     
     // الإعدادات
@@ -770,7 +867,15 @@ export const TRANSLATIONS = {
     // المزودون
     provider_pollinations: "Pollinations.ai (مجاني)",
     provider_infip: "Ghostbot (Infip) 🌟",
-    provider_aqua: "Aqua API 💧",
+    provider_aqua: "Aqua Server 🌊",
+    
+    // إحصائيات المزود
+    provider_stats_title: "📊 إحصائيات استخدام المزود",
+    provider_stats_total: "إجمالي الإنشاءات",
+    provider_stats_ratio: "نسبة الاستخدام",
+    provider_stats_count: "عدد الاستخدام",
+    provider_stats_refresh: "تحديث",
+    provider_stats_no_data: "لا توجد بيانات إحصائية",
     
     // مفتاح API
     api_key_label: "مفتاح API",
@@ -856,7 +961,22 @@ export const TRANSLATIONS = {
     style_gothic: "قوطي",
     style_art_nouveau: "الفن الجديد",
     style_cyberpunk: "سايبربانك",
-    style_fantasy: "نمط الخيال"
+    style_fantasy: "نمط الخيال",
+    
+    // إنشاء الفيديو
+    video_title: "🎬 إنشاء الفيديو",
+    video_model_label: "نموذج الفيديو",
+    video_duration_label: "مدة الفيديو (ثواني)",
+    video_size_label: "حجم الفيديو",
+    video_provider_label: "مزود الفيديو",
+    video_gen_btn: "🎬 بدء إنشاء الفيديو",
+    video_generating: "جاري إنشاء الفيديو...",
+    video_error_no_prompt: "⚠️ يرجى إدخال موجه",
+    video_error_limit_exceeded: "🚫 تم تجاوز حد إنشاء الفيديو",
+    video_error_disabled: "إنشاء الفيديو غير مفعّل",
+    video_model_svd: "SVD",
+    video_model_svd_xt: "SVD-XT",
+    video_provider_pollinations: "Pollinations.ai"
   }
 };
 

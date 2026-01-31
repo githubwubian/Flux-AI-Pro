@@ -1,8 +1,8 @@
 # ============================================
 # Cloudflare Workers 配置文件
 # 項目: Flux AI Pro - NanoBanana Edition
-# 版本: 11.7.0 (多語言擴展 & 自動偵測)
-# 更新: 2026-01-27
+# 版本: 11.8.0 (供應商統計追蹤)
+# 更新: 2026-01-31
 # ============================================
 
 name = "flux-ai-pro"
@@ -28,7 +28,7 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "11.7.0"
+WORKER_VERSION = "11.8.0"
 DEFAULT_MODEL = "flux"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
@@ -40,7 +40,7 @@ ENVIRONMENT = "production"
 # 🔐 推薦設置:
 # 1. POLLINATIONS_API_KEY (Pollinations)
 # 2. INFIP_API_KEY (Ghostbot/Infip)
-# 3. AQUA_API_KEY (Aqua API)
+# 3. AQUA_API_KEY (Aqua Server)
 # ============================================
 # 設置命令範例：
 # npx wrangler secret put POLLINATIONS_API_KEY
