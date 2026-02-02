@@ -4595,7 +4595,13 @@ async function updateHistoryDisplay(){
             const savedSeed = item.seed;
             if (savedSeed && savedSeed !== -1 && savedSeed !== '-1') { isSeedRandom = false; seedInput.value = savedSeed; } else { isSeedRandom = true; seedInput.value = '-1'; }
             updateSeedUI();
-            document.querySelector('[data-page="generate"]').click();
+            
+            // Switch to generate page
+            document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+            document.getElementById('generatePage').classList.add('active');
+            const generateBtn = document.querySelector('[data-page="generate"]');
+            if(generateBtn) generateBtn.classList.add('active');
         };
         d.querySelector('.download-btn').onclick=()=>{
             const a=document.createElement('a');
