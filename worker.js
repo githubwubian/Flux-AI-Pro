@@ -727,7 +727,7 @@ class AquaProvider {
       }
       
       // Create task
-      const createUrl = `${this.config.endpoint}/v1/images/generate`;
+      const createUrl = `${this.config.endpoint}/v1/images/polling`;
       logger.add("📡 Creating Task", { url: createUrl, model, ratio });
       
       const createResp = await fetchWithTimeout(createUrl, { method: 'POST', headers, body: JSON.stringify(requestBody) }, 30000);
@@ -846,7 +846,7 @@ class AquaProvider {
    * @returns {Promise<string>} Image URL
    */
   async pollTask(taskId, headers, logger, maxAttempts = 60, interval = 2000) {
-    const statusUrl = `${this.config.endpoint}/v1/images/tasks/${taskId}`;
+    const statusUrl = `${this.config.endpoint}/v1/images/polling/${taskId}`;
     logger.add("🔄 Starting Poll", { taskId, maxAttempts, interval });
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
