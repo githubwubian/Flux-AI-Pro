@@ -4015,10 +4015,10 @@ class FreeImageUploader {
                     throw new Error(data.error?.message || 'Freeimage.host 上傳失敗');
                 }
             } catch (error) {
-                console.error(`Freeimage.host 上傳嘗試 ${attempt}/${this.maxRetries} 失敗:`, error);
+                console.error('Freeimage.host 上傳嘗試 ' + attempt + '/' + this.maxRetries + ' 失敗:', error);
                 
                 if (attempt === this.maxRetries) {
-                    throw new Error(`Freeimage.host 上傳失敗 (已重試 ${this.maxRetries} 次): ${error.message}`);
+                    throw new Error('Freeimage.host 上傳失敗 (已重試 ' + this.maxRetries + ' 次): ' + error.message);
                 }
                 
                 // 等待後重試
