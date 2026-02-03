@@ -4214,13 +4214,13 @@ class ModelDiscovery {
             const response = await fetch('https://api.aquadevs.com/v1/models', {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
+                    'Authorization': 'Bearer ' + apiKey,
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
             });
 
             if (!response.ok) {
-                console.log(`⚠️ Aqua 模型列表請求失敗: ${response.status}`);
+                console.log('⚠️ Aqua 模型列表請求失敗: ' + response.status);
                 return [];
             }
 
@@ -4237,7 +4237,7 @@ class ModelDiscovery {
                             name: model.id,
                             provider: 'aqua',
                             discoveredAt: new Date().toISOString(),
-                            description: model.description || `新發現的 Aqua 模型: ${model.id}`,
+                            description: model.description || '新發現的 Aqua 模型: ' + model.id,
                             max_size: 1024,
                             category: 'other'
                         });
@@ -4245,7 +4245,7 @@ class ModelDiscovery {
                 }
             }
 
-            console.log(`✅ Aqua 檢查完成，發現 ${discoveredModels.length} 個新模型`);
+            console.log('✅ Aqua 檢查完成，發現 ' + discoveredModels.length + ' 個新模型');
             return discoveredModels;
         } catch (error) {
             console.error('❌ Aqua 模型檢查失敗:', error);
