@@ -1,8 +1,8 @@
 # ============================================
 # Cloudflare Workers 配置文件
 # 項目: Flux AI Pro - NanoBanana Edition
-# 版本: 11.19.0 (freeimage.host API 金鑰改用環境變量)
-# 更新: 2026-02-04
+# 版本: 11.10.0 (Pollinations API 優化)
+# 更新: 2026-02-02
 # ============================================
 
 name = "flux-ai-pro"
@@ -28,7 +28,7 @@ binding = "AI"
 # 環境變量（非敏感）
 # ============================================
 [vars]
-WORKER_VERSION = "11.19.0"
+WORKER_VERSION = "11.10.0"
 DEFAULT_MODEL = "flux-schnell"
 MAX_WIDTH = 2048
 MAX_HEIGHT = 2048
@@ -41,22 +41,8 @@ ENVIRONMENT = "production"
 # 1. POLLINATIONS_API_KEY (Pollinations)
 # 2. INFIP_API_KEY (Ghostbot/Infip)
 # 3. AQUA_API_KEY (Aqua Server)
-# 4. FREEIMAGE_API_KEY (Freeimage.host 圖片存儲 - 環境變量配置)
 # ============================================
 # 設置命令範例：
 # npx wrangler secret put POLLINATIONS_API_KEY
 # npx wrangler secret put INFIP_API_KEY
 # npx wrangler secret put AQUA_API_KEY
-# npx wrangler secret put FREEIMAGE_API_KEY
-#
-# 📝 Freeimage.host 圖片存儲:
-# - 預設 API Key: 6d207e02198a847aa98d0a2a901485a5 (無需註冊)
-# - 如需自訂 API Key，訪問 https://freeimage.host/api
-# - 支援縮圖、中等尺寸、完整尺寸三種格式
-# - 無需註冊即可使用預設 API Key
-# - 最大文件大小: 64MB
-# - 支援格式: JPEG, PNG, BMP, GIF, WebP
-#
-# 🔍 配置檢測端點:
-# - GET /api/config/freeimage - 自動檢測 freeimage.host 最新配置
-# - 返回: max_filesize, image_types, supported_mime_types
