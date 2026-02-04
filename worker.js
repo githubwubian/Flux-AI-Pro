@@ -1259,23 +1259,13 @@ async function handleUpload(request) {
     // freeimage.host 免費 API Key (用於測試，生產環境建議使用自己的 API Key)
     const FREEIMAGE_API_KEY = '6d207e02198a847aa98d0a2a901485a5'; // 免費測試用 API Key
     
-    // 將文件轉換為 Base64（使用分塊處理避免堆疊溢出）
-    const arrayBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    let binary = '';
-    const chunkSize = 65536; // 每次處理 64KB
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, chunk);
-    }
-    const base64 = btoa(binary);
-    
     // 構建 freeimage.host API 請求
     // API 文檔: https://freeimage.host/api
-    // 參數: key (required), source (base64 or URL)
+    // 參數: key (required), source (base64 or URL or FILES["source"])
+    // 使用 FILES["source"] 方式直接上傳文件，更高效且符合 API 建議
     const freeimageFormData = new FormData();
     freeimageFormData.append('key', FREEIMAGE_API_KEY);
-    freeimageFormData.append('source', base64);
+    freeimageFormData.append('source', file); // 直接上傳文件對象
     freeimageFormData.append('format', 'json');
     
     const response = await fetch('https://freeimage.host/api/1/upload', {
