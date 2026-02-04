@@ -1483,7 +1483,7 @@ select{background-color:var(--bg-secondary)!important;color:var(--text-primary)!
 <div class="footer">
     <span>Powered by Flux AI Pro • <a href="https://github.com/kinai9661/Flux-AI-Pro" target="_blank">Engine</a></span>
     <span style="opacity:0.5">|</span>
-    <span style="opacity:0.9">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://runwayml.com" target="_blank">Runway</a> • <a href="https://pika.art" target="_blank">Pika</a></span>
+    <span style="opacity:0.9">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://runwayml.com" target="_blank">Runway</a> • <a href="https://pika.art" target="_blank">Pika</a> • <a href="https://dofollow.tools" target="_blank"><img src="https://dofollow.tools/badge/badge_transparent.svg" alt="Featured on Dofollow.Tools" width="200" height="54" /></a></span>
 </div>
 </div>
 <script>
