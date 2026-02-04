@@ -97,7 +97,6 @@ export const TRANSLATIONS = {
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // 供應商統計
     provider_stats_title: "📊 供應商使用統計",
@@ -302,7 +301,6 @@ export const TRANSLATIONS = {
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // Provider Stats
     provider_stats_title: "📊 Provider Usage Statistics",
@@ -507,7 +505,6 @@ export const TRANSLATIONS = {
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // プロバイダー統計
     provider_stats_title: "📊 プロバイダー使用統計",
@@ -712,7 +709,6 @@ export const TRANSLATIONS = {
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // 공급자 통계
     provider_stats_title: "📊 공급자 사용 통계",
@@ -917,7 +913,6 @@ export const TRANSLATIONS = {
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // إحصائيات المزود
     provider_stats_title: "📊 إحصائيات استخدام المزود",
