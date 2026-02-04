@@ -475,7 +475,11 @@ class VideoGenerator {
 
     // Pollinations 直接返回影片文件
     const blob = await response.blob();
-    const videoUrl = URL.createObjectURL(blob);
+    // 將 blob 轉換為 base64 字符串（Cloudflare Workers 不支持 URL.createObjectURL）
+    const arrayBuffer = await blob.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const mimeType = blob.type || 'video/mp4';
+    const videoUrl = `data:${mimeType};base64,${base64}`;
 
     return { url: videoUrl };
   }
@@ -1233,6 +1237,23 @@ select{background-color:var(--bg-secondary)!important;color:var(--text-primary)!
 .empty-state .empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5}
 .empty-state .empty-text{font-size:14px;margin-bottom:8px}
 .empty-state .empty-subtext{font-size:12px}
+.rate-limit-card{background:linear-gradient(135deg,rgba(245,158,11,0.1) 0%,rgba(217,119,6,0.05) 100%);border:1px solid rgba(245,158,11,0.3)}
+[data-theme="light"] .rate-limit-card{background:linear-gradient(135deg,rgba(245,158,11,0.15) 0%,rgba(217,119,6,0.08) 100%);border:1px solid rgba(245,158,11,0.4)}
+.rate-limit-status{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.rate-limit-icon{font-size:24px}
+.rate-limit-info{flex:1}
+.rate-limit-label{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+.rate-limit-value{font-size:18px;font-weight:700;color:var(--accent-color)}
+.rate-limit-value.warning{color:#f59e0b}
+.rate-limit-value.error{color:var(--error-color)}
+.rate-limit-value.success{color:var(--success-color)}
+.rate-limit-bar{height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-top:8px}
+[data-theme="light"] .rate-limit-bar{background:rgba(0,0,0,0.1)}
+.rate-limit-bar-fill{height:100%;background:var(--accent-gradient);transition:width 0.3s ease}
+.rate-limit-bar-fill.warning{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%)}
+.rate-limit-bar-fill.error{background:linear-gradient(135deg,#ef4444 0%,#dc2626 100%)}
+.rate-limit-bar-fill.success{background:linear-gradient(135deg,#22c55e 0%,#16a34a 100%)}
+.rate-limit-detail{font-size:11px;color:var(--text-muted);margin-top:6px}
 </style>
 </head>
 <body>
@@ -1252,6 +1273,36 @@ select{background-color:var(--bg-secondary)!important;color:var(--text-primary)!
 </div>
 <div class="main-content">
 <div class="left-panel">
+    <div class="card rate-limit-card">
+        <div class="card-header">
+            <div class="card-title">📊 限流狀態</div>
+            <button class="btn btn-secondary btn-sm" id="refreshRateLimit">🔄</button>
+        </div>
+        <div class="card-content">
+            <div class="rate-limit-status">
+                <div class="rate-limit-icon">🎬</div>
+                <div class="rate-limit-info">
+                    <div class="rate-limit-label">每小時免費配額</div>
+                    <div class="rate-limit-value" id="quotaValue">載入中...</div>
+                    <div class="rate-limit-bar">
+                        <div class="rate-limit-bar-fill" id="quotaBar" style="width:0%"></div>
+                    </div>
+                    <div class="rate-limit-detail" id="quotaDetail">正在檢查配額...</div>
+                </div>
+            </div>
+            <div class="rate-limit-status">
+                <div class="rate-limit-icon">⏱️</div>
+                <div class="rate-limit-info">
+                    <div class="rate-limit-label">生成冷卻時間</div>
+                    <div class="rate-limit-value" id="cooldownValue">載入中...</div>
+                    <div class="rate-limit-bar">
+                        <div class="rate-limit-bar-fill" id="cooldownBar" style="width:0%"></div>
+                    </div>
+                    <div class="rate-limit-detail" id="cooldownDetail">正在檢查冷卻...</div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="card">
         <div class="card-header">
             <div class="card-title">⚙️ 基本參數</div>
@@ -1450,6 +1501,79 @@ advancedToggle.addEventListener('click', () => {
     advancedParams.classList.toggle('show');
     advancedToggle.textContent = advancedParams.classList.contains('show') ? '▲' : '▼';
 });
+
+// 檢查限流狀態
+async function checkRateLimitStatus() {
+    try {
+        const response = await fetch('/api/video/status');
+        const data = await response.json();
+        
+        // 更新配額狀態
+        const quotaValue = document.getElementById('quotaValue');
+        const quotaBar = document.getElementById('quotaBar');
+        const quotaDetail = document.getElementById('quotaDetail');
+        
+        if (data.quota) {
+            const remaining = data.quota.remaining;
+            const limit = data.quota.limit;
+            const percentage = (remaining / limit) * 100;
+            
+            quotaValue.textContent = \`\${remaining} / \${limit}\`;
+            quotaBar.style.width = \`\${percentage}%\`;
+            
+            // 根據剩餘配額設置顏色
+            quotaValue.className = 'rate-limit-value';
+            quotaBar.className = 'rate-limit-bar-fill';
+            
+            if (remaining === 0) {
+                quotaValue.classList.add('error');
+                quotaBar.classList.add('error');
+                quotaDetail.textContent = '⚠️ 已達配額上限，請等待一小時後重試';
+            } else if (remaining <= 1) {
+                quotaValue.classList.add('warning');
+                quotaBar.classList.add('warning');
+                quotaDetail.textContent = '⚠️ 配額即將用盡';
+            } else {
+                quotaValue.classList.add('success');
+                quotaBar.classList.add('success');
+                quotaDetail.textContent = '✅ 配額充足';
+            }
+        }
+        
+        // 更新冷卻狀態
+        const cooldownValue = document.getElementById('cooldownValue');
+        const cooldownBar = document.getElementById('cooldownBar');
+        const cooldownDetail = document.getElementById('cooldownDetail');
+        
+        if (data.cooldown) {
+            const remaining = data.cooldown.remaining;
+            const total = data.cooldown.total;
+            const percentage = ((total - remaining) / total) * 100;
+            
+            if (remaining > 0) {
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                cooldownValue.textContent = \`\${minutes}:\${seconds.toString().padStart(2, '0')}\`;
+                cooldownBar.style.width = \`\${percentage}%\`;
+                cooldownValue.className = 'rate-limit-value warning';
+                cooldownBar.className = 'rate-limit-bar-fill warning';
+                cooldownDetail.textContent = '⏳ 冷卻中，請稍候...';
+            } else {
+                cooldownValue.textContent = '就緒';
+                cooldownBar.style.width = '100%';
+                cooldownValue.className = 'rate-limit-value success';
+                cooldownBar.className = 'rate-limit-bar-fill success';
+                cooldownDetail.textContent = '✅ 可以立即生成';
+            }
+        }
+    } catch (error) {
+        console.error('檢查限流狀態失敗:', error);
+        document.getElementById('quotaValue').textContent = '無法獲取';
+        document.getElementById('cooldownValue').textContent = '無法獲取';
+        document.getElementById('quotaDetail').textContent = '❌ 無法檢查限流狀態';
+        document.getElementById('cooldownDetail').textContent = '❌ 無法檢查冷卻狀態';
+    }
+}
 
 // 檢查環境變數 API Key 配置
 async function checkEnvApiKeyConfig(provider) {
@@ -1797,12 +1921,17 @@ function displayVideo(data) {
 providerSelect.addEventListener('change', updateModelOptions);
 sizeSelect.addEventListener('change', updateSizeParams);
 themeToggle.addEventListener('click', toggleTheme);
+document.getElementById('refreshRateLimit').addEventListener('click', checkRateLimitStatus);
 
 // 初始化
 initTheme();
 updateModelOptions();
 updateSizeParams();
 renderHistory();
+checkRateLimitStatus();
+
+// 每30秒自動刷新限流狀態
+setInterval(checkRateLimitStatus, 30000);
 </script>
 </body>
 </html>`;
