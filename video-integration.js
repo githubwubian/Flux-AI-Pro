@@ -335,8 +335,9 @@ class VideoRateLimiter {
 }
 
 class VideoGenerator {
-  constructor(config = VIDEO_CONFIG) {
+  constructor(config = VIDEO_CONFIG, env = null) {
     this.config = config;
+    this.env = env;
     this.logger = new Logger();
   }
 
@@ -446,10 +447,12 @@ class VideoGenerator {
     if (fps) params.append('fps', fps);
     if (duration) params.append('duration', duration);
 
-    // 構建請求標頭
+    // 構建請求標頭 - 優先使用環境變數中的 API Key
     const headers = {};
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`;
+    const envApiKey = this.env?.POLLINATIONS_VIDEO_API_KEY;
+    const finalApiKey = envApiKey || apiKey;
+    if (finalApiKey) {
+      headers['Authorization'] = `Bearer ${finalApiKey}`;
     }
 
     if (referenceImage) {
@@ -484,12 +487,16 @@ class VideoGenerator {
     const { model, width, height, fps, duration, referenceImage, apiKey } = options;
     const apiConfig = this.config.API.runway;
 
-    if (!apiKey) {
+    // 優先使用環境變數中的 API Key
+    const envApiKey = this.env?.RUNWAY_VIDEO_API_KEY;
+    const finalApiKey = envApiKey || apiKey;
+
+    if (!finalApiKey) {
       throw new Error('Runway 需要 API Key');
     }
 
     const headers = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${finalApiKey}`,
       'Content-Type': 'application/json',
     };
 
@@ -577,12 +584,16 @@ class VideoGenerator {
     const { model, width, height, fps, duration, referenceImage, apiKey } = options;
     const apiConfig = this.config.API.pika;
 
-    if (!apiKey) {
+    // 優先使用環境變數中的 API Key
+    const envApiKey = this.env?.PIKA_VIDEO_API_KEY;
+    const finalApiKey = envApiKey || apiKey;
+
+    if (!finalApiKey) {
       throw new Error('Pika 需要 API Key');
     }
 
     const headers = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${finalApiKey}`,
       'Content-Type': 'application/json',
     };
 
@@ -669,12 +680,16 @@ class VideoGenerator {
     const { model, width, height, fps, duration, referenceImage, apiKey } = options;
     const apiConfig = this.config.API.luma;
 
-    if (!apiKey) {
+    // 優先使用環境變數中的 API Key
+    const envApiKey = this.env?.LUMA_VIDEO_API_KEY;
+    const finalApiKey = envApiKey || apiKey;
+
+    if (!finalApiKey) {
       throw new Error('Luma 需要 API Key');
     }
 
     const headers = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${finalApiKey}`,
       'Content-Type': 'application/json',
     };
 
@@ -761,12 +776,16 @@ class VideoGenerator {
     const { model, width, height, fps, duration, referenceImage, apiKey } = options;
     const apiConfig = this.config.API.kling;
 
-    if (!apiKey) {
+    // 優先使用環境變數中的 API Key
+    const envApiKey = this.env?.KLING_VIDEO_API_KEY;
+    const finalApiKey = envApiKey || apiKey;
+
+    if (!finalApiKey) {
       throw new Error('Kling 需要 API Key');
     }
 
     const headers = {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${finalApiKey}`,
       'Content-Type': 'application/json',
     };
 
@@ -932,7 +951,7 @@ async function handleVideoAPI(request, env) {
         });
       }
 
-      const videoGenerator = new VideoGenerator();
+      const videoGenerator = new VideoGenerator(VIDEO_CONFIG, env);
       const result = await videoGenerator.generate(prompt, {
         provider,
         model,
@@ -1014,6 +1033,29 @@ async function handleVideoAPI(request, env) {
         waitSeconds: cooldownCheck.waitSeconds,
       },
       allowed: quotaCheck.allowed && cooldownCheck.allowed,
+    }), {
+      headers: corsHeaders({ 'Content-Type': 'application/json' }),
+    });
+  }
+
+  // 檢查環境變數 API Key 配置
+  if (path === '/api/video/config' && request.method === 'GET') {
+    const provider = url.searchParams.get('provider') || 'pollinations';
+    const envKeyMap = {
+      pollinations: 'POLLINATIONS_VIDEO_API_KEY',
+      runway: 'RUNWAY_VIDEO_API_KEY',
+      pika: 'PIKA_VIDEO_API_KEY',
+      luma: 'LUMA_VIDEO_API_KEY',
+      kling: 'KLING_VIDEO_API_KEY',
+    };
+    
+    const envKey = envKeyMap[provider];
+    const hasEnvKey = envKey ? !!env?.[envKey] : false;
+    
+    return new Response(JSON.stringify({
+      provider,
+      hasEnvKey,
+      envKeyName: envKey,
     }), {
       headers: corsHeaders({ 'Content-Type': 'application/json' }),
     });
@@ -1409,16 +1451,33 @@ advancedToggle.addEventListener('click', () => {
     advancedToggle.textContent = advancedParams.classList.contains('show') ? '▲' : '▼';
 });
 
+// 檢查環境變數 API Key 配置
+async function checkEnvApiKeyConfig(provider) {
+    try {
+        const response = await fetch(\`/api/video/config?provider=\${provider}\`);
+        const data = await response.json();
+        return data.hasEnvKey;
+    } catch (error) {
+        console.error('檢查環境變數配置失敗:', error);
+        return false;
+    }
+}
+
 // 更新模型選單
-function updateModelOptions() {
+async function updateModelOptions() {
     const provider = providerSelect.value;
     const config = VIDEO_CONFIG.MODELS[provider];
     
     if (!config) return;
     
+    // 檢查環境變數 API Key 配置
+    const hasEnvKey = await checkEnvApiKeyConfig(provider);
+    
     // 顯示/隱藏 API Key 輸入框
-    if (provider === 'pollinations') {
+    // 如果環境變數已配置，隱藏 API Key 輸入框
+    if (hasEnvKey) {
         apiKeyGroup.classList.remove('show');
+        apiKeyInput.value = '';
     } else {
         apiKeyGroup.classList.add('show');
         const storedKey = localStorage.getItem(\`\${provider}_api_key\`);
@@ -1645,11 +1704,9 @@ document.getElementById('videoForm').addEventListener('submit', async (e) => {
     generateBtn.disabled = true;
     generateBtn.textContent = '生成中...';
     
-    // 保存 API Key
+    // 保存 API Key（Pollinations 現在也需要 API Key）
     const provider = providerSelect.value;
-    if (provider !== 'pollinations') {
-        localStorage.setItem(\`\${provider}_api_key\`, apiKeyInput.value);
-    }
+    localStorage.setItem(\`\${provider}_api_key\`, apiKeyInput.value);
     
     // 清空日誌
     logsDiv.innerHTML = '';

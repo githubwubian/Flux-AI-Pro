@@ -144,6 +144,33 @@
 
 ## 🎬 影片生成 API 端點
 
+### 環境變數 API Key 配置
+
+影片生成功能支援透過環境變數配置 API Key，這樣可以避免在前端暴露敏感的 API Key。當環境變數配置後，前端會自動隱藏 API Key 輸入框。
+
+**設置環境變數：**
+
+```bash
+# Pollinations 影片生成 API Key
+wrangler secret put POLLINATIONS_VIDEO_API_KEY
+
+# Runway 影片生成 API Key
+wrangler secret put RUNWAY_VIDEO_API_KEY
+
+# Pika 影片生成 API Key
+wrangler secret put PIKA_VIDEO_API_KEY
+
+# Luma 影片生成 API Key
+wrangler secret put LUMA_VIDEO_API_KEY
+
+# Kling 影片生成 API Key
+wrangler secret put KLING_VIDEO_API_KEY
+```
+
+**API Key 優先順序：**
+1. 環境變數中的 API Key（優先使用）
+2. 前端輸入的 API Key（備用）
+
 ### 生成影片
 ```
 POST /api/video/generate
@@ -159,7 +186,7 @@ Content-Type: application/json
   "duration": 5,
   "style": "cinematic",
   "referenceImage": "https://example.com/image.jpg",  // 可選，用於圖片轉影片
-  "apiKey": "YOUR_API_KEY"  // 可選，veo 模型需要
+  "apiKey": "YOUR_API_KEY"  // 可選，如果環境變數已配置則不需要
 }
 ```
 
