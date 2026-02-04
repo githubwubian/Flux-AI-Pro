@@ -1271,9 +1271,12 @@ async function handleUpload(request) {
     const base64 = btoa(binary);
     
     // 構建 freeimage.host API 請求
+    // API 文檔: https://freeimage.host/api
+    // 參數: key (required), source (base64 or URL)
     const freeimageFormData = new FormData();
     freeimageFormData.append('key', FREEIMAGE_API_KEY);
-    freeimageFormData.append('image', base64);
+    freeimageFormData.append('source', base64);
+    freeimageFormData.append('format', 'json');
     
     const response = await fetch('https://freeimage.host/api/1/upload', {
       method: 'POST',
