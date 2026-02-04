@@ -961,65 +961,137 @@ class AquaProvider {
   }
   
   /**
-   * Poll task status until completion
+   * Poll task status until completion with enhanced error handling and exponential backoff
    * @param {string} taskId - Task ID from create response
    * @param {object} headers - Request headers with auth
    * @param {object} logger - Logger instance
-   * @param {number} maxAttempts - Maximum polling attempts (default: 60)
-   * @param {number} interval - Polling interval in ms (default: 2000)
+   * @param {number} maxAttempts - Maximum polling attempts (default: 150 = 5 minutes)
+   * @param {number} interval - Initial polling interval in ms (default: 2000)
    * @returns {Promise<string>} Image URL
    */
-  async pollTask(taskId, headers, logger, maxAttempts = 60, interval = 2000) {
+  async pollTask(taskId, headers, logger, maxAttempts = 150, interval = 2000) {
     const statusUrl = `${this.config.endpoint}/v1/polling/${taskId}`;
-    logger.add("🔄 Starting Poll", { taskId, maxAttempts, interval });
+    const totalTimeout = Math.round(maxAttempts * interval / 1000);
+    logger.add("🔄 Starting Poll", { taskId, maxAttempts, interval, totalTimeout: `${totalTimeout}s` });
+    
+    let currentInterval = interval;
+    let consecutiveErrors = 0;
+    const maxConsecutiveErrors = 5;
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const response = await fetchWithTimeout(statusUrl, { method: 'GET', headers }, 10000);
+        const response = await fetchWithTimeout(statusUrl, { method: 'GET', headers }, 15000);
         
         if (!response.ok) {
           const errText = await response.text();
-          logger.add(`⚠️ Poll Attempt ${attempt} Failed`, { status: response.status, error: errText });
+          const headersObj = {};
+          response.headers.forEach((v, k) => headersObj[k] = k);
           
-          // Don't throw on transient errors, just continue polling
-          if (response.status >= 500 || response.status === 429) {
-            await new Promise(r => setTimeout(r, interval));
+          logger.add(`⚠️ Poll Attempt ${attempt} Failed`, {
+            status: response.status,
+            error: errText.substring(0, 200),
+            headers: headersObj
+          });
+          
+          // Handle Rate Limit (429) with Retry-After header
+          if (response.status === 429) {
+            const retryAfter = parseInt(response.headers.get('Retry-After') || '5');
+            const waitTime = Math.max(retryAfter * 1000, currentInterval);
+            logger.add(`⏳ Rate Limited`, { retryAfter: `${retryAfter}s`, waitTime: `${Math.round(waitTime/1000)}s` });
+            await new Promise(r => setTimeout(r, waitTime));
             continue;
           }
+          
+          // Handle server errors (5xx) with exponential backoff
+          if (response.status >= 500) {
+            consecutiveErrors++;
+            if (consecutiveErrors >= maxConsecutiveErrors) {
+              throw new Error(`Too many consecutive server errors (${maxConsecutiveErrors}): ${errText}`);
+            }
+            const backoffTime = Math.min(currentInterval * Math.pow(2, consecutiveErrors), 30000);
+            logger.add(`⏳ Server Error - Backoff`, { consecutiveErrors, backoffTime: `${Math.round(backoffTime/1000)}s` });
+            await new Promise(r => setTimeout(r, backoffTime));
+            continue;
+          }
+          
+          // Client errors (4xx except 429) - throw immediately
           throw new Error(`Poll failed: Status ${response.status} - ${errText}`);
         }
         
+        // Reset consecutive errors on successful response
+        consecutiveErrors = 0;
+        
         const data = await response.json();
-        logger.add(`📊 Poll Attempt ${attempt}/${maxAttempts}`, { status: data.status });
+        
+        // Report progress every 10 attempts or on status change
+        if (attempt % 10 === 0 || ['completed', 'failed', 'processing'].includes(data.status)) {
+          const progress = Math.round((attempt / maxAttempts) * 100);
+          const elapsed = Math.round(attempt * currentInterval / 1000);
+          logger.add(`📊 進度: ${progress}%`, {
+            attempt: `${attempt}/${maxAttempts}`,
+            status: data.status,
+            elapsed: `${elapsed}s`
+          });
+        }
         
         if (data.status === 'completed') {
           if (data.result && data.result.url) {
-            logger.add("✅ Task Completed", { imageUrl: data.result.url });
+            logger.add("✅ Task Completed", {
+              imageUrl: data.result.url,
+              totalAttempts: attempt,
+              totalTime: `${Math.round(attempt * currentInterval / 1000)}s`
+            });
             return data.result.url;
           }
           throw new Error("Task completed but no image URL in result: " + JSON.stringify(data));
         }
         
         if (data.status === 'failed') {
-          const errorMsg = data.result?.error || data.result?.message || 'Unknown error';
-          throw new Error(`Task failed: ${errorMsg}`);
+          const errorMsg = data.result?.error || data.result?.message || data.error || 'Unknown error';
+          const errorDetails = data.result?.details || '';
+          throw new Error(`Task failed: ${errorMsg}${errorDetails ? ` - ${errorDetails}` : ''}`);
         }
         
-        // Still pending or processing, wait and continue
+        // Still pending or processing, wait with exponential backoff
         if (attempt < maxAttempts) {
-          await new Promise(r => setTimeout(r, interval));
+          // Exponential backoff: increase interval by 10% each time, max 10 seconds
+          currentInterval = Math.min(interval * Math.pow(1.1, attempt), 10000);
+          await new Promise(r => setTimeout(r, currentInterval));
         }
         
       } catch (e) {
         if (attempt === maxAttempts) {
           throw e;
         }
+        
+        // Check if error is network-related and should be retried
+        const isNetworkError = e.message.includes('fetch') ||
+                              e.message.includes('timeout') ||
+                              e.message.includes('ECONN') ||
+                              e.name === 'TypeError';
+        
+        if (isNetworkError) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= maxConsecutiveErrors) {
+            throw new Error(`Too many consecutive network errors (${maxConsecutiveErrors}): ${e.message}`);
+          }
+          logger.add(`⚠️ Network Error (Attempt ${attempt})`, {
+            error: e.message,
+            consecutiveErrors,
+            willRetry: consecutiveErrors < maxConsecutiveErrors
+          });
+          const backoffTime = Math.min(currentInterval * Math.pow(2, consecutiveErrors), 30000);
+          await new Promise(r => setTimeout(r, backoffTime));
+          continue;
+        }
+        
+        // Non-network errors - log and continue
         logger.add(`⚠️ Poll Error (Attempt ${attempt})`, { error: e.message });
-        await new Promise(r => setTimeout(r, interval));
+        await new Promise(r => setTimeout(r, currentInterval));
       }
     }
     
-    throw new Error(`Task timeout after ${maxAttempts} attempts (${maxAttempts * interval / 1000}s)`);
+    throw new Error(`Task timeout after ${maxAttempts} attempts (${totalTimeout}s). The task may still be processing on the server.`);
   }
 }
 
