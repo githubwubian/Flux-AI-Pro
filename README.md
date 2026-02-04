@@ -1,12 +1,9 @@
 # 🎨 Flux AI Pro - NanoBanana Edition
 
-![Version](https://img.shields.io/badge/Version-11.19.0-8B5CF6?style=flat-square)
+![Version](https://img.shields.io/badge/Version-11.9.0-8B5CF6?style=flat-square)
 ![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-orange?style=flat-square)
 ![Engine](https://img.shields.io/badge/Engine-Multi%20Provider-blue?style=flat-square)
 ![I18N](https://img.shields.io/badge/I18N-5%20Languages-green?style=flat-square)
-![Storage](https://img.shields.io/badge/Storage-Freeimage.host%20Base64-red?style=flat-square)
-![Models](https://img.shields.io/badge/Infip%20Models-12%20Free-blue?style=flat-square)
-![Config](https://img.shields.io/badge/Config-Auto%20Detection-green?style=flat-square)
 
 **Flux AI Pro - NanoBanana Edition** is a high-performance, single-file AI image generation solution built on Cloudflare Workers. It integrates top-tier AI providers like Pollinations.ai, Infip/Ghostbot, and Aqua Server to deliver a serverless, lightning-fast, and feature-rich creative experience.
 
@@ -26,41 +23,22 @@
 - **Full RTL Support**: Specialized layout and text direction for Right-to-Left languages (Arabic).
 - **AI Prompt Generator**: Powered by Google Gemini 3 Flash to turn simple ideas into professional prompts.
 - **Ultra HD by Default**: Built-in optimization strategies to ensure every image is generated at maximum quality.
-- **Optimized History Storage**: Uses Freeimage.host cloud storage for images, reducing IndexedDB usage by 99%+ while maintaining fast thumbnail loading.
-- **Permanent Local History**: Uses IndexedDB to store metadata with export/import capabilities.
+- **Permanent Local History**: Uses IndexedDB to store your creations locally with export/import capabilities.
 
 ---
 
-## 🔥 v11.19.0 更新亮點 (Release Highlights)
+## 🔥 v11.9.0 更新亮點 (Release Highlights)
 
-- **🔐 環境變量配置**：freeimage.host API 金鑰改用環境變量 `FREEIMAGE_API_KEY`，提升安全性和靈活性。
-- **🔧 請求頭優化**：使用真實瀏覽器 User-Agent 和完整的請求頭，避免被 freeimage.host 識別為機器人。
-- **🛡️ 反爬蟲繞過**：添加 Referer、Origin、Accept-Language 等標準瀏覽器請求頭，解決 "You have been forbidden" 錯誤。
-- **🔧 API 響應結構修復**：修正 freeimage.host API 響應結構解析，正確檢查 `success.code` 而非 `success` 布林值。
-- **📡 增強調試日誌**：新增 `success.code` 和 `success.message` 日誌輸出，便於診斷 API 響應問題。
-- **🛡️ 穩定性提升**：根據官方 API 文檔更新響應驗證邏輯，確保正確處理上傳成功/失敗狀態。
-- **🔧 Base64 上傳優化**：改回使用 base64 方式上傳圖片，確保 Cloudflare Workers 環境下的兼容性。
-- **📡 分塊處理**：使用 64KB 分塊處理避免堆疊溢出，確保大文件上傳穩定。
-- **🔍 Freeimage.host 配置自動檢測**：新增 `/api/config/freeimage` 端點，自動檢測 freeimage.host 最新配置。
-- **📡 配置追蹤**：實時獲取 max_filesize、image_types、supported_mime_types 等配置資訊。
-- **🎯 官方規格同步**：文件大小限制更新為 64MB，支援格式精確驗證 (JPEG, PNG, BMP, GIF, WebP)。
-- **🚀 Infip 免費模型擴充**：新增 8 個 Infip 免費模型，總計支援 12 個免費模型。
-- **🎨 新增模型**：qwen、z-image-turbo、flux2-klein-9b、flux2-klein-4b、flux2-dev、phoenix、sdxl-lite、dreamshaper。
-- **🗑️ 移除自動模型發現**：移除自動模型發現功能，改為手動維護模型列表，提升穩定性。
-- **📡 模型來源**：所有 Infip 模型來自 https://api.infip.pro/v1/models API。
-- **💾 Freeimage.host 雲端存儲優化**：歷史記錄改用 Freeimage.host 雲端存儲，IndexedDB 存儲空間減少 99%+，大幅提升載入速度。
-- **🖼️ 縮圖優先顯示**：歷史記錄使用 Freeimage.host 縮圖，點擊查看完整圖片，瀏覽體驗更流暢。
-- **🔄 自動上傳機制**：圖片生成後自動上傳至 Freeimage.host，無需手動操作。
-- **🔄 Aqua Polling Models**：支援 Aqua API 輪詢模型，包含 `imagen4` (Google Imagen 4) 和 `nanobanana` (Img2Img)。
+- **🔄 Aqua Polling Models**：新增 Aqua API 輪詢模型支援，包含 `imagen4` (Google Imagen 4) 和 `nanobanana` (Img2Img)。
 - **📸 Img2Img 支援**：nanobanana 模型支援圖片轉圖片功能，可上傳參考圖片進行生成。
 - **🎯 動態 UI 顯示**：參考圖片區塊根據模型能力自動顯示或隱藏，提供更直觀的使用體驗。
 - **⚡ 輪詢機制優化**：實現智能輪詢系統，自動追蹤任務狀態 (pending → processing → completed/failed)。
-- **📊 供應商使用統計追蹤**：API 供應商使用比例追蹤功能，自動記錄各供應商的使用次數與比例。
+- **📊 供應商使用統計追蹤**：新增 API 供應商使用比例追蹤功能，自動記錄各供應商的使用次數與比例。
 - **🔄 實時統計數據**：透過 `/api/provider-stats` 端點獲取詳細的供應商使用統計，包含總生成次數與各供應商使用比例。
 - **💾 KV 持久化存儲**：統計數據自動存儲在 KV 中，30天後自動過期，確保數據持久性。
 - **🌍 多語言支援**：供應商統計介面支援繁體中文、英文、日文、韓文、阿拉伯語。
-- **🎨 Aqua Server 供應商**：Aqua Server 作為第三個 API 供應商選項。
-- **📡 Health 端點增強**：`/health` 端點包含完整的供應商統計信息。
+- **🎨 Aqua Server 供應商**：新增 Aqua Server 作為第三個 API 供應商選項。
+- **📡 Health 端點增強**：`/health` 端點現在包含完整的供應商統計信息。
 
 ---
 
@@ -76,19 +54,17 @@
 
 ### 3. 多供應商模型庫 (Multi-Model Library)
 *   **Pollinations.ai**：提供 `Kontext`、`NanoBanana` (Nano Pro 專用)、`SeeDream`、`Flux Schnell`、`Z-Image`、`FLUX.2 Klein`、`FLUX.2 Klein 9B` 等免費高品質模型。
-*   **Infip/Ghostbot**：支援 12 個免費模型，包含 Google `Imagen 4`、`Flux Schnell`、`Flux 2 系列`、`SDXL 系列`、`Qwen`、`Phoenix`、`DreamShaper` 等，具備更強的併發處理能力。
+*   **Infip/Ghostbot**：支援 Google `Imagen 4` 與 `Flux Schnell`，具備更強的併發處理能力。
 *   **Aqua Server**：提供 `Flux 2`、`Z-Image`、`Imagen 4` (輪詢模式)、`NanoBanana` (Img2Img 輪詢模式) 等高品質模型。
 *   **輪詢模型支援**：imagen4 和 nanobanana 採用輪詢機制，確保大型模型生成的穩定性。
 *   **Img2Img 功能**：nanobanana 模型支援參考圖片上傳，實現圖片轉圖片生成。
 *   **供應商統計追蹤**：自動追蹤各供應商的使用次數與比例，透過 API 端點查詢。
 
 ### 4. 性能與優化 (Performance)
-*   **Freeimage.host 雲端存儲**：歷史記錄圖片存儲在 Freeimage.host，IndexedDB 只存儲元數據，存儲空間減少 99%+。
-*   **縮圖優先載入**：歷史記錄使用縮圖預覽，大幅提升載入速度。
 *   **懶加載技術**：利用 IntersectionObserver 優化圖片加載速度。
 *   **請求隊列**：智慧管理併發請求，避免瀏覽器卡頓。
 *   **自動翻譯**：內建 Google 翻譯接口，支援中文提示詞自動轉英文。
-*   **實時生成時間追追蹤**：顯示圖片生成的實時進度與最終耗時，提供透明的性能反饋。
+*   **實時生成時間追生成時間追蹤**：顯示圖片生成的實時進度與最終耗時，提供透明的性能反饋。
 
 ---
 
@@ -112,17 +88,7 @@
     wrangler secret put INFIP_API_KEY
     wrangler secret put AQUA_API_KEY
     wrangler secret put GEMINI_API_KEY
-    wrangler secret put FREEIMAGE_API_KEY
     ```
-    
-    **Freeimage.host 圖片存儲**：
-    - 預設 API Key: `6d207e02198a847aa98d0a2a901485a5` (無需註冊)
-    - 如需自訂 API Key，訪問 [https://freeimage.host/api](https://freeimage.host/api)
-    - 支援縮圖、中等尺寸、完整尺寸三種格式
-    - 無需註冊即可使用預設 API Key
-    - 最大文件大小: 64MB
-    - 支援格式: JPEG, PNG, BMP, GIF, WebP
-    - 配置檢測端點: `GET /api/config/freeimage`
 4.  **部署**：
     ```bash
     wrangler deploy
@@ -141,7 +107,6 @@
 
 - [Pollinations.ai](https://pollinations.ai) - Free AI Image API
 - [Infip.pro](https://infip.pro) - Ghostbot Web API
-- [Freeimage.host](https://freeimage.host) - Free Image Hosting Service
 - [ShowMeBest.AI](https://showmebest.ai) - AI Tool Directory
 - [Cloudflare Workers](https://workers.cloudflare.com) - Serverless Platform
 
