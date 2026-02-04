@@ -2046,7 +2046,6 @@ function displayVideo(data) {
 providerSelect.addEventListener('change', updateModelOptions);
 modelSelect.addEventListener('change', updateModelParams);
 sizeSelect.addEventListener('change', updateSizeParams);
-durationInput.addEventListener('input', validateDurationInput);
 durationInput.addEventListener('change', validateDurationInput);
 themeToggle.addEventListener('click', toggleTheme);
 document.getElementById('refreshRateLimit').addEventListener('click', checkRateLimitStatus);
