@@ -1,7 +1,7 @@
 // =================================================================================
 //  項目: Flux AI Pro - NanoBanana Edition
-//  版本: 11.14.0 (freeimage.host 圖片代管 + 配置檢測)
-//  更新: 新增 freeimage.host 配置自動檢測端點
+//  版本: 11.9.0 (Aqua Polling Models)
+//  更新: 新增 Aqua API 輪詢模型 (imagen4, nanobanana)、Img2Img 支援、參考圖片動態顯示
 // =================================================================================
 
 // 導入風格適配器（僅在服務器端使用）
@@ -13,7 +13,7 @@ const mergedStyles = styleManager.merge();
 
 const CONFIG = {
   PROJECT_NAME: "Flux-AI-Pro",
-  PROJECT_VERSION: "11.14.0",
+  PROJECT_VERSION: "11.9.0",
   API_MASTER_KEY: "1",
   FETCH_TIMEOUT: 120000,
   MAX_RETRIES: 3,
@@ -79,17 +79,9 @@ const CONFIG = {
       },
       models: [
         { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
-        { id: "qwen", name: "Qwen Image 🎨", category: "other", description: "Qwen 圖像生成模型", max_size: 1024 },
-        { id: "z-image-turbo", name: "Z-Image Turbo ⚡", category: "other", description: "Z-Image 極速版", max_size: 1024 },
         { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
-        { id: "flux2-klein-9b", name: "Flux 2 Klein 9B 🧠", category: "flux", description: "Flux 2 Klein 9B 模型", max_size: 1024 },
-        { id: "flux2-klein-4b", name: "Flux 2 Klein 4B 🧠", category: "flux", description: "Flux 2 Klein 4B 模型", max_size: 1024 },
-        { id: "flux2-dev", name: "Flux 2 Dev 🔥", category: "flux", description: "Flux 2 開發版", max_size: 1024 },
-        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 },
-        { id: "phoenix", name: "Phoenix 🦅", category: "other", description: "Phoenix 圖像生成模型", max_size: 1024 },
-        { id: "sdxl-lite", name: "SDXL Lite ⚡", category: "sd", description: "Stable Diffusion XL 輕量版", max_size: 1024 },
-        { id: "dreamshaper", name: "DreamShaper 🎭", category: "sd", description: "DreamShaper 風格模型", max_size: 1024 },
-        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 }
+        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
+        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
       ],
       rate_limit: { requests: 30, interval: 60 },
       max_size: { width: 1792, height: 1792 }
@@ -1083,7 +1075,6 @@ class MultiProviderRouter {
     return results;
   }
 }
-
 // Global Cache for Online Count (To save KV List operations)
 export default {
   async fetch(request, env, ctx) {
@@ -1115,7 +1106,7 @@ export default {
         response = await handleInternalGenerate(request, env, ctx);
       }
       else if (url.pathname === '/api/upload') {
-        response = await handleUpload(request, env);
+        response = await handleUpload(request);
       }
       else if (url.pathname === '/api/generate-prompt') {
         response = await handlePromptGeneration(request, env);
@@ -1129,12 +1120,8 @@ export default {
           models: CONFIG.PROVIDERS.pollinations.models.map(m => ({ id: m.id, name: m.name, category: m.category, supports_reference_images: m.supports_reference_images || false })),
           style_categories: Object.keys(CONFIG.STYLE_CATEGORIES).map(key => ({ id: key, name: CONFIG.STYLE_CATEGORIES[key].name, icon: CONFIG.STYLE_CATEGORIES[key].icon, count: Object.values(CONFIG.STYLE_PRESETS).filter(s => s.category === key).length }))
         }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
-      }
-      else if (url.pathname === '/api/config/freeimage') {
-        response = new Response(JSON.stringify(await checkFreeImageConfig()), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
-      }
-      else {
-        response = new Response(JSON.stringify({ error: 'Not Found', message: '此 Worker 僅提供 Web UI 界面', available_paths: ['/', '/health', '/_internal/generate', '/nano', '/api/config/freeimage'] }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      } else {
+        response = new Response(JSON.stringify({ error: 'Not Found', message: '此 Worker 僅提供 Web UI 界面', available_paths: ['/', '/health', '/_internal/generate', '/nano'] }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
       }
       const duration = Date.now() - startTime;
       const headers = new Headers(response.headers);
@@ -1150,72 +1137,7 @@ export default {
   }
 };
 
-// ====== FreeImage.host 配置檢測 ======
-async function checkFreeImageConfig() {
-  try {
-    const response = await fetch('https://freeimage.host/', {
-      headers: {
-        'User-Agent': 'FluxAIPro-Worker/1.0'
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const html = await response.text();
-    
-    // 解析配置（從網站獲取最新配置）
-    const configMatch = html.match(/max_filesize:\s*"([^"]+)"/);
-    const typesMatch = html.match(/image_types:\s*\[([^\]]+)\]/);
-    const loadMaxMatch = html.match(/load_max_filesize:\s*"([^"]+)"/);
-    
-    // 解析圖片類型數組
-    let imageTypes = [];
-    if (typesMatch && typesMatch[1]) {
-      imageTypes = typesMatch[1]
-        .replace(/"/g, '')
-        .split(',')
-        .map(t => t.trim());
-    }
-    
-    return {
-      status: 'ok',
-      provider: 'freeimage.host',
-      api_endpoint: 'https://freeimage.host/api/1/upload',
-      config: {
-        max_filesize: configMatch?.[1] || 'Unknown',
-        load_max_filesize: loadMaxMatch?.[1] || 'Unknown',
-        image_types: imageTypes,
-        supported_mime_types: imageTypes.map(ext => {
-          const mimeMap = {
-            'jpg': 'image/jpeg',
-            'jpeg': 'image/jpeg',
-            'png': 'image/png',
-            'bmp': 'image/bmp',
-            'gif': 'image/gif',
-            'webp': 'image/webp'
-          };
-          return mimeMap[ext] || `image/${ext}`;
-        })
-      },
-      checked_at: new Date().toISOString(),
-      recommendations: {
-        max_filesize_mb: configMatch?.[1] ? parseInt(configMatch[1]) : 64,
-        allowed_types: imageTypes
-      }
-    };
-  } catch (error) {
-    return {
-      status: 'error',
-      provider: 'freeimage.host',
-      error: error.message,
-      checked_at: new Date().toISOString()
-    };
-  }
-}
-
-async function handleUpload(request, env) {
+async function handleUpload(request) {
   if (request.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
   }
@@ -1231,8 +1153,8 @@ async function handleUpload(request, env) {
       });
     }
 
-    // 驗證文件大小（freeimage.host 最大支持 64MB）
-    const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64MB
+    // 驗證文件大小（ImgBB 最大支持 32MB）
+    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
     if (file.size > MAX_FILE_SIZE) {
       return new Response(JSON.stringify({
         error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`,
@@ -1243,22 +1165,17 @@ async function handleUpload(request, env) {
       });
     }
 
-    // 驗證文件類型（freeimage.host 支持的格式）
-    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/bmp', 'image/gif', 'image/webp'];
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      return new Response(JSON.stringify({
-        error: 'Invalid file type. Only JPEG, PNG, BMP, GIF, and WebP images are allowed.',
-        allowedTypes: ALLOWED_TYPES
-      }), {
+    // 驗證文件類型
+    if (!file.type.startsWith('image/')) {
+      return new Response(JSON.stringify({ error: 'Invalid file type. Only images are allowed.' }), {
         status: 400,
         headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     }
 
-    // 使用 freeimage.host API 上傳圖片
-    // API Key 從環境變量讀取，通過 wrangler secret 設置
-    // 設置命令: npx wrangler secret put FREEIMAGE_API_KEY
-    const FREEIMAGE_API_KEY = env.FREEIMAGE_API_KEY || '6d207e02198a847aa98d0a2a901485a5'; // 默認免費測試用 API Key
+    // 使用 ImgBB API 上傳圖片
+    // ImgBB 免費 API Key (用於測試，生產環境建議使用自己的 API Key)
+    const IMGBB_API_KEY = '8245f772dd33870730fab74e7e236df2'; // 免費測試用 API Key
     
     // 將文件轉換為 Base64（使用分塊處理避免堆疊溢出）
     const arrayBuffer = await file.arrayBuffer();
@@ -1271,69 +1188,35 @@ async function handleUpload(request, env) {
     }
     const base64 = btoa(binary);
     
-    // 構建 freeimage.host API 請求
-    // API 文檔: https://freeimage.host/api
-    // 參數: key (required), source (base64 or URL)
-    // 使用 base64 方式上傳，Cloudflare Workers 環境下更可靠
-    const freeimageFormData = new FormData();
-    freeimageFormData.append('key', FREEIMAGE_API_KEY);
-    freeimageFormData.append('source', base64);
-    freeimageFormData.append('format', 'json');
+    // 構建 ImgBB API 請求
+    const imgbbFormData = new FormData();
+    imgbbFormData.append('key', IMGBB_API_KEY);
+    imgbbFormData.append('image', base64);
     
-    // 使用更自然的請求頭避免被識別為機器人
-    const response = await fetch('https://freeimage.host/api/1/upload', {
+    const response = await fetch('https://api.imgbb.com/1/upload', {
       method: 'POST',
-      body: freeimageFormData,
+      body: imgbbFormData,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://freeimage.host/',
-        'Origin': 'https://freeimage.host'
+        'User-Agent': 'FluxAIPro-Worker/1.0'
       }
     });
 
     const data = await response.json();
-    
-    // 🔍 調試日誌：檢查 API 響應結構
-    console.log('📤 freeimage.host API Response:', {
-      status: response.status,
-      ok: response.ok,
-      statusCode: data.status_code,
-      statusTxt: data.status_txt,
-      success: data.success,
-      successCode: data.success?.code,
-      successMessage: data.success?.message,
-      hasImage: !!data.image,
-      imageUrl: data.image?.url
-    });
 
-    // API 響應結構:
-    // {
-    //   "status_code": 200,
-    //   "success": { "message": "image uploaded", "code": 200 },
-    //   "image": { "url": "...", "url_viewer": "...", "thumb": {...}, ... },
-    //   "status_txt": "OK"
-    // }
-    if (response.ok && data.status_code === 200 && data.success?.code === 200 && data.image && data.image.url) {
+    if (response.ok && data.success && data.data && data.data.url) {
       return new Response(JSON.stringify({
-        url: data.image.url,
-        deleteUrl: data.image.url_viewer,
-        displayUrl: data.image.display_url,
-        thumbUrl: data.image.thumb.url,
-        filename: data.image.filename,
-        size: data.image.size,
-        sizeFormatted: data.image.size_formatted
+        url: data.data.url,
+        deleteUrl: data.data.delete_url,
+        displayUrl: data.data.display_url,
+        thumbUrl: data.data.thumb.url
       }), {
         status: 200,
         headers: corsHeaders({ 'Content-Type': 'application/json' })
       });
     } else {
-      console.error('freeimage.host API Error:', data);
+      console.error('ImgBB API Error:', data);
       return new Response(JSON.stringify({
-        error: data.error?.message || data.status_txt || 'Upload failed',
-        statusCode: data.status_code,
-        errorCode: data.error?.code,
+        error: data.error?.message || 'Upload failed',
         details: data
       }), {
         status: 502,
@@ -3629,20 +3512,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <!-- JS will populate this -->
     </select>
 </div>
-
-<!-- 模型預覽與能力顯示區域 -->
-<div id="modelPreviewContainer" style="display:none; background:rgba(255,255,255,0.05); padding:12px; border-radius:8px; margin-top:10px; border:1px solid rgba(255,255,255,0.1);">
-    <div style="display:flex; gap:12px; align-items:flex-start;">
-        <div id="modelPreviewImage" style="width:80px; height:80px; background:rgba(0,0,0,0.3); border-radius:6px; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0;">
-            <span style="font-size:24px; opacity:0.5;">🖼️</span>
-        </div>
-        <div style="flex:1;">
-            <div id="modelPreviewName" style="font-weight:600; color:#a78bfa; margin-bottom:6px;"></div>
-            <div id="modelPreviewCapabilities" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;"></div>
-            <div id="modelPreviewDescription" style="font-size:12px; color:#9ca3af; line-height:1.4;"></div>
-        </div>
-    </div>
-</div>
 <div class="form-group"><label data-t="size_label">尺寸預設</label><select id="size">${sizeOptionsHTML}</select></div>
 <div class="form-group"><label data-t="style_label">藝術風格 🎨</label><select id="style">${styleOptionsHTML}</select></div>
 <div class="form-group"><label data-t="quality_label">質量模式</label><select id="qualityMode"><option value="economy">Economy</option><option value="standard" selected>Standard</option><option value="ultra">Ultra HD</option></select></div>
@@ -4328,21 +4197,6 @@ const apiKeyGroup = document.getElementById('apiKeyGroup');
 const apiKeyInput = document.getElementById('apiKey');
 const modelSelect = document.getElementById('model');
 
-// 加載已發現的模型
-async function loadDiscoveredModels() {
-    try {
-        const response = await fetch('/api/models/discovered');
-        const data = await response.json();
-        if (data.success && data.models) {
-            return data.models;
-        }
-        return [];
-    } catch (error) {
-        console.error('加載已發現模型失敗:', error);
-        return [];
-    }
-}
-
 function updateModelOptions() {
     const p = providerSelect.value;
     const config = PROVIDERS[p];
@@ -4382,61 +4236,32 @@ function updateModelOptions() {
     modelSelect.innerHTML = '';
     const models = config.models;
     const groups = {};
-    
-    // 加載已發現的模型並合併到模型列表
-    loadDiscoveredModels().then(discoveredModels => {
-        const allModels = [...models];
+    models.forEach(m => {
+        // Skip nanobanana model - only available in Nano Pro page
+        // imagen4 is available in Professional UI (Aqua polling model)
+        if (m.id === 'nanobanana') return;
         
-        // 添加已發現的模型（如果不在配置中）
-        discoveredModels.forEach(dm => {
-            if (!allModels.find(m => m.id === dm.id)) {
-                allModels.push({
-                    id: dm.id,
-                    name: dm.name,
-                    category: 'DISCOVERED',
-                    description: dm.description,
-                    max_size: dm.max_size,
-                    previewUrl: dm.previewUrl,
-                    capabilities: dm.capabilities
-                });
-            }
-        });
-        
-        allModels.forEach(m => {
-            // Skip nanobanana model - only available in Nano Pro page
-            // imagen4 is available in Professional UI (Aqua polling model)
-            if (m.id === 'nanobanana') return;
-            
-            const cat = m.category || 'other';
-            if(!groups[cat]) groups[cat] = [];
-            groups[cat].push(m);
-        });
-        
-        for(const [cat, list] of Object.entries(groups)) {
-            const optgroup = document.createElement('optgroup');
-            optgroup.label = cat.toUpperCase();
-            list.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = m.name;
-                // 添加預覽圖 URL 作為 data 屬性
-                if (m.previewUrl) {
-                    opt.dataset.previewUrl = m.previewUrl;
-                }
-                // 添加能力信息作為 data 屬性
-                if (m.capabilities) {
-                    opt.dataset.capabilities = JSON.stringify(m.capabilities);
-                }
-                // Set default model to FLUX.2 Klein 9B
-                if (m.id === 'klein-large') opt.selected = true;
-                optgroup.appendChild(opt);
-            });
-            modelSelect.appendChild(optgroup);
-        }
-        
-        // Update reference images visibility after model list is updated
-        updateReferenceImagesVisibility();
+        const cat = m.category || 'other';
+        if(!groups[cat]) groups[cat] = [];
+        groups[cat].push(m);
     });
+    
+    for(const [cat, list] of Object.entries(groups)) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = cat.toUpperCase();
+        list.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.name;
+            // Set default model to FLUX.2 Klein 9B
+            if (m.id === 'klein-large') opt.selected = true;
+            optgroup.appendChild(opt);
+        });
+        modelSelect.appendChild(optgroup);
+    }
+    
+    // Update reference images visibility after model list is updated
+    updateReferenceImagesVisibility();
 }
 
 // ====== 拖放功能模塊 ======
@@ -4446,23 +4271,7 @@ const DragDropHandler = {
         const dropZone = document.getElementById(dropZoneId);
         const fileInput = document.getElementById(fileInputId);
         
-        console.log('[DEBUG] DragDropHandler.initDropZone called:', {
-            dropZoneId,
-            fileInputId,
-            dropZoneExists: !!dropZone,
-            fileInputExists: !!fileInput,
-            documentReady: document.readyState
-        });
-        
-        if (!dropZone || !fileInput) {
-            console.error('[DEBUG] DragDropHandler.initDropZone failed: Elements not found', {
-                dropZoneId,
-                fileInputId,
-                dropZone,
-                fileInput
-            });
-            return;
-        }
+        if (!dropZone || !fileInput) return;
 
         // 點擊區域觸發文件選擇
         dropZone.addEventListener('click', () => {
@@ -4527,12 +4336,9 @@ const DragDropHandler = {
 };
 
 // 初始化主頁面參考圖像拖放區域
-console.log('[DEBUG] Script loaded, about to call DragDropHandler.initDropZone');
 DragDropHandler.initDropZone('imageDropZone', 'imageUpload', async (file) => {
-    console.log('[DEBUG] File dropped/selected:', file.name, file.type, file.size);
     const validation = DragDropHandler.validateImageFile(file);
     if (!validation.valid) {
-        console.error('[DEBUG] File validation failed:', validation.error);
         alert(validation.error);
         return;
     }
@@ -4542,23 +4348,18 @@ DragDropHandler.initDropZone('imageDropZone', 'imageUpload', async (file) => {
     dropZone.innerHTML = '<div class="drag-icon">⏳</div><div class="drag-text">上傳中...</div>';
 
     try {
-        console.log('[DEBUG] Starting file upload...');
         const base64 = await DragDropHandler.readFileAsBase64(file);
-        console.log('[DEBUG] File converted to base64, length:', base64.length);
         
         const formData = new FormData();
         formData.append('fileToUpload', file);
-        console.log('[DEBUG] FormData created, sending to /api/upload');
         
         const response = await fetch('/api/upload', {
             method: 'POST',
             body: formData
         });
 
-        console.log('[DEBUG] Upload response status:', response.status);
         if (response.ok) {
             const data = await response.json();
-            console.log('[DEBUG] Upload response data:', data);
             if (data.url && data.url.startsWith('http')) {
                 const textarea = document.getElementById('referenceImages');
                 const currentVal = textarea.value.trim();
@@ -4572,11 +4373,10 @@ DragDropHandler.initDropZone('imageDropZone', 'imageUpload', async (file) => {
             }
         } else {
             const errData = await response.json().catch(()=>({}));
-            console.error('[DEBUG] Upload failed:', response.status, errData);
             throw new Error("Upload failed: " + (errData.error || response.status));
         }
     } catch (error) {
-        console.error("[DEBUG] Upload error:", error);
+        console.error("Upload error:", error);
         dropZone.innerHTML = '<div class="drag-icon">❌</div><div class="drag-text">上傳失敗</div>';
         setTimeout(() => {
             dropZone.innerHTML = originalContent;
@@ -4585,10 +4385,7 @@ DragDropHandler.initDropZone('imageDropZone', 'imageUpload', async (file) => {
 });
 
 const imageUpload = document.getElementById('imageUpload');
-console.log('[DEBUG] imageUpload element:', imageUpload);
-if (imageUpload) {
-    imageUpload.addEventListener('change', async (e) => {
-        console.log('[DEBUG] File input change event triggered');
+imageUpload.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -4653,10 +4450,8 @@ if (imageUpload) {
         console.error(err);
         dropZone.innerHTML = '<div class="drag-icon">❌</div><div="drag-text">上傳失敗</div>';
         setTimeout(() => { dropZone.innerHTML = originalContent; }, 2000);
-    });
-} else {
-    console.error('[DEBUG] imageUpload element not found!');
-}
+    }
+});
 
 providerSelect.addEventListener('change', updateModelOptions);
 apiKeyInput.addEventListener('input', (e) => {
@@ -4679,99 +4474,7 @@ function updateReferenceImagesVisibility() {
     }
 }
 
-// Update model preview display
-function updateModelPreview() {
-    const modelSelect = document.getElementById('model');
-    const selectedOption = modelSelect.options[modelSelect.selectedIndex];
-    const previewContainer = document.getElementById('modelPreviewContainer');
-    const previewImage = document.getElementById('modelPreviewImage');
-    const previewName = document.getElementById('modelPreviewName');
-    const previewCapabilities = document.getElementById('modelPreviewCapabilities');
-    const previewDescription = document.getElementById('modelPreviewDescription');
-    
-    if (!selectedOption) {
-        previewContainer.style.display = 'none';
-        return;
-    }
-    
-    const previewUrl = selectedOption.dataset.previewUrl;
-    const capabilities = selectedOption.dataset.capabilities ? JSON.parse(selectedOption.dataset.capabilities) : null;
-    const modelName = selectedOption.textContent;
-    
-    // Show preview container
-    previewContainer.style.display = 'block';
-    
-    // Update name
-    previewName.textContent = modelName;
-    
-    // Update preview image
-    if (previewUrl) {
-        const img = document.createElement('img');
-        img.src = previewUrl;
-        img.alt = modelName;
-        img.style.cssText = 'width:100%; height:100%; object-fit:cover;';
-        img.onerror = function() {
-            previewImage.innerHTML = '<span style="font-size:24px; opacity:0.5;">🖼️</span>';
-        };
-        previewImage.innerHTML = '';
-        previewImage.appendChild(img);
-    } else {
-        previewImage.innerHTML = '<span style="font-size:24px; opacity:0.5;">🖼️</span>';
-    }
-    
-    // Update capabilities badges
-    previewCapabilities.innerHTML = '';
-    if (capabilities) {
-        const badges = [];
-        
-        if (capabilities.supports_reference_images) {
-            const badge = document.createElement('span');
-            badge.textContent = '📸 參考圖';
-            badge.style.cssText = 'background:rgba(139, 92, 246, 0.3); color:#a78bfa; padding:2px 8px; border-radius:10px; font-size:10px;';
-            badges.push(badge);
-        }
-        if (capabilities.supports_img2img) {
-            const badge = document.createElement('span');
-            badge.textContent = '🔄 Img2Img';
-            badge.style.cssText = 'background:rgba(59, 130, 246, 0.3); color:#60a5fa; padding:2px 8px; border-radius:10px; font-size:10px;';
-            badges.push(badge);
-        }
-        if (capabilities.supports_nsfw) {
-            const badge = document.createElement('span');
-            badge.textContent = '🔞 NSFW';
-            badge.style.cssText = 'background:rgba(239, 68, 68, 0.3); color:#f87171; padding:2px 8px; border-radius:10px; font-size:10px;';
-            badges.push(badge);
-        }
-        if (capabilities.supports_batch) {
-            const badge = document.createElement('span');
-            badge.textContent = '📦 批量';
-            badge.style.cssText = 'background:rgba(34, 197, 94, 0.3); color:#4ade80; padding:2px 8px; border-radius:10px; font-size:10px;';
-            badges.push(badge);
-        }
-        const resBadge = document.createElement('span');
-        resBadge.textContent = '📐 ' + capabilities.max_resolution + 'px';
-        resBadge.style.cssText = 'background:rgba(251, 191, 36, 0.3); color:#fbbf24; padding:2px 8px; border-radius:10px; font-size:10px;';
-        badges.push(resBadge);
-        
-        badges.forEach(b => previewCapabilities.appendChild(b));
-    } else {
-        const noInfo = document.createElement('span');
-        noInfo.textContent = '無能力資訊';
-        noInfo.style.cssText = 'color:#6b7280; font-size:11px;';
-        previewCapabilities.appendChild(noInfo);
-    }
-    
-    // Update description
-    const provider = document.getElementById('provider').value;
-    const config = PROVIDERS[provider];
-    const modelConfig = config?.models?.find(m => m.id === selectedOption.value);
-    previewDescription.textContent = modelConfig?.description || '此模型無描述資訊';
-}
-
-modelSelect.addEventListener('change', () => {
-    updateReferenceImagesVisibility();
-    updateModelPreview();
-});
+modelSelect.addEventListener('change', updateReferenceImagesVisibility);
 
 const PRESET_SIZES=${JSON.stringify(CONFIG.PRESET_SIZES)};
 const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
