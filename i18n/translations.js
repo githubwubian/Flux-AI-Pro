@@ -10,6 +10,7 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 生成圖像",
     nav_his: "📚 歷史記錄",
     nav_nano: "🍌 Nano版",
+    nav_edit: "✨ 圖像編輯",
     
     // 設定標籤
     settings_title: "⚙️ 生成參數",
@@ -249,7 +250,39 @@ export const TRANSLATIONS = {
     style_acrylic: "丙烯畫",
     style_pastel: "粉彩畫",
     style_gouache: "水粉畫",
-    style_encaustic: "蠟畫"
+    style_encaustic: "蠟畫",
+    
+    // 圖像編輯頁面
+    edit_title: "✨ 圖像編輯",
+    edit_subtitle: "使用 AI 編輯您的圖片",
+    edit_upload_title: "上傳圖片",
+    edit_upload_desc: "拖放圖片到這裡或點擊選擇",
+    edit_select_image: "選擇圖片",
+    edit_prompt_label: "編輯提示詞",
+    edit_prompt_placeholder: "描述您想要的編輯效果...",
+    edit_negative_prompt_label: "負面提示詞 (可選)",
+    edit_negative_prompt_placeholder: "描述您不想要的內容...",
+    edit_mode_label: "編輯模式",
+    edit_mode_img2img: "圖生圖",
+    edit_mode_inpainting: "修補",
+    edit_mode_outpainting: "擴展",
+    edit_mode_img2img_desc: "根據提示詞重新生成圖片",
+    edit_mode_inpainting_desc: "修復或替換圖片中的特定區域",
+    edit_mode_outpainting_desc: "擴展圖片邊緣",
+    edit_strength_label: "編輯強度",
+    edit_strength_desc: "控制編輯對原圖的影響程度",
+    edit_model_label: "模型",
+    edit_size_label: "輸出尺寸",
+    edit_btn_start: "開始編輯",
+    edit_btn_download: "下載圖片",
+    edit_btn_reset: "重置",
+    edit_processing: "編輯中...",
+    edit_success: "編輯完成！",
+    edit_error: "編輯失敗",
+    edit_no_image: "請先上傳圖片",
+    edit_no_prompt: "請輸入編輯提示詞",
+    edit_preview_title: "預覽",
+    edit_result_title: "編輯結果"
   },
   
   // ====== 英文 (en) ======
@@ -258,6 +291,7 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 Generate Image",
     nav_his: "📚 History",
     nav_nano: "🍌 Nano",
+    nav_edit: "✨ Image Edit",
     
     // Settings
     settings_title: "⚙️ Generation Settings",
@@ -438,7 +472,39 @@ export const TRANSLATIONS = {
     style_gothic: "Gothic",
     style_art_nouveau: "Art Nouveau",
     style_cyberpunk: "Cyberpunk",
-    style_fantasy: "Fantasy Style"
+    style_fantasy: "Fantasy Style",
+    
+    // Image Edit Page
+    edit_title: "✨ Image Edit",
+    edit_subtitle: "Edit your images with AI",
+    edit_upload_title: "Upload Image",
+    edit_upload_desc: "Drag and drop an image here or click to select",
+    edit_select_image: "Select Image",
+    edit_prompt_label: "Edit Prompt",
+    edit_prompt_placeholder: "Describe the edit you want...",
+    edit_negative_prompt_label: "Negative Prompt (Optional)",
+    edit_negative_prompt_placeholder: "Describe what you don't want...",
+    edit_mode_label: "Edit Mode",
+    edit_mode_img2img: "Img2Img",
+    edit_mode_inpainting: "Inpainting",
+    edit_mode_outpainting: "Outpainting",
+    edit_mode_img2img_desc: "Regenerate image based on prompt",
+    edit_mode_inpainting_desc: "Fix or replace specific areas in the image",
+    edit_mode_outpainting_desc: "Extend image edges",
+    edit_strength_label: "Edit Strength",
+    edit_strength_desc: "Control how much the edit affects the original",
+    edit_model_label: "Model",
+    edit_size_label: "Output Size",
+    edit_btn_start: "Start Editing",
+    edit_btn_download: "Download Image",
+    edit_btn_reset: "Reset",
+    edit_processing: "Editing...",
+    edit_success: "Edit Complete!",
+    edit_error: "Edit Failed",
+    edit_no_image: "Please upload an image first",
+    edit_no_prompt: "Please enter an edit prompt",
+    edit_preview_title: "Preview",
+    edit_result_title: "Edit Result"
   },
   
   // ====== 日文 (ja) ======
@@ -447,6 +513,7 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 画像生成",
     nav_his: "📚 履歴",
     nav_nano: "🍌 Nano版",
+    nav_edit: "✨ 画像編集",
     
     // 設定
     settings_title: "⚙️ 生成設定",
@@ -629,6 +696,37 @@ export const TRANSLATIONS = {
     style_cyberpunk: "サイバーパンク",
     style_fantasy: "ファンタジースタイル",
     
+    // 画像編集ページ
+    edit_title: "✨ 画像編集",
+    edit_subtitle: "AIで画像を編集",
+    edit_upload_title: "画像をアップロード",
+    edit_upload_desc: "画像をドラッグ＆ドロップまたはクリックして選択",
+    edit_select_image: "画像を選択",
+    edit_prompt_label: "編集プロンプト",
+    edit_prompt_placeholder: "望む編集内容を説明...",
+    edit_negative_prompt_label: "ネガティブプロンプト（オプション）",
+    edit_negative_prompt_placeholder: "望まない内容を説明...",
+    edit_mode_label: "編集モード",
+    edit_mode_img2img: "Img2Img",
+    edit_mode_inpainting: "修復",
+    edit_mode_outpainting: "拡張",
+    edit_mode_img2img_desc: "プロンプトに基づいて画像を再生成",
+    edit_mode_inpainting_desc: "画像の特定領域を修正または置換",
+    edit_mode_outpainting_desc: "画像の端を拡張",
+    edit_strength_label: "編集強度",
+    edit_strength_desc: "編集が元画像に与える影響度を制御",
+    edit_model_label: "モデル",
+    edit_size_label: "出力サイズ",
+    edit_btn_start: "編集開始",
+    edit_btn_download: "画像をダウンロード",
+    edit_btn_reset: "リセット",
+    edit_processing: "編集中...",
+    edit_success: "編集完了！",
+    edit_error: "編集失敗",
+    edit_no_image: "まず画像をアップロードしてください",
+    edit_no_prompt: "編集プロンプトを入力してください",
+    edit_preview_title: "プレビュー",
+    edit_result_title: "編集結果"
   },
   
   // ====== 韓文 (ko) ======
@@ -637,6 +735,7 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 이미지 생성",
     nav_his: "📚 기록",
     nav_nano: "🍌 Nano",
+    nav_edit: "✨ 이미지 편집",
     
     // 설정
     settings_title: "⚙️ 생성 설정",
@@ -819,6 +918,38 @@ export const TRANSLATIONS = {
     style_cyberpunk: "사이버펑크",
     style_fantasy: "판타지 스타일",
     
+    // 이미지 편집 페이지
+    edit_title: "✨ 이미지 편집",
+    edit_subtitle: "AI로 이미지 편집",
+    edit_upload_title: "이미지 업로드",
+    edit_upload_desc: "이미지를 드래그 앤 드롭하거나 클릭하여 선택",
+    edit_select_image: "이미지 선택",
+    edit_prompt_label: "편집 프롬프트",
+    edit_prompt_placeholder: "원하는 편집 내용을 설명...",
+    edit_negative_prompt_label: "네거티브 프롬프트 (선택 사항)",
+    edit_negative_prompt_placeholder: "원하지 않는 내용을 설명...",
+    edit_mode_label: "편집 모드",
+    edit_mode_img2img: "Img2Img",
+    edit_mode_inpainting: "인페인팅",
+    edit_mode_outpainting: "아웃페인팅",
+    edit_mode_img2img_desc: "프롬프트에 따라 이미지 재생성",
+    edit_mode_inpainting_desc: "이미지의 특정 영역 수정 또는 교체",
+    edit_mode_outpainting_desc: "이미지 가장자리 확장",
+    edit_strength_label: "편집 강도",
+    edit_strength_desc: "편집이 원본 이미지에 미치는 영향 제어",
+    edit_model_label: "모델",
+    edit_size_label: "출력 크기",
+    edit_btn_start: "편집 시작",
+    edit_btn_download: "이미지 다운로드",
+    edit_btn_reset: "재설정",
+    edit_processing: "편집 중...",
+    edit_success: "편집 완료!",
+    edit_error: "편집 실패",
+    edit_no_image: "먼저 이미지를 업로드하세요",
+    edit_no_prompt: "편집 프롬프트를 입력하세요",
+    edit_preview_title: "미리보기",
+    edit_result_title: "편집 결과",
+    
     // 동영상 생성
     video_title: "🎬 동영상 생성",
     video_model_label: "동영상 모델",
@@ -873,6 +1004,7 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 إنشاء صورة",
     nav_his: "📚 السجل",
     nav_nano: "🍌 Nano",
+    nav_edit: "✨ تحرير الصورة",
     
     // الإعدادات
     settings_title: "⚙️ إعدادات الإنشاء",
@@ -1114,6 +1246,37 @@ export const TRANSLATIONS = {
     style_gouache: "غواش",
     style_encaustic: "إنكوستيك",
     
+    // صفحة تحرير الصور
+    edit_title: "✨ تحرير الصور",
+    edit_subtitle: "حرر صورك باستخدام الذكاء الاصطناعي",
+    edit_upload_title: "رفع صورة",
+    edit_upload_desc: "اسحب وأفلت صورة هنا أو انقر للاختيار",
+    edit_select_image: "اختر صورة",
+    edit_prompt_label: "موجه التحرير",
+    edit_prompt_placeholder: "صف التعديل الذي تريده...",
+    edit_negative_prompt_label: "الموجه السلبي (اختياري)",
+    edit_negative_prompt_placeholder: "صف ما لا تريده...",
+    edit_mode_label: "وضع التحرير",
+    edit_mode_img2img: "صورة إلى صورة",
+    edit_mode_inpainting: "إعادة الرسم",
+    edit_mode_outpainting: "توسيع",
+    edit_mode_img2img_desc: "إعادة إنشاء الصورة بناءً على الموجه",
+    edit_mode_inpainting_desc: "إصلاح أو استبدال مناطق محددة في الصورة",
+    edit_mode_outpainting_desc: "توسيع حواف الصورة",
+    edit_strength_label: "قوة التحرير",
+    edit_strength_desc: "التحكم في تأثير التحرير على الصورة الأصلية",
+    edit_model_label: "النموذج",
+    edit_size_label: "حجم الإخراج",
+    edit_btn_start: "بدء التحرير",
+    edit_btn_download: "تنزيل الصورة",
+    edit_btn_reset: "إعادة تعيين",
+    edit_processing: "جاري التحرير...",
+    edit_success: "اكتمل التحرير!",
+    edit_error: "فشل التحرير",
+    edit_no_image: "يرجى رفع صورة أولاً",
+    edit_no_prompt: "يرجى إدخال موجه التحرير",
+    edit_preview_title: "معاينة",
+    edit_result_title: "نتيجة التحرير"
   }
 };
 

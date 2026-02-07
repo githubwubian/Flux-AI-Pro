@@ -1171,6 +1171,9 @@ export default {
       if (url.pathname === '/nano') {
         response = handleNanoPage(request);
       }
+      else if (url.pathname === '/edit') {
+        response = handleEditPage(request);
+      }
       else if (url.pathname === '/' || url.pathname === '') {
         response = handleUI(request, env);
       }
@@ -1182,6 +1185,9 @@ export default {
       }
       else if (url.pathname === '/api/generate-prompt') {
         response = await handlePromptGeneration(request, env);
+      }
+      else if (url.pathname === '/api/image/edit') {
+        response = await handleImageEdit(request, env);
       }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
@@ -1297,6 +1303,184 @@ async function handleUpload(request) {
     }
   } catch (error) {
     console.error('Upload Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: corsHeaders({ 'Content-Type': 'application/json' })
+    });
+  }
+}
+
+// ====== Image Edit Handler ======
+async function handleImageEdit(request, env) {
+  if (request.method !== 'POST') {
+    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
+  }
+  
+  try {
+    const formData = await request.formData();
+    const image = formData.get('image');
+    const prompt = formData.get('prompt') || '';
+    const negativePrompt = formData.get('negative_prompt') || '';
+    const strength = parseFloat(formData.get('strength')) || 0.5;
+    const mode = formData.get('mode') || 'img2img';
+    const model = formData.get('model') || 'zimage';
+    const size = formData.get('size') || '1024x1024';
+    
+    if (!image) {
+      return new Response(JSON.stringify({ error: 'No image provided' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    if (!prompt) {
+      return new Response(JSON.stringify({ error: 'Prompt is required' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    // 驗證文件大小
+    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
+    if (image.size > MAX_FILE_SIZE) {
+      return new Response(JSON.stringify({
+        error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`
+      }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    // 驗證文件類型
+    if (!image.type.startsWith('image/')) {
+      return new Response(JSON.stringify({ error: 'Invalid file type. Only images are allowed.' }), {
+        status: 400,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    // 解析尺寸
+    const [width, height] = size.split('x').map(Number);
+    
+    // 上傳圖片到 ImgBB
+    const IMGBB_API_KEY = '8245f772dd33870730fab74e7e236df2';
+    const arrayBuffer = await image.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 65536;
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, i + chunkSize);
+      binary += String.fromCharCode.apply(null, chunk);
+    }
+    const base64 = btoa(binary);
+    
+    const imgbbFormData = new FormData();
+    imgbbFormData.append('key', IMGBB_API_KEY);
+    imgbbFormData.append('image', base64);
+    
+    const imgbbResponse = await fetch('https://api.imgbb.com/1/upload', {
+      method: 'POST',
+      body: imgbbFormData,
+      headers: {
+        'User-Agent': 'FluxAIPro-Worker/1.0'
+      }
+    });
+    
+    const imgbbData = await imgbbResponse.json();
+    
+    if (!imgbbResponse.ok || !imgbbData.success || !imgbbData.data?.url) {
+      console.error('ImgBB API Error:', imgbbData);
+      return new Response(JSON.stringify({
+        error: imgbbData.error?.message || 'Image upload failed'
+      }), {
+        status: 502,
+        headers: corsHeaders({ 'Content-Type': 'application/json' })
+      });
+    }
+    
+    const imageUrl = imgbbData.data.url;
+    
+    // 翻譯中文提示詞
+    let finalPrompt = prompt;
+    if (/[\u4e00-\u9fa5]/.test(prompt)) {
+      const translation = await translateToEnglish(prompt, env);
+      if (translation.translated) {
+        finalPrompt = translation.text;
+      }
+    }
+    
+    // 構建完整提示詞（包含負面提示詞）
+    let fullPrompt = finalPrompt;
+    if (negativePrompt && negativePrompt.trim()) {
+      fullPrompt = finalPrompt + " [negative: " + negativePrompt + "]";
+    }
+    
+    // 構建 Pollinations API URL
+    const encodedPrompt = encodeURIComponent(fullPrompt);
+    const baseUrl = 'https://image.pollinations.ai/prompt/' + encodedPrompt;
+    
+    const params = new URLSearchParams();
+    params.append('model', model);
+    params.append('width', width.toString());
+    params.append('height', height.toString());
+    params.append('seed', Math.floor(Math.random() * 1000000).toString());
+    params.append('nologo', 'true');
+    params.append('enhance', 'false');
+    params.append('private', 'true');
+    params.append('image', imageUrl);
+    params.append('denoising_strength', strength.toString());
+    
+    // 根據模式添加額外參數
+    if (mode === 'inpainting') {
+      // Inpainting 模式使用較低的 denoising strength
+      params.append('denoising_strength', Math.min(strength, 0.8).toString());
+    } else if (mode === 'outpainting') {
+      // Outpainting 模式使用較高的 denoising strength
+      params.append('denoising_strength', Math.max(strength, 0.6).toString());
+    }
+    
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'image/*',
+      'Referer': 'https://pollinations.ai/'
+    };
+    
+    const authConfig = CONFIG.POLLINATIONS_AUTH;
+    if (authConfig.enabled && authConfig.token) {
+      headers['Authorization'] = `Bearer ${authConfig.token}`;
+    }
+    
+    const url = baseUrl + '?' + params.toString();
+    
+    // 調用 Pollinations API
+    const response = await fetchWithTimeout(url, { method: 'GET', headers: headers }, 120000);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+    }
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.startsWith('image/')) {
+      throw new Error("Invalid content type: " + contentType);
+    }
+    
+    const imageBlob = await response.blob();
+    
+    // 返回編輯後的圖片
+    return new Response(imageBlob, {
+      status: 200,
+      headers: corsHeaders({
+        'Content-Type': contentType,
+        'X-Original-Image-Url': imageUrl,
+        'X-Edit-Mode': mode,
+        'X-Edit-Strength': strength.toString(),
+        'X-Model': model
+      })
+    });
+    
+  } catch (error) {
+    console.error('Image Edit Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -3282,6 +3466,561 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
   
   return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
 }
+
+// =================================================================================
+//  圖像編輯頁面處理器 (Image Edit Page Handler)
+// =================================================================================
+function handleEditPage(request) {
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>✨ 圖像編輯 - Flux AI Pro</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
+<style>
+:root {
+    --primary: #A855F7;
+    --primary-dim: #7c3aed;
+    --bg-dark: #0f0f11;
+    --panel-bg: rgba(30, 30, 35, 0.7);
+    --border: rgba(255, 255, 255, 0.1);
+    --text: #ffffff;
+    --text-muted: #9ca3af;
+    --glass: blur(20px) saturate(180%);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+}
+.app-container { display: flex; width: 100%; height: 100%; }
+.sidebar {
+    width: 380px;
+    background: var(--panel-bg);
+    backdrop-filter: var(--glass);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    z-index: 10;
+    position: relative;
+}
+.main-stage {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    overflow: hidden;
+}
+.header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+.header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.form-group { margin-bottom: 20px; }
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 14px;
+    transition: all 0.3s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+}
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+.edit-mode-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+.edit-mode-btn {
+    flex: 1;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.edit-mode-btn:hover {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.edit-mode-btn.active {
+    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
+    border-color: var(--primary);
+    color: #fff;
+}
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 20px;
+}
+.upload-area:hover {
+    border-color: var(--primary);
+    background: rgba(168, 85, 247, 0.05);
+}
+.upload-area.dragover {
+    border-color: var(--primary);
+    background: rgba(168, 85, 247, 0.1);
+}
+.upload-area input {
+    display: none;
+}
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+.upload-text {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+.upload-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+.preview-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.placeholder {
+    text-align: center;
+    color: var(--text-muted);
+}
+.placeholder-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+.btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(168, 85, 247, 0.3);
+}
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: none;
+}
+.loader {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+.result-container {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 15, 17, 0.95);
+    backdrop-filter: blur(20px);
+    z-index: 100;
+    padding: 40px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.result-container.show {
+    display: flex;
+}
+.result-image {
+    max-width: 100%;
+    max-height: 70%;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    margin-bottom: 24px;
+}
+.result-actions {
+    display: flex;
+    gap: 12px;
+}
+.result-actions .btn {
+    width: auto;
+    padding: 12px 24px;
+}
+.close-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 50%;
+    color: var(--text);
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+@media (max-width: 768px) {
+    .app-container { flex-direction: column; }
+    .sidebar { width: 100%; height: 50%; border-right: none; border-bottom: 1px solid var(--border); }
+    .main-stage { height: 50%; padding: 20px; }
+}
+</style>
+</head>
+<body>
+<div class="app-container">
+    <div class="sidebar">
+        <div class="header">
+            <span style="font-size: 24px;">✨</span>
+            <h1>圖像編輯</h1>
+        </div>
+        
+        <div class="edit-mode-selector">
+            <button class="edit-mode-btn active" data-mode="img2img">圖生圖</button>
+            <button class="edit-mode-btn" data-mode="inpainting">修補</button>
+            <button class="edit-mode-btn" data-mode="outpainting">擴展</button>
+        </div>
+        
+        <div class="form-group">
+            <label>上傳參考圖片</label>
+            <div class="upload-area" id="uploadArea">
+                <input type="file" id="imageInput" accept="image/*">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">點擊或拖拽上傳圖片</div>
+                <div class="upload-hint">支援 JPG, PNG, WEBP (最大 10MB)</div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>編輯提示詞</label>
+            <textarea id="prompt" placeholder="描述你想要的編輯效果..."></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>負面提示詞 (可選)</label>
+            <textarea id="negativePrompt" placeholder="描述你不想要的內容..." style="min-height: 60px;"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label>強度 (Strength)</label>
+            <input type="range" id="strength" min="0.1" max="1" step="0.1" value="0.7">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                <span>0.1</span>
+                <span id="strengthValue">0.7</span>
+                <span>1.0</span>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>模型</label>
+            <select id="model">
+                <option value="zimage">Z-Image</option>
+                <option value="kontext">Kontext</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>尺寸</label>
+            <select id="size">
+                <option value="512x512">512 x 512</option>
+                <option value="768x768">768 x 768</option>
+                <option value="1024x1024" selected>1024 x 1024</option>
+                <option value="1024x768">1024 x 768</option>
+                <option value="768x1024">768 x 1024</option>
+            </select>
+        </div>
+        
+        <button class="btn" id="generateBtn">
+            <span class="loader" id="loader"></span>
+            <span id="btnText">✨ 開始編輯</span>
+        </button>
+    </div>
+    
+    <div class="main-stage">
+        <div class="preview-container" id="previewContainer">
+            <div class="placeholder">
+                <div class="placeholder-icon">🖼️</div>
+                <div>上傳圖片後預覽</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="result-container" id="resultContainer">
+    <button class="close-btn" id="closeResult">×</button>
+    <img class="result-image" id="resultImage" src="" alt="編輯結果">
+    <div class="result-actions">
+        <button class="btn" id="downloadBtn">💾 下載</button>
+        <button class="btn btn-secondary" id="newEditBtn">🔄 繼續編輯</button>
+    </div>
+</div>
+
+<script>
+// 狀態管理
+let uploadedImage = null;
+let currentMode = 'img2img';
+
+// DOM 元素
+const uploadArea = document.getElementById('uploadArea');
+const imageInput = document.getElementById('imageInput');
+const previewContainer = document.getElementById('previewContainer');
+const prompt = document.getElementById('prompt');
+const negativePrompt = document.getElementById('negativePrompt');
+const strength = document.getElementById('strength');
+const strengthValue = document.getElementById('strengthValue');
+const model = document.getElementById('model');
+const size = document.getElementById('size');
+const generateBtn = document.getElementById('generateBtn');
+const loader = document.getElementById('loader');
+const btnText = document.getElementById('btnText');
+const resultContainer = document.getElementById('resultContainer');
+const resultImage = document.getElementById('resultImage');
+const closeResult = document.getElementById('closeResult');
+const downloadBtn = document.getElementById('downloadBtn');
+const newEditBtn = document.getElementById('newEditBtn');
+const editModeBtns = document.querySelectorAll('.edit-mode-btn');
+
+// 上傳區域點擊
+uploadArea.addEventListener('click', () => imageInput.click());
+
+// 拖拽上傳
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('dragover');
+});
+
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('dragover');
+});
+
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        handleImageUpload(file);
+    }
+});
+
+// 文件選擇
+imageInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        handleImageUpload(file);
+    }
+});
+
+// 處理圖片上傳
+function handleImageUpload(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        alert('圖片大小不能超過 10MB');
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        uploadedImage = e.target.result;
+        previewContainer.innerHTML = \`<img class="preview-image" src="\${uploadedImage}" alt="預覽圖片">\`;
+    };
+    reader.readAsDataURL(file);
+}
+
+// 強度滑塊
+strength.addEventListener('input', () => {
+    strengthValue.textContent = strength.value;
+});
+
+// 編輯模式切換
+editModeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        editModeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        
+        // 根據模式調整提示詞
+        if (currentMode === 'inpainting') {
+            prompt.placeholder = '描述要修補的區域內容...';
+        } else if (currentMode === 'outpainting') {
+            prompt.placeholder = '描述要擴展的周圍內容...';
+        } else {
+            prompt.placeholder = '描述你想要的編輯效果...';
+        }
+    });
+});
+
+// 生成編輯
+generateBtn.addEventListener('click', async () => {
+    if (!uploadedImage) {
+        alert('請先上傳圖片');
+        return;
+    }
+    
+    if (!prompt.value.trim()) {
+        alert('請輸入編輯提示詞');
+        return;
+    }
+    
+    // 顯示加載狀態
+    generateBtn.disabled = true;
+    loader.style.display = 'inline-block';
+    btnText.textContent = '編輯中...';
+    
+    try {
+        // 將 base64 圖片轉換為 Blob
+        const response = await fetch(uploadedImage);
+        const blob = await response.blob();
+        
+        // 創建 FormData
+        const formData = new FormData();
+        formData.append('image', blob);
+        formData.append('prompt', prompt.value);
+        formData.append('negative_prompt', negativePrompt.value);
+        formData.append('strength', strength.value);
+        formData.append('mode', currentMode);
+        formData.append('model', model.value);
+        formData.append('size', size.value);
+        
+        // 發送請求
+        const res = await fetch('/api/image/edit', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error?.message || '編輯失敗');
+        }
+        
+        const resultBlob = await res.blob();
+        const resultUrl = URL.createObjectURL(resultBlob);
+        
+        // 顯示結果
+        resultImage.src = resultUrl;
+        resultContainer.classList.add('show');
+        
+    } catch (error) {
+        console.error('編輯錯誤:', error);
+        alert('編輯失敗: ' + error.message);
+    } finally {
+        // 恢復按鈕狀態
+        generateBtn.disabled = false;
+        loader.style.display = 'none';
+        btnText.textContent = '✨ 開始編輯';
+    }
+});
+
+// 關閉結果
+closeResult.addEventListener('click', () => {
+    resultContainer.classList.remove('show');
+});
+
+// 下載結果
+downloadBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.href = resultImage.src;
+    link.download = 'edited-image.png';
+    link.click();
+});
+
+// 繼續編輯
+newEditBtn.addEventListener('click', () => {
+    resultContainer.classList.remove('show');
+    // 使用當前結果作為新的參考圖片
+    uploadedImage = resultImage.src;
+    previewContainer.innerHTML = \`<img class="preview-image" src="\${uploadedImage}" alt="預覽圖片">\`;
+});
+</script>
+</body>
+</html>`;
+  
+  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
+}
+
 // KV-based Online Counter (Free)
 async function handleHeartbeat(request, env) {
   const ip = request.headers.get('cf-connecting-ip') || 'unknown';
@@ -3376,6 +4115,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;ba
 .nav-btn:hover{border-color:#f59e0b;color:#fff}
 .nav-btn.active{background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;border-color:#f59e0b}
 .nav-btn.nano-btn:hover {border-color: #FACC15; background: rgba(250, 204, 21, 0.1); color: #FACC15; box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);}
+.nav-btn.edit-btn:hover {border-color: #A855F7; background: rgba(168, 85, 247, 0.1); color: #A855F7; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);}
 .lang-btn{padding:6px 10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#ccc;cursor:pointer;font-size:12px;margin-left:10px;position:relative}
 .lang-dropdown{position:absolute;top:100%;right:0;background:rgba(20,20,25,0.95);backdrop-filter:blur(15px);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 0;min-width:140px;display:none;z-index:1000;box-shadow:0 10px 40px rgba(0,0,0,0.5)}
 .lang-dropdown.show{display:block}
@@ -3511,6 +4251,9 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div class="nav-menu">
         <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
             🍌 <span data-t="nav_nano">Nano版</span>
+        </a>
+        <a href="/edit" target="_blank" class="nav-btn edit-btn" style="border-color:rgba(168,85,247,0.5);color:#A855F7;margin-right:5px">
+            ✨ <span data-t="nav_edit">圖像編輯</span>
         </a>
         <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
         <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
