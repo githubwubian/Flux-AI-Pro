@@ -121,10 +121,6 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "flux-2-dev", name: "Flux 2 Dev 🌟", category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成", max_size: 2048 },
-        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
-        { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
-        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
         { id: "glm-image", name: "GLM Image 🎨", category: "glm", description: "智譜 GLM 圖像生成模型", max_size: 2048 }
       ],
       rate_limit: { requests: 60, interval: 60 },
@@ -4464,6 +4460,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <option value="pollinations" selected>Pollinations.ai (Free)</option>
         <option value="infip">Ghostbot (Infip) 🌟</option>
         <option value="aqua">Aqua API 💧</option>
+        <option value="kinai">Kinai API 🚀</option>
     </select>
 </div>
 <div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
@@ -4931,7 +4928,7 @@ const I18N={
         error_image_too_large: "이미지가 너무 큽니다! 최대 크기는 32MB입니다", error_invalid_file: "이미지 파일을 선택하세요", error_upload_failed: "업로드 실패"
     },
     ar:{
-        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip فقط)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
+        nav_gen:"🎨 إنشاء صورة", nav_his:"📚 السجل", nav_nano:"Nano", settings_title:"⚙️ إعدادات الإنشاء", provider_label:"مزود API", model_label:"اختيار النموذج", size_label:"حجم الصورة", style_label:"النمط الفني 🎨", quality_label:"وضع الجودة", seed_label:"قيمة البذرة", seed_random:"🎲 عشوائي", seed_lock:"🔒 قفل", auto_opt_label:"✨ تحسين تلقائي", auto_opt_desc:"ضبط الخطوات والتوجيه تلقائيًا", adv_settings:"🛠️ إعدادات متقدمة", steps_label:"خطوات الإنشاء", guidance_label:"مقياس التوجيه", gen_btn:"🎨 بدء الإنشاء", empty_title:"لم يتم إنشاء أي صور بعد", pos_prompt:"موجه إيجابي", neg_prompt:"موجه سلبي (اختياري)", ref_img:"صورة مرجعية (Img2Img) 📸", stat_total:"📊 إجمالي السجلات", stat_storage:"💾 مساحة التخزين (دائمة)", btn_export:"📥 تصدير", btn_clear:"🗑️ مسح الكل", btn_reuse:"🔄 إعادة الاستخدام", btn_dl:"💾 تنزيل", no_history:"لا توجد سجلات", cooldown_msg:"⏳ يرجى الانتظار...", quality_economy:"اقتصادي", quality_standard:"قياسي", quality_ultra:"فائق الدقة", provider_pollinations:"Pollinations.ai (مجاني)", provider_infip:"Ghostbot (Infip) 🌟", provider_kinai:"Kinai API 🚀", api_key_label:"مفتاح API", api_key_desc:"مخزن محليًا", api_key_placeholder:"الصق مفتاح API هنا", nsfw_label:"🔞 تعطيل فلتر NSFW", nsfw_desc:"تمكين هذا الخيار للسماح بإنشاء محتوى للبالغين (Infip / Kinai)", batch_label:"🖼️ إنشاء مجموع", batch_size_label:"حجم المجموعة", prompt_generator_title:"مولد المطالبات الاحترافي", prompt_generator_upload_ref:"رفع صورة مرجعية (اختياري)", prompt_generator_select_image:"اختر صورة", prompt_generator_simple_desc:"صف الصورة التي تريدها ببساطة", prompt_generator_generate:"إنشاء موجه احترافي", prompt_generator_apply:"تطبيق على الموجه", prompt_generator_generated:"الموجه الاحترافي المُنشأ", prompt_generator_tip:"💡 نصيحة: بعد تحديد 'نمط فني' على اليسار، سيقوم المولد بدمج هذا النمط (مثل السايبربانك، الرسم بالحبر) تلقائيًا في موجهك للحصول على نتائج أكثر فنية!", error_no_prompt:"⚠️ يرجى إدخال موجه", error_energy_depleted:"🚫 نفدت الطاقة لهذه الساعة، يرجى العودة لاحقًا!", error_image_too_large:"الصورة كبيرة جدًا! الحد الأقصى 5 ميجابايت", error_invalid_file:"يرجى اختيار ملف صورة", error_upload_failed:"فشل الرفع"
     }
 };
 
@@ -5187,6 +5184,7 @@ function updateModelOptions() {
             let storedKey = '';
             if (p === 'infip') storedKey = sessionStorage.getItem('infip_api_key');
             if (p === 'aqua') storedKey = sessionStorage.getItem('aqua_api_key');
+            if (p === 'kinai') storedKey = sessionStorage.getItem('kinai_api_key');
             
             apiKeyInput.value = storedKey || '';
             apiKeyInput.placeholder = "Paste your API Key here";
@@ -5199,7 +5197,7 @@ function updateModelOptions() {
     const nsfwGroup = document.getElementById('nsfwGroup');
     const batchGroup = document.getElementById('batchGroup');
     
-    if (p === 'infip') {
+    if (p === 'infip' || p === 'kinai') {
         nsfwGroup.style.display = 'flex';
         batchGroup.style.display = 'block';
     } else {
@@ -5434,6 +5432,7 @@ apiKeyInput.addEventListener('input', (e) => {
     const p = providerSelect.value;
     if (p === 'infip') sessionStorage.setItem('infip_api_key', e.target.value);
     if (p === 'aqua') sessionStorage.setItem('aqua_api_key', e.target.value);
+    if (p === 'kinai') sessionStorage.setItem('kinai_api_key', e.target.value);
 });
 
 // Show/hide reference images section based on model support
@@ -5462,6 +5461,9 @@ if (${hasInfipServerKey} && frontendProviders.infip) {
 }
 if (${hasAquaServerKey} && frontendProviders.aqua) {
     frontendProviders.aqua.has_server_key = true;
+}
+if (${hasKinaiServerKey} && frontendProviders.kinai) {
+    frontendProviders.kinai.has_server_key = true;
 }
 if (${hasKinaiServerKey} && frontendProviders.kinai) {
     frontendProviders.kinai.has_server_key = true;
@@ -5602,7 +5604,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(qualityEl) qualityEl.value = 'ultra';
     
     let finalNegative = document.getElementById('negativePrompt').value;
-    if (isNSFW && document.getElementById('provider').value === 'infip') {
+    if (isNSFW && (document.getElementById('provider').value === 'infip' || document.getElementById('provider').value === 'kinai')) {
         // Filter out common NSFW keywords from negative prompt
         const nsfwKeywords = ['nsfw', 'nudity', 'naked', 'porn', 'xxx', 'uncensored'];
         let negParts = finalNegative.split(',').map(s => s.trim());
@@ -5643,7 +5645,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 
                 // Determine cooldown based on provider
                 const provider = document.getElementById('provider').value;
-                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
+                const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC);
                 startCooldown(cooldownTime);
             };
         }else{
@@ -5654,8 +5656,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             
             // Determine cooldown based on provider
             const provider = document.getElementById('provider').value;
-            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC;
-            startCooldown(cooldownTime); 
+            const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC);
+            startCooldown(cooldownTime);
         }
     }catch(err){ 
         resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; 
@@ -5981,7 +5983,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <div class="footer" style="position:relative; z-index:10; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; gap:15px; flex-wrap:wrap; padding:15px 20px;">
     <span style="font-size:14px;">Powered by Flux AI Pro • <a href="https://github.com/kinai9661/Flux-AI-Pro" target="_blank">Engine</a> • <a href="/nano" target="_blank">Nano Version</a></span>
     <span style="opacity:0.5">|</span>
-    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
+    <span style="opacity:0.9; font-size:14px;">友情鏈接: <a href="https://pollinations.ai" target="_blank">Pollinations.ai</a> • <a href="https://infip.pro" target="_blank">Infip</a> • <a href="https://aquadevs.com" target="_blank">AquaDevs</a> • <a href="https://kinai.eu.cc" target="_blank">Kinai</a> • <a href="https://github.com" target="_blank">GitHub</a></span>
     <span style="opacity:0.5">|</span>
     <div class="friend-badges" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <a href="https://dofollow.tools" target="_blank" style="display:inline-flex; align-items:center; justify-content:center;">

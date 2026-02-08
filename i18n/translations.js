@@ -88,6 +88,7 @@ export const TRANSLATIONS = {
     provider_pollinations: "Pollinations.ai (Free)",
     provider_infip: "Ghostbot (Infip) 🌟",
     provider_aqua: "Aqua Server 🌊",
+    provider_kinai: "Kinai API 🚀",
     
     // 模型名稱
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -369,6 +370,7 @@ export const TRANSLATIONS = {
     provider_pollinations: "Pollinations.ai (Free)",
     provider_infip: "Ghostbot (Infip) 🌟",
     provider_aqua: "Aqua Server 🌊",
+    provider_kinai: "Kinai API 🚀",
     
     // Model Names
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -591,6 +593,7 @@ export const TRANSLATIONS = {
     provider_pollinations: "Pollinations.ai (無料)",
     provider_infip: "Ghostbot (Infip) 🌟",
     provider_aqua: "Aqua Server 🌊",
+    provider_kinai: "Kinai API 🚀",
     
     // モデル名
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -813,6 +816,7 @@ export const TRANSLATIONS = {
     provider_pollinations: "Pollinations.ai (무료)",
     provider_infip: "Ghostbot (Infip) 🌟",
     provider_aqua: "Aqua Server 🌊",
+    provider_kinai: "Kinai API 🚀",
     
     // 모델 이름
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -1082,6 +1086,7 @@ export const TRANSLATIONS = {
     provider_pollinations: "Pollinations.ai (مجاني)",
     provider_infip: "Ghostbot (Infip) 🌟",
     provider_aqua: "Aqua Server 🌊",
+    provider_kinai: "Kinai API 🚀",
     
     // أسماء النماذج
     model_flux_2_dev: "Flux 2 Dev 🌟",
