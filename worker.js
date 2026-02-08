@@ -82,9 +82,13 @@ const CONFIG = {
         { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
         { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
         { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
-        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
+        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 },
+        { id: "nano-banana", name: "NanoBanana 🍌", category: "flux", description: "NanoBanana 高品質模型 (非同步)", max_size: 2048 },
+        { id: "z-image-turbo", name: "Z-Image Turbo ⚡", category: "zimage", description: "快速 6B 參數圖像生成 (非同步)", max_size: 2048 },
+        { id: "flux2-dev", name: "Flux 2 Dev 🌟", category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成 (非同步)", max_size: 2048 },
+        { id: "flux2-klein-9", name: "FLUX.2 Klein 9B 🌟", category: "flux", description: "Advanced Flux 2 Large model - 9B parameters (非同步)", max_size: 2048 }
       ],
-      rate_limit: { requests: 30, interval: 60 },
+      rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 1792, height: 1792 }
     },
     aqua: {
