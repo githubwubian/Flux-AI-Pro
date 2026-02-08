@@ -90,14 +90,14 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     
     // 模型名稱
-    model_kontext: "Kontext",
+    model_flux_2_dev: "Flux 2 Dev 🌟",
+    model_imagen_4: "Imagen 4 (Google) 🌟",
     model_nanobanana: "NanoBanana 🍌",
     model_seedream: "SeeDream",
     model_flux_schnell: "Flux Schnell",
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // 供應商統計
     provider_stats_title: "📊 供應商使用統計",
@@ -371,14 +371,14 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     
     // Model Names
-    model_kontext: "Kontext",
+    model_flux_2_dev: "Flux 2 Dev 🌟",
+    model_imagen_4: "Imagen 4 (Google) 🌟",
     model_nanobanana: "NanoBanana 🍌",
     model_seedream: "SeeDream",
     model_flux_schnell: "Flux Schnell",
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // Provider Stats
     provider_stats_title: "📊 Provider Usage Statistics",
@@ -593,14 +593,14 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     
     // モデル名
-    model_kontext: "Kontext",
+    model_flux_2_dev: "Flux 2 Dev 🌟",
+    model_imagen_4: "Imagen 4 (Google) 🌟",
     model_nanobanana: "NanoBanana 🍌",
     model_seedream: "SeeDream",
     model_flux_schnell: "Flux Schnell",
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // プロバイダー統計
     provider_stats_title: "📊 プロバイダー使用統計",
@@ -815,14 +815,14 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     
     // 모델 이름
-    model_kontext: "Kontext",
+    model_flux_2_dev: "Flux 2 Dev 🌟",
+    model_imagen_4: "Imagen 4 (Google) 🌟",
     model_nanobanana: "NanoBanana 🍌",
     model_seedream: "SeeDream",
     model_flux_schnell: "Flux Schnell",
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // 공급자 통계
     provider_stats_title: "📊 공급자 사용 통계",
@@ -1084,14 +1084,14 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     
     // أسماء النماذج
-    model_kontext: "Kontext",
+    model_flux_2_dev: "Flux 2 Dev 🌟",
+    model_imagen_4: "Imagen 4 (Google) 🌟",
     model_nanobanana: "NanoBanana 🍌",
     model_seedream: "SeeDream",
     model_flux_schnell: "Flux Schnell",
     model_zimage: "Z-Image",
     model_klein: "FLUX.2 Klein",
     model_klein_large: "FLUX.2 Klein 9B",
-    model_imagen4: "Imagen 4 (Google) 🌟",
     
     // إحصائيات المزود
     provider_stats_title: "📊 إحصائيات استخدام المزود",

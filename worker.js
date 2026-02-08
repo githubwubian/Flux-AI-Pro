@@ -54,7 +54,8 @@ const CONFIG = {
         private_mode: true, custom_size: true, seed_control: true, negative_prompt: true, enhance: true, nologo: true, style_presets: true, auto_hd: true, quality_modes: true, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "kontext", name: "Kontext 🎨", confirmed: true, category: "kontext", description: "上下文感知圖像生成（支持圖生圖）", max_size: 2048, pricing: { image_price: 0.04, currency: "pollen" }, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"] },
+        { id: "flux-2-dev", name: "Flux 2 Dev 🌟", confirmed: true, category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成", max_size: 2048, pricing: { image_price: 0.0005, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
+        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", confirmed: true, category: "google", description: "Google 最新高品質繪圖模型", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "nanobanana", name: "NanoBanana 🍌", confirmed: true, category: "flux", description: "NanoBanana 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "flux-schnell", name: "Flux Schnell ⚡", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -94,7 +95,7 @@ const CONFIG = {
       requires_key: true,
       enabled: true,
       default: false,
-      description: "AquaDevs Premium API (Polling Models: imagen4, nanobanana)",
+      description: "AquaDevs Premium API (Polling Models: imagen-4, nanobanana)",
       features: {
         private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: true, image_to_image: true, batch_generation: true, api_key_auth: true, polling_mode: true
       },
@@ -102,7 +103,7 @@ const CONFIG = {
         { id: "flux-2", name: "Flux 2 ⚡", category: "flux", description: "Flux 2 Generation", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "zimage", name: "Z-Image", category: "other", description: "Z-Image Model", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "nanobanana", name: "NanoBanana 🍌", category: "flux", description: "NanoBanana Img2Img Model (Polling)", max_size: 1024, supports_reference_images: true, max_reference_images: 1, input_modalities: ["text", "image"], output_modalities: ["image"], polling: true },
-        { id: "imagen4", name: "Imagen 4", category: "google", description: "Google Imagen 4 (Polling)", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"], polling: true }
+        { id: "imagen-4", name: "Imagen 4", category: "google", description: "Google Imagen 4 (Polling)", max_size: 1024, input_modalities: ["text"], output_modalities: ["image"], polling: true }
       ],
       rate_limit: { requests: 50, interval: 60 },
       max_size: { width: 2048, height: 2048 }
@@ -116,14 +117,14 @@ const CONFIG = {
   
   OPTIMIZATION_RULES: {
     MODEL_STEPS: {
+      "flux-2-dev": { min: 30, optimal: 35, max: 60 },
+      "imagen-4": { min: 25, optimal: 30, max: 50 },
       "nanobanana": { min: 25, optimal: 30, max: 50 },
-      "imagen4": { min: 25, optimal: 30, max: 50 },
       "seedream": { min: 25, optimal: 30, max: 50 },
       "flux-schnell": { min: 20, optimal: 25, max: 40 },
       "zimage": { min: 25, optimal: 30, max: 50 },
       "klein": { min: 25, optimal: 30, max: 50 },
-      "klein-large": { min: 30, optimal: 35, max: 55 },
-      "kontext": { min: 20, optimal: 28, max: 40 }
+      "klein-large": { min: 30, optimal: 35, max: 55 }
     },
     SIZE_MULTIPLIER: { small: { threshold: 512 * 512, multiplier: 0.8 }, medium: { threshold: 1024 * 1024, multiplier: 1.0 }, large: { threshold: 1536 * 1536, multiplier: 1.15 }, xlarge: { threshold: 2048 * 2048, multiplier: 1.3 } },
     STYLE_ADJUSTMENT: { "photorealistic": 1.1, "oil-painting": 1.05, "watercolor": 0.95, "sketch": 0.9, "manga": 1.0, "pixel-art": 0.85, "3d-render": 1.15, "default": 1.0 }
@@ -143,14 +144,14 @@ const CONFIG = {
     },
     HD_NEGATIVE: "blurry, low quality, distorted, ugly, bad anatomy, low resolution, pixelated, artifacts, noise, jpeg artifacts, watermark, text, signature, mutation, deformed, extra limbs, extra fingers, bad hands, bad feet, poor composition, out of frame, worst quality, normal quality, error, missing fingers, extra digit, fewer digits, cropped",
     MODEL_QUALITY_PROFILES: {
+      "flux-2-dev": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.25, guidance_boost: 1.2, recommended_quality: "ultra" },
+      "imagen-4": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "nanobanana": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "imagen4": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "seedream": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "flux-schnell": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.0, guidance_boost: 1.0, recommended_quality: "standard" },
       "zimage": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
       "klein": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.15, guidance_boost: 1.1, recommended_quality: "ultra" },
-      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" },
-      "kontext": { min_resolution: 1280, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.1, recommended_quality: "ultra" }
+      "klein-large": { min_resolution: 1024, max_resolution: 2048, optimal_steps_boost: 1.2, guidance_boost: 1.15, recommended_quality: "ultra" }
     }
   }
 };
@@ -396,7 +397,7 @@ class PollinationsProvider {
     let validReferenceImages = [];
     if (referenceImages && referenceImages.length > 0) {
       if (!supportsRefImages) {
-        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["kontext"] });
+        logger.add("⚠️ Reference Images", { warning: model + " 不支持參考圖像，已忽略", supported_models: ["flux-2-dev", "imagen-4"] });
       } else if (referenceImages.length > maxRefImages) {
         logger.add("⚠️ Reference Images", { warning: model + " 最多支持 " + maxRefImages + " 張參考圖", provided: referenceImages.length, using: maxRefImages });
         validReferenceImages = referenceImages.slice(0, maxRefImages);
@@ -825,11 +826,11 @@ class AquaProvider {
 
     let imgUrl = null;
     
-    // Check for Polling Models (imagen4, nanobanana)
-    const isPollingModel = ["imagen4", "nanobanana"].includes(model.toLowerCase());
+    // Check for Polling Models (imagen-4, nanobanana)
+    const isPollingModel = ["imagen-4", "nanobanana"].includes(model.toLowerCase());
     
     if (isPollingModel) {
-      // Polling API Logic for imagen4 and nanobanana
+      // Polling API Logic for imagen-4 and nanobanana
       logger.add("🔄 Using Polling API", { model });
       
       // Determine ratio based on width/height
@@ -3799,8 +3800,9 @@ body {
         <div class="form-group">
             <label>模型</label>
             <select id="model">
+                <option value="flux-2-dev">Flux 2 Dev 🌟</option>
+                <option value="imagen-4">Imagen 4 (Google) 🌟</option>
                 <option value="zimage">Z-Image</option>
-                <option value="kontext">Kontext</option>
             </select>
         </div>
         
@@ -4399,7 +4401,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         </div>
     </div>
     <textarea id="referenceImages" placeholder="Image URL (or upload above)" rows="3" style="margin-top:10px;"></textarea>
-    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Kontext, Flux, Klein, NanoBanana (Aqua)</div>
+    <div style="font-size:11px; color:#9ca3af; margin-top:4px;">* 支援模型: Flux 2 Dev, Imagen 4, Flux, Klein, NanoBanana (Aqua)</div>
 </div>
 
 <!-- ====== 專業提示詞生成器 (Pollinations) ====== -->
@@ -4706,7 +4708,7 @@ async function clearDB(){
 // 多語言支援（繁體中文、英文、日文、韓文）
 const I18N={
     zh:{
-        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Kontext 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
+        nav_gen:"🎨 生成圖像", nav_his:"📚 歷史記錄", nav_nano:"Nano版", settings_title:"⚙️ 生成參數", provider_label:"API 供應商", model_label:"模型選擇", size_label:"尺寸預設", style_label:"藝術風格 🎨", quality_label:"質量模式", seed_label:"Seed (種子碼)", seed_random:"🎲 隨機", seed_lock:"🔒 鎖定", auto_opt_label:"✨ 自動優化", auto_opt_desc:"自動調整 Steps 與 Guidance", adv_settings:"🛠️ 進階參數", steps_label:"生成步數 (Steps)", guidance_label:"引導係數 (Guidance)", gen_btn:"🎨 開始生成", empty_title:"尚未生成任何圖像", pos_prompt:"正面提示詞", neg_prompt:"負面提示詞 (可選)", ref_img:"參考圖像 URL (Flux 2 Dev / Imagen 4 專用)", stat_total:"📊 總記錄數", stat_storage:"💾 存儲空間 (永久)", btn_export:"📥 導出", btn_clear:"🗑️ 清空", no_history:"暫無歷史記錄", btn_reuse:"🔄 重用", btn_dl:"💾 下載",
         cooldown_msg: "⏳ 請等待冷卻時間...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
         provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
@@ -4722,7 +4724,7 @@ const I18N={
         error_image_too_large: "圖片太大！最大 32MB", error_invalid_file: "請選擇圖片文件", error_upload_failed: "上傳失敗"
     },
     en:{
-        nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Kontext Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
+        nav_gen:"🎨 Generate Image", nav_his:"📚 History", nav_nano:"Nano", settings_title:"⚙️ Generation Settings", provider_label:"API Provider", model_label:"Model Selection", size_label:"Image Size", style_label:"Art Style 🎨", quality_label:"Quality Mode", seed_label:"Seed Value", seed_random:"🎲 Random", seed_lock:"🔒 Lock", auto_opt_label:"✨ Auto Optimize", auto_opt_desc:"Automatically adjust Steps & Guidance", adv_settings:"🛠️ Advanced Settings", steps_label:"Generation Steps", guidance_label:"Guidance Scale", gen_btn:"🎨 Start Generation", empty_title:"No images generated yet", pos_prompt:"Positive Prompt", neg_prompt:"Negative Prompt (Optional)", ref_img:"Reference Image URL (Flux 2 Dev / Imagen 4 Only)", stat_total:"📊 Total Records", stat_storage:"💾 Storage Space (Permanent)", btn_export:"📥 Export", btn_clear:"🗑️ Clear All", no_history:"No history records found", btn_reuse:"🔄 Reuse Settings", btn_dl:"💾 Download",
         cooldown_msg: "⏳ Please wait for cooldown...",
         quality_economy: "Economy", quality_standard: "Standard", quality_ultra: "Ultra HD",
         provider_pollinations: "Pollinations.ai (Free)", provider_infip: "Ghostbot (Infip) 🌟",
@@ -5053,7 +5055,7 @@ function updateModelOptions() {
     const groups = {};
     models.forEach(m => {
         // Skip nanobanana model - only available in Nano Pro page
-        // imagen4 is available in Professional UI (Aqua polling model)
+        // imagen-4 is available in Professional UI (Aqua polling model)
         if (m.id === 'nanobanana') return;
         
         const cat = m.category || 'other';
