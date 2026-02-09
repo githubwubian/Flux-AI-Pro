@@ -1312,7 +1312,8 @@ class AirforceProvider {
 
     try {
       // Translate prompt to English if needed
-      const translatedPrompt = await translateToEnglish(prompt, this.env);
+      const translationResult = await translateToEnglish(prompt, this.env);
+      const translatedPrompt = translationResult.text || prompt;
       
       // Apply style if specified
       let finalPrompt = translatedPrompt;
@@ -4614,6 +4615,76 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     margin-top: 4px;
     text-align: center;
 }
+/* 生成進度條樣式 */
+.generation-progress-container {
+    width: 100%;
+    max-width: 400px;
+    margin: 20px auto;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.generation-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+.generation-progress-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+.generation-progress-percentage {
+    font-size: 14px;
+    font-weight: 700;
+    color: #f59e0b;
+}
+.generation-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.generation-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+    background-size: 200% 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 4px;
+    animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.generation-progress-status {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+    text-align: center;
+}
+.generation-progress-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    font-size: 11px;
+    color: #6b7280;
+}
+.generation-progress-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.generation-progress-step.active {
+    color: #f59e0b;
+}
+.generation-progress-step.completed {
+    color: #22c55e;
+}
 </style>
 </head>
 <body>
@@ -5830,9 +5901,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     if(!prompt)return;
     
     // 開始生成，鎖定按鈕
-    btn.disabled=true; 
+    btn.disabled=true;
     btn.textContent=curLang==='zh'?'生成中...':'Generating...';
-    resDiv.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+    // 顯示進度條
+    showGenerationProgress();
+    // 模擬進度更新（實際進度由 SSE 流式響應更新）
+    simulateProgress();
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
@@ -5885,7 +5959,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 const realSeed = res.headers.get('X-Seed');
                 const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
                 await addToHistory(item);
-                displayResult([item]);
+                // 更新進度到 100%
+                updateProgressUI(100, '生成完成！');
+                setTimeout(() => {
+                    hideGenerationProgress();
+                    displayResult([item]);
+                }, 500);
                 
                 // Determine cooldown based on provider
                 const provider = document.getElementById('provider').value;
@@ -5896,17 +5975,23 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             const data=await res.json();
             if(data.error) throw new Error(data.error.message);
             for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
-            displayResult(items);
+            // 更新進度到 100%
+            updateProgressUI(100, '生成完成！');
+            setTimeout(() => {
+                hideGenerationProgress();
+                displayResult(items);
+            }, 500);
             
             // Determine cooldown based on provider
             const provider = document.getElementById('provider').value;
             const cooldownTime = provider === 'infip' ? INFIP_COOLDOWN_SEC : (provider === 'kinai' ? INFIP_COOLDOWN_SEC : (provider === 'airforce' ? INFIP_COOLDOWN_SEC : COOLDOWN_SEC));
             startCooldown(cooldownTime);
         }
-    }catch(err){ 
-        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>'; 
+    }catch(err){
+        hideGenerationProgress();
+        resDiv.innerHTML='<p style="color:red;text-align:center">'+err.message+'</p>';
         // 失敗時不冷卻，直接解鎖
-        btn.disabled=false; 
+        btn.disabled=false;
         btn.textContent=I18N[curLang].gen_btn;
     }
 });
@@ -5937,6 +6022,113 @@ function updateBtnText(sec) {
     const btn = document.getElementById('generateBtn');
     const msg = curLang === 'zh' ? \`⏳ 冷卻中 (\${sec}s)\` : \`⏳ Cooldown (\${sec}s)\`;
     btn.textContent = msg;
+}
+
+// ====== 圖像生成進度追蹤 ======
+let progressInterval = null;
+let currentProgress = 0;
+
+function showGenerationProgress() {
+    const resDiv = document.getElementById('results');
+    resDiv.innerHTML = `
+        <div class="generation-progress-container">
+            <div class="generation-progress-header">
+                <span class="generation-progress-status">🎨 正在生成圖像...</span>
+                <span class="generation-progress-percentage" id="progressPercentage">0%</span>
+            </div>
+            <div class="generation-progress-bar">
+                <div class="generation-progress-fill" id="progressFill"></div>
+            </div>
+            <div class="generation-progress-steps">
+                <span class="step-indicator" id="step1">📝</span>
+                <span class="step-indicator" id="step2">🎨</span>
+                <span class="step-indicator" id="step3">✨</span>
+                <span class="step-indicator" id="step4">🖼️</span>
+            </div>
+            <div class="generation-progress-text" id="progressText">初始化中...</div>
+        </div>
+    `;
+    currentProgress = 0;
+    updateProgressUI(0, '初始化中...');
+}
+
+function updateProgressUI(percentage, text) {
+    const progressFill = document.getElementById('progressFill');
+    const progressPercentage = document.getElementById('progressPercentage');
+    const progressText = document.getElementById('progressText');
+    
+    if (progressFill) progressFill.style.width = percentage + '%';
+    if (progressPercentage) progressPercentage.textContent = percentage + '%';
+    if (progressText) progressText.textContent = text;
+    
+    // 更新步驟指示器
+    updateStepIndicators(percentage);
+}
+
+function updateStepIndicators(percentage) {
+    const steps = ['step1', 'step2', 'step3', 'step4'];
+    const stepLabels = ['📝', '🎨', '✨', '🖼️'];
+    const activeLabels = ['✅', '🎨', '✨', '🖼️'];
+    
+    steps.forEach((stepId, index) => {
+        const stepEl = document.getElementById(stepId);
+        if (stepEl) {
+            const threshold = (index + 1) * 25;
+            if (percentage >= threshold) {
+                stepEl.textContent = activeLabels[index];
+                stepEl.classList.add('active');
+            } else {
+                stepEl.textContent = stepLabels[index];
+                stepEl.classList.remove('active');
+            }
+        }
+    });
+}
+
+function simulateProgress() {
+    // 清除之前的進度計時器
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+    
+    const progressMessages = [
+        { percent: 5, text: '正在分析提示詞...' },
+        { percent: 15, text: '正在選擇模型...' },
+        { percent: 25, text: '正在初始化生成參數...' },
+        { percent: 35, text: '正在連接 API 服務器...' },
+        { percent: 45, text: '正在生成圖像...' },
+        { percent: 55, text: '正在渲染細節...' },
+        { percent: 65, text: '正在優化質量...' },
+        { percent: 75, text: '正在應用風格...' },
+        { percent: 85, text: '正在最終處理...' },
+        { percent: 95, text: '即將完成...' }
+    ];
+    
+    let messageIndex = 0;
+    
+    progressInterval = setInterval(() => {
+        if (currentProgress < 95) {
+            // 找到當前應該顯示的消息
+            while (messageIndex < progressMessages.length && currentProgress >= progressMessages[messageIndex].percent) {
+                messageIndex++;
+            }
+            
+            if (messageIndex < progressMessages.length) {
+                const targetPercent = progressMessages[messageIndex].percent;
+                const increment = Math.max(1, Math.floor((targetPercent - currentProgress) / 5));
+                currentProgress = Math.min(targetPercent, currentProgress + increment);
+                updateProgressUI(currentProgress, progressMessages[messageIndex].text);
+            }
+        }
+    }, 500);
+}
+
+function hideGenerationProgress() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+    // 進度條會在 displayResult 中被替換
 }
 
 function displayResult(items){
