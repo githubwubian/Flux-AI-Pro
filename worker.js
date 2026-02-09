@@ -1612,40 +1612,54 @@ class AirforceProvider {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let accumulatedData = '';
+    let chunkCount = 0;
+
+    logger.add("📡 SSE Stream Started", {
+      contentType: response.headers.get('content-type'),
+      hasBody: !!response.body
+    });
 
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-
-        accumulatedData += decoder.decode(value, { stream: true });
-        
-        // Try splitting by \n\n first (standard SSE format)
-        let lines = accumulatedData.split('\n\n');
-        
-        // If no \n\n found, try splitting by \n (some APIs use single newline)
-        if (lines.length === 1) {
-          lines = accumulatedData.split('\n');
+        if (done) {
+          logger.add("📡 SSE Stream Ended", {
+            totalChunks: chunkCount,
+            accumulatedDataLength: accumulatedData.length
+          });
+          break;
         }
+
+        chunkCount++;
+        const decodedChunk = decoder.decode(value, { stream: true });
+        accumulatedData += decodedChunk;
         
+        logger.add("📡 SSE Chunk Received", {
+          chunkNumber: chunkCount,
+          chunkLength: decodedChunk.length,
+          totalAccumulated: accumulatedData.length
+        });
+
+        // Use standard SSE format splitting (same as official example)
+        const lines = accumulatedData.split('\n\n');
         accumulatedData = lines.pop() || '';
 
+        logger.add("📡 SSE Lines Processed", {
+          linesCount: lines.length,
+          remainingDataLength: accumulatedData.length
+        });
+
         for (const line of lines) {
-          // Handle both 'data: ' and 'data:' prefixes
-          let dataStr = '';
           if (line.startsWith('data: ')) {
-            dataStr = line.slice(6);
-          } else if (line.startsWith('data:')) {
-            dataStr = line.slice(5);
-          } else {
-            continue; // Skip lines that don't start with 'data:'
-          }
-          
-          // Skip keepalive and done messages
-          if (dataStr === '[DONE]') continue;
-          if (dataStr === ': keepalive') continue;
-          if (dataStr.startsWith(':')) continue; // Skip SSE comments
-          if (!dataStr || dataStr.trim() === '') continue;
+            const dataStr = line.slice(6);
+            
+            // Skip keepalive and done messages (same as official example)
+            if (dataStr === '[DONE]') {
+              logger.add("📡 SSE: Received [DONE] signal");
+              continue;
+            }
+            if (dataStr === ': keepalive') continue;
+            if (!dataStr || dataStr.trim() === '') continue;
 
           try {
             const data = JSON.parse(dataStr);
