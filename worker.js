@@ -1334,7 +1334,9 @@ class AirforceProvider {
         n: 1,
         size: size,
         response_format: "url",
-        sse: false,  // Disable SSE for simpler implementation
+        sse: true,  // Enable SSE for streaming response
+        aspectRatio: this.getAspectRatio(width, height),
+        resolution: this.getResolution(width, height),
         nsfw: nsfw   // Support NSFW content generation
       };
 
@@ -1342,6 +1344,8 @@ class AirforceProvider {
         url,
         model: body.model,
         size: body.size,
+        aspectRatio: body.aspectRatio,
+        resolution: body.resolution,
         nsfw: body.nsfw
       });
 
@@ -1349,45 +1353,19 @@ class AirforceProvider {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(body)
-      }, this.config.timeout || 60000);
-
-      const responseData = await response.json();
+      }, this.config.timeout || 120000);
 
       if (!response.ok) {
+        const errorText = await response.text();
         logger.add("❌ Airforce API Error", {
           status: response.status,
-          error: responseData.error || responseData.message || 'Unknown error'
+          error: errorText
         });
-        throw new Error(responseData.error || responseData.message || `Airforce API error: ${response.status}`);
+        throw new Error(`Airforce API error: ${response.status} - ${errorText}`);
       }
 
-      logger.add("📥 Airforce Response", {
-        data: responseData
-      });
-
-      const results = [];
-      
-      if (responseData.data && Array.isArray(responseData.data)) {
-        for (const item of responseData.data) {
-          if (item.url) {
-            results.push({
-              url: item.url,
-              width: width,
-              height: height,
-              model: model,
-              provider: this.name
-            });
-          }
-        }
-      } else if (responseData.url) {
-        results.push({
-          url: responseData.url,
-          width: width,
-          height: height,
-          model: model,
-          provider: this.name
-        });
-      }
+      // Handle SSE streaming response
+      const results = await this.handleSSEStream(response, logger, width, height, model);
 
       if (results.length === 0) {
         throw new Error("No images returned from Airforce API");
@@ -1409,6 +1387,86 @@ class AirforceProvider {
       logger.add("❌ Airforce Failed", { error: e.message });
       throw e;
     }
+  }
+
+  getAspectRatio(width, height) {
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const divisor = gcd(width, height);
+    return `${width / divisor}:${height / divisor}`;
+  }
+
+  getResolution(width, height) {
+    const totalPixels = width * height;
+    if (totalPixels >= 1920 * 1080) return "2k";
+    if (totalPixels >= 1024 * 1024) return "1k";
+    return "512";
+  }
+
+  async handleSSEStream(response, logger, width, height, model) {
+    const results = [];
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulatedData = '';
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            
+            // Skip keepalive and done messages
+            if (dataStr === '[DONE]' || dataStr === ': keepalive' || dataStr === '') {
+              continue;
+            }
+
+            try {
+              const data = JSON.parse(dataStr);
+              logger.add("📊 SSE Data", { data });
+
+              // Handle different response formats
+              if (data.url) {
+                results.push({
+                  url: data.url,
+                  width: width,
+                  height: height,
+                  model: model,
+                  provider: this.name
+                });
+              } else if (data.data && Array.isArray(data.data)) {
+                for (const item of data.data) {
+                  if (item.url) {
+                    results.push({
+                      url: item.url,
+                      width: width,
+                      height: height,
+                      model: model,
+                      provider: this.name
+                    });
+                  }
+                }
+              }
+            } catch (parseError) {
+              logger.add("⚠️ SSE Parse Error", {
+                dataStr,
+                error: parseError.message
+              });
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    return results;
   }
 }
 
