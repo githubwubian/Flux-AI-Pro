@@ -1408,25 +1408,23 @@ class AirforceProvider {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let accumulatedData = '';
-    let buffer = '';
 
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
+        accumulatedData += decoder.decode(value, { stream: true });
+        const lines = accumulatedData.split('\n\n');
+        accumulatedData = lines.pop();
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6).trim();
+            const dataStr = line.slice(6);
             
             // Skip keepalive and done messages
-            if (dataStr === '[DONE]' || dataStr === ': keepalive' || dataStr === '') {
-              continue;
-            }
+            if (dataStr === '[DONE]') continue;
+            if (dataStr === ': keepalive') continue;
 
             try {
               const data = JSON.parse(dataStr);
