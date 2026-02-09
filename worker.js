@@ -1338,8 +1338,7 @@ class AirforceProvider {
         response_format: "url",
         sse: true,  // Enable SSE for streaming response
         aspectRatio: this.getAspectRatio(width, height),
-        resolution: this.getResolution(width, height),
-        nsfw: nsfw   // Support NSFW content generation
+        resolution: this.getResolution(width, height)
       };
 
       logger.add("📤 Request to Airforce", {
@@ -1347,8 +1346,7 @@ class AirforceProvider {
         model: body.model,
         size: body.size,
         aspectRatio: body.aspectRatio,
-        resolution: body.resolution,
-        nsfw: body.nsfw
+        resolution: body.resolution
       });
 
       const response = await fetchWithTimeout(url, {
