@@ -1315,9 +1315,11 @@ class AirforceProvider {
       const translatedPrompt = await translateToEnglish(prompt, this.env);
       
       // Apply style if specified
-      const finalPrompt = style !== "none"
-        ? StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt)
-        : translatedPrompt;
+      let finalPrompt = translatedPrompt;
+      if (style !== "none") {
+        const styleResult = StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt);
+        finalPrompt = styleResult.enhancedPrompt || translatedPrompt;
+      }
 
       const size = `${width}x${height}`;
       const url = `${this.config.endpoint}/v1/images/generations`;
