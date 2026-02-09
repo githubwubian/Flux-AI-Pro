@@ -128,7 +128,7 @@ const CONFIG = {
     },
     airforce: {
       name: "Airforce API",
-      endpoint: "https://api.airforce",
+      endpoint: "https://api.airforce.ai",
       type: "openai_compatible",
       auth_mode: "bearer",
       requires_key: true,
@@ -1338,19 +1338,14 @@ class AirforceProvider {
         prompt: finalPrompt,
         n: 1,
         size: size,
-        response_format: "url",
-        stream: true,  // Enable streaming response
-        aspectRatio: this.getAspectRatio(width, height),
-        resolution: this.getResolution(width, height),
-        language: language  // Track interface language
+        response_format: "url"
       };
 
       logger.add("📤 Request to Airforce", {
         url,
         model: body.model,
         size: body.size,
-        aspectRatio: body.aspectRatio,
-        resolution: body.resolution
+        promptLength: finalPrompt.length
       });
 
       const response = await fetchWithTimeout(url, {
@@ -1358,6 +1353,12 @@ class AirforceProvider {
         headers: headers,
         body: JSON.stringify(body)
       }, this.config.timeout || 120000);
+
+      logger.add("📥 Airforce Response Status", {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1368,53 +1369,54 @@ class AirforceProvider {
         throw new Error(`Airforce API error: ${response.status} - ${errorText}`);
       }
 
-      // Check if response is streaming
-      const contentType = response.headers.get('content-type') || '';
-      const isStreaming = contentType.includes('text/event-stream') || body.stream;
+      // Handle non-streaming JSON response
+      const data = await response.json();
+      logger.add("📊 Airforce Response Data", { data });
 
       let results = [];
       
-      if (isStreaming) {
-        // Handle SSE streaming response
-        results = await this.handleSSEStream(response, logger, width, height, model);
-      } else {
-        // Handle non-streaming JSON response
-        const data = await response.json();
-        logger.add("📊 Non-streaming Response", { data });
-        
-        if (data.url) {
-          results.push({
-            url: data.url,
-            width: width,
-            height: height,
-            model: model,
-            provider: this.name
-          });
-        } else if (data.data && Array.isArray(data.data)) {
-          for (const item of data.data) {
-            if (item.url) {
-              results.push({
-                url: item.url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
-          }
-        } else if (data.images && Array.isArray(data.images)) {
-          for (const item of data.images) {
-            if (item.url) {
-              results.push({
-                url: item.url,
-                width: width,
-                height: height,
-                model: model,
-                provider: this.name
-              });
-            }
+      if (data.url) {
+        results.push({
+          url: data.url,
+          width: width,
+          height: height,
+          model: model,
+          provider: this.name
+        });
+      } else if (data.data && Array.isArray(data.data)) {
+        for (const item of data.data) {
+          if (item.url) {
+            results.push({
+              url: item.url,
+              width: width,
+              height: height,
+              model: model,
+              provider: this.name
+            });
           }
         }
+      } else if (data.images && Array.isArray(data.images)) {
+        for (const item of data.images) {
+          if (item.url) {
+            results.push({
+              url: item.url,
+              width: width,
+              height: height,
+              model: model,
+              provider: this.name
+            });
+          }
+        }
+      } else if (data.image) {
+        results.push({
+          url: data.image,
+          width: width,
+          height: height,
+          model: model,
+          provider: this.name
+        });
+      } else {
+        logger.add("⚠️ Unknown response format", { data });
       }
 
       if (results.length === 0) {
