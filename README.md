@@ -52,10 +52,10 @@
 *   **Infip/Ghostbot**：支援 Google `Imagen 4` 與 `Flux Schnell`，具備更強的併發處理能力，支援 NSFW 模式。
 *   **Aqua Server**：提供 `Flux 2`、`Z-Image`、`Imagen 4` (輪詢模式)、`NanoBanana` (Img2Img 輪詢模式) 等高品質模型。
 *   **Kinai API**：提供 `GLM Image` 高品質模型，支援 NSFW 模式與批量生成（最多 4 張）。
-*   **Airforce API**：提供 `Plutogen O1`、`Z-Image`、`Imagen 4` (Google)、`Flux 2 Pro`、`Flux 2 Flex`、`GPT Image 1.5`、`Flux 2 Klein 4B`、`Flux 2 Klein 9B`、`SeeDream 4.5` 等高品質模型，支援 NSFW 模式與批量生成。
+*   **Airforce API**：提供 `Plutogen O1`、`Z-Image`、`Imagen 4` (Google)、`Flux 2 Pro`、`Flux 2 Flex`、`GPT Image 1.5`、`Flux 2 Klein 4B`、`Flux 2 Klein 9B`、`SeeDream 4.5` 等高品質模型，支援批量生成。
 *   **輪詢模型支援**：imagen-4 和 nanobanana 採用輪詢機制，確保大型模型生成的穩定性。
 *   **Img2Img 功能**：nanobanana 模型支援參考圖片上傳，實現圖片轉圖片生成。
-*   **NSFW 模式**：Infip、Kinai 和 Airforce 供應商支援解除成人內容限制功能。
+*   **NSFW 模式**：Infip 和 Kinai 供應商支援解除成人內容限制功能。
 *   **供應商統計追蹤**：自動追蹤各供應商的使用次數與比例，透過 API 端點查詢。
 
 ### 4. 性能與優化 (Performance)

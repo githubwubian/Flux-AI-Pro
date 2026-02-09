@@ -136,7 +136,7 @@ const CONFIG = {
       default: false,
       description: "Airforce AI 圖像生成服務",
       features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true, nsfw: true
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: false, api_key_auth: true, nsfw: false
       },
       models: [
         { id: "plutogen-o1", name: "Plutogen O1 🌟", category: "plutogen", description: "Plutogen O1 高品質圖像生成模型", max_size: 2048 },
@@ -5433,11 +5433,11 @@ function updateModelOptions() {
         apiKeyGroup.style.display = 'none';
     }
     
-    // Logic: Show NSFW Toggle for Infip, Kinai, and Airforce
+    // Logic: Show NSFW Toggle for Infip and Kinai only
     const nsfwGroup = document.getElementById('nsfwGroup');
     const batchGroup = document.getElementById('batchGroup');
     
-    if (p === 'infip' || p === 'kinai' || p === 'airforce') {
+    if (p === 'infip' || p === 'kinai') {
         nsfwGroup.style.display = 'flex';
         batchGroup.style.display = 'block';
     } else {
