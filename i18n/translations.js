@@ -10,7 +10,6 @@ export const TRANSLATIONS = {
     nav_gen: "🎨 生成圖像",
     nav_his: "📚 歷史記錄",
     nav_nano: "🍌 Nano版",
-    nav_edit: "✨ 圖像編輯",
     
     // 設定標籤
     settings_title: "⚙️ 生成參數",

@@ -1293,7 +1293,8 @@ class AirforceProvider {
       apiKey = "",
       nsfw = false,
       style = "none",
-      negativePrompt = ""
+      negativePrompt = "",
+      language = "en"
     } = options;
 
     const finalApiKey = this.env.AIRFORCE_API_KEY || apiKey;
@@ -1307,6 +1308,7 @@ class AirforceProvider {
       height,
       style,
       nsfw,
+      language,
       promptLength: prompt.length
     });
 
@@ -1337,9 +1339,10 @@ class AirforceProvider {
         n: 1,
         size: size,
         response_format: "url",
-        sse: true,  // Enable SSE for streaming response
+        stream: true,  // Enable streaming response
         aspectRatio: this.getAspectRatio(width, height),
-        resolution: this.getResolution(width, height)
+        resolution: this.getResolution(width, height),
+        language: language  // Track interface language
       };
 
       logger.add("📤 Request to Airforce", {
@@ -1365,8 +1368,54 @@ class AirforceProvider {
         throw new Error(`Airforce API error: ${response.status} - ${errorText}`);
       }
 
-      // Handle SSE streaming response
-      const results = await this.handleSSEStream(response, logger, width, height, model);
+      // Check if response is streaming
+      const contentType = response.headers.get('content-type') || '';
+      const isStreaming = contentType.includes('text/event-stream') || body.stream;
+
+      let results = [];
+      
+      if (isStreaming) {
+        // Handle SSE streaming response
+        results = await this.handleSSEStream(response, logger, width, height, model);
+      } else {
+        // Handle non-streaming JSON response
+        const data = await response.json();
+        logger.add("📊 Non-streaming Response", { data });
+        
+        if (data.url) {
+          results.push({
+            url: data.url,
+            width: width,
+            height: height,
+            model: model,
+            provider: this.name
+          });
+        } else if (data.data && Array.isArray(data.data)) {
+          for (const item of data.data) {
+            if (item.url) {
+              results.push({
+                url: item.url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+          }
+        } else if (data.images && Array.isArray(data.images)) {
+          for (const item of data.images) {
+            if (item.url) {
+              results.push({
+                url: item.url,
+                width: width,
+                height: height,
+                model: model,
+                provider: this.name
+              });
+            }
+          }
+        }
+      }
 
       if (results.length === 0) {
         throw new Error("No images returned from Airforce API");
@@ -1421,10 +1470,11 @@ class AirforceProvider {
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
-            
+             
             // Skip keepalive and done messages
             if (dataStr === '[DONE]') continue;
             if (dataStr === ': keepalive') continue;
+            if (!dataStr || dataStr.trim() === '') continue;
 
             try {
               const data = JSON.parse(dataStr);
@@ -1451,6 +1501,26 @@ class AirforceProvider {
                     });
                   }
                 }
+              } else if (data.images && Array.isArray(data.images)) {
+                for (const item of data.images) {
+                  if (item.url) {
+                    results.push({
+                      url: item.url,
+                      width: width,
+                      height: height,
+                      model: model,
+                      provider: this.name
+                    });
+                  }
+                }
+              } else if (data.image) {
+                results.push({
+                  url: data.image,
+                  width: width,
+                  height: height,
+                  model: model,
+                  provider: this.name
+                });
               }
             } catch (parseError) {
               logger.add("⚠️ SSE Parse Error", {
@@ -1464,6 +1534,11 @@ class AirforceProvider {
     } finally {
       reader.releaseLock();
     }
+
+    logger.add("📊 SSE Stream Complete", {
+      totalResults: results.length,
+      accumulatedDataRemaining: accumulatedData.length
+    });
 
     return results;
   }
@@ -1547,9 +1622,6 @@ export default {
       if (url.pathname === '/nano') {
         response = handleNanoPage(request);
       }
-      else if (url.pathname === '/edit') {
-        response = handleEditPage(request);
-      }
       else if (url.pathname === '/' || url.pathname === '') {
         response = handleUI(request, env);
       }
@@ -1561,9 +1633,6 @@ export default {
       }
       else if (url.pathname === '/api/generate-prompt') {
         response = await handlePromptGeneration(request, env);
-      }
-      else if (url.pathname === '/api/image/edit') {
-        response = await handleImageEdit(request, env);
       }
       else if (url.pathname === '/health') {
         response = new Response(JSON.stringify({
@@ -1679,184 +1748,6 @@ async function handleUpload(request) {
     }
   } catch (error) {
     console.error('Upload Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: corsHeaders({ 'Content-Type': 'application/json' })
-    });
-  }
-}
-
-// ====== Image Edit Handler ======
-async function handleImageEdit(request, env) {
-  if (request.method !== 'POST') {
-    return new Response('Method Not Allowed', { status: 405, headers: corsHeaders() });
-  }
-  
-  try {
-    const formData = await request.formData();
-    const image = formData.get('image');
-    const prompt = formData.get('prompt') || '';
-    const negativePrompt = formData.get('negative_prompt') || '';
-    const strength = parseFloat(formData.get('strength')) || 0.5;
-    const mode = formData.get('mode') || 'img2img';
-    const model = formData.get('model') || 'zimage';
-    const size = formData.get('size') || '1024x1024';
-    
-    if (!image) {
-      return new Response(JSON.stringify({ error: 'No image provided' }), {
-        status: 400,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    if (!prompt) {
-      return new Response(JSON.stringify({ error: 'Prompt is required' }), {
-        status: 400,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    // 驗證文件大小
-    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
-    if (image.size > MAX_FILE_SIZE) {
-      return new Response(JSON.stringify({
-        error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`
-      }), {
-        status: 400,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    // 驗證文件類型
-    if (!image.type.startsWith('image/')) {
-      return new Response(JSON.stringify({ error: 'Invalid file type. Only images are allowed.' }), {
-        status: 400,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    // 解析尺寸
-    const [width, height] = size.split('x').map(Number);
-    
-    // 上傳圖片到 ImgBB
-    const IMGBB_API_KEY = '8245f772dd33870730fab74e7e236df2';
-    const arrayBuffer = await image.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    let binary = '';
-    const chunkSize = 65536;
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, i + chunkSize);
-      binary += String.fromCharCode.apply(null, chunk);
-    }
-    const base64 = btoa(binary);
-    
-    const imgbbFormData = new FormData();
-    imgbbFormData.append('key', IMGBB_API_KEY);
-    imgbbFormData.append('image', base64);
-    
-    const imgbbResponse = await fetch('https://api.imgbb.com/1/upload', {
-      method: 'POST',
-      body: imgbbFormData,
-      headers: {
-        'User-Agent': 'FluxAIPro-Worker/1.0'
-      }
-    });
-    
-    const imgbbData = await imgbbResponse.json();
-    
-    if (!imgbbResponse.ok || !imgbbData.success || !imgbbData.data?.url) {
-      console.error('ImgBB API Error:', imgbbData);
-      return new Response(JSON.stringify({
-        error: imgbbData.error?.message || 'Image upload failed'
-      }), {
-        status: 502,
-        headers: corsHeaders({ 'Content-Type': 'application/json' })
-      });
-    }
-    
-    const imageUrl = imgbbData.data.url;
-    
-    // 翻譯中文提示詞
-    let finalPrompt = prompt;
-    if (/[\u4e00-\u9fa5]/.test(prompt)) {
-      const translation = await translateToEnglish(prompt, env);
-      if (translation.translated) {
-        finalPrompt = translation.text;
-      }
-    }
-    
-    // 構建完整提示詞（包含負面提示詞）
-    let fullPrompt = finalPrompt;
-    if (negativePrompt && negativePrompt.trim()) {
-      fullPrompt = finalPrompt + " [negative: " + negativePrompt + "]";
-    }
-    
-    // 構建 Pollinations API URL
-    const encodedPrompt = encodeURIComponent(fullPrompt);
-    const baseUrl = 'https://image.pollinations.ai/prompt/' + encodedPrompt;
-    
-    const params = new URLSearchParams();
-    params.append('model', model);
-    params.append('width', width.toString());
-    params.append('height', height.toString());
-    params.append('seed', Math.floor(Math.random() * 1000000).toString());
-    params.append('nologo', 'true');
-    params.append('enhance', 'false');
-    params.append('private', 'true');
-    params.append('image', imageUrl);
-    params.append('denoising_strength', strength.toString());
-    
-    // 根據模式添加額外參數
-    if (mode === 'inpainting') {
-      // Inpainting 模式使用較低的 denoising strength
-      params.append('denoising_strength', Math.min(strength, 0.8).toString());
-    } else if (mode === 'outpainting') {
-      // Outpainting 模式使用較高的 denoising strength
-      params.append('denoising_strength', Math.max(strength, 0.6).toString());
-    }
-    
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'image/*',
-      'Referer': 'https://pollinations.ai/'
-    };
-    
-    const authConfig = CONFIG.POLLINATIONS_AUTH;
-    if (authConfig.enabled && authConfig.token) {
-      headers['Authorization'] = `Bearer ${authConfig.token}`;
-    }
-    
-    const url = baseUrl + '?' + params.toString();
-    
-    // 調用 Pollinations API
-    const response = await fetchWithTimeout(url, { method: 'GET', headers: headers }, 120000);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
-    }
-    
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error("Invalid content type: " + contentType);
-    }
-    
-    const imageBlob = await response.blob();
-    
-    // 返回編輯後的圖片
-    return new Response(imageBlob, {
-      status: 200,
-      headers: corsHeaders({
-        'Content-Type': contentType,
-        'X-Original-Image-Url': imageUrl,
-        'X-Edit-Mode': mode,
-        'X-Edit-Strength': strength.toString(),
-        'X-Model': model
-      })
-    });
-    
-  } catch (error) {
-    console.error('Image Edit Error:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: corsHeaders({ 'Content-Type': 'application/json' })
@@ -2161,22 +2052,23 @@ async function handleInternalGenerate(request, env, ctx) {
       provider: body.provider || null,
       model: body.model || "flux-schnell",
       apiKey: request.headers.get('X-API-Key') || body.api_key || "",
-      width: Math.min(Math.max(width, 256), 2048), 
-      height: Math.min(Math.max(height, 256), 2048), 
-      numOutputs: Math.min(Math.max(body.n || 1, 1), 4), 
-      seed: seedValue, 
-      negativePrompt: body.negative_prompt || "", 
-      guidance: autoOptimize ? null : userGuidance, 
-      steps: autoOptimize ? null : userSteps, 
-      enhance: body.enhance === true, 
-      nologo: body.nologo !== false, 
-      privateMode: body.private !== false, 
-      style: body.style || "none", 
-      autoOptimize: autoOptimize, 
-      autoHD: body.auto_hd !== false, 
-      qualityMode: body.quality_mode || 'standard', 
+      width: Math.min(Math.max(width, 256), 2048),
+      height: Math.min(Math.max(height, 256), 2048),
+      numOutputs: Math.min(Math.max(body.n || 1, 1), 4),
+      seed: seedValue,
+      negativePrompt: body.negative_prompt || "",
+      guidance: autoOptimize ? null : userGuidance,
+      steps: autoOptimize ? null : userSteps,
+      enhance: body.enhance === true,
+      nologo: body.nologo !== false,
+      privateMode: body.private !== false,
+      style: body.style || "none",
+      autoOptimize: autoOptimize,
+      autoHD: body.auto_hd !== false,
+      qualityMode: body.quality_mode || 'standard',
       referenceImages: referenceImages,
-      nsfw: body.nsfw === true
+      nsfw: body.nsfw === true,
+      language: body.language || 'en'  // Track interface language
     };
     
     const router = new MultiProviderRouter({}, env);
@@ -3768,7 +3660,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 nologo: true,
                 auto_optimize: true,
                 auto_hd: true,
-                quality_mode: 'standard'
+                quality_mode: 'standard',
+                language: nanoCurLang  // Track interface language
             };
             
             console.log("🍌 Nano Pro: 請求體", requestBody);
@@ -3836,561 +3729,6 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             els.loader.style.display = 'none';
         }
     };
-</script>
-</body>
-</html>`;
-  
-  return new Response(html, { headers: { 'Content-Type': 'text/html;charset=UTF-8', ...corsHeaders() } });
-}
-
-// =================================================================================
-//  圖像編輯頁面處理器 (Image Edit Page Handler)
-// =================================================================================
-function handleEditPage(request) {
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>✨ 圖像編輯 - Flux AI Pro</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>">
-<style>
-:root {
-    --primary: #A855F7;
-    --primary-dim: #7c3aed;
-    --bg-dark: #0f0f11;
-    --panel-bg: rgba(30, 30, 35, 0.7);
-    --border: rgba(255, 255, 255, 0.1);
-    --text: #ffffff;
-    --text-muted: #9ca3af;
-    --glass: blur(20px) saturate(180%);
-}
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: var(--bg-dark);
-    background-image: radial-gradient(circle at 10% 20%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
-    color: var(--text);
-    height: 100vh;
-    overflow: hidden;
-    display: flex;
-}
-.app-container { display: flex; width: 100%; height: 100%; }
-.sidebar {
-    width: 380px;
-    background: var(--panel-bg);
-    backdrop-filter: var(--glass);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-    overflow-y: auto;
-    z-index: 10;
-    position: relative;
-}
-.main-stage {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    overflow: hidden;
-}
-.header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-}
-.header h1 {
-    font-size: 20px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-.form-group { margin-bottom: 20px; }
-.form-group label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-}
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 14px;
-    transition: all 0.3s;
-}
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
-}
-.form-group textarea {
-    min-height: 100px;
-    resize: vertical;
-}
-.edit-mode-selector {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-}
-.edit-mode-btn {
-    flex: 1;
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-.edit-mode-btn:hover {
-    background: rgba(168, 85, 247, 0.1);
-    border-color: var(--primary);
-    color: var(--primary);
-}
-.edit-mode-btn.active {
-    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
-    border-color: var(--primary);
-    color: #fff;
-}
-.upload-area {
-    border: 2px dashed var(--border);
-    border-radius: 12px;
-    padding: 32px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-bottom: 20px;
-}
-.upload-area:hover {
-    border-color: var(--primary);
-    background: rgba(168, 85, 247, 0.05);
-}
-.upload-area.dragover {
-    border-color: var(--primary);
-    background: rgba(168, 85, 247, 0.1);
-}
-.upload-area input {
-    display: none;
-}
-.upload-icon {
-    font-size: 48px;
-    margin-bottom: 12px;
-}
-.upload-text {
-    font-size: 14px;
-    color: var(--text-muted);
-}
-.upload-hint {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 8px;
-}
-.preview-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.preview-image {
-    max-width: 100%;
-    max-height: 100%;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-.placeholder {
-    text-align: center;
-    color: var(--text-muted);
-}
-.placeholder-icon {
-    font-size: 64px;
-    margin-bottom: 16px;
-    opacity: 0.5;
-}
-.btn {
-    width: 100%;
-    padding: 14px 24px;
-    background: linear-gradient(135deg, #A855F7 0%, #7c3aed 100%);
-    border: none;
-    border-radius: 10px;
-    color: #fff;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-}
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 30px rgba(168, 85, 247, 0.3);
-}
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-}
-.btn-secondary {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--border);
-}
-.btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: none;
-}
-.loader {
-    display: none;
-    width: 20px;
-    height: 20px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-.result-container {
-    display: none;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 15, 17, 0.95);
-    backdrop-filter: blur(20px);
-    z-index: 100;
-    padding: 40px;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-}
-.result-container.show {
-    display: flex;
-}
-.result-image {
-    max-width: 100%;
-    max-height: 70%;
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    margin-bottom: 24px;
-}
-.result-actions {
-    display: flex;
-    gap: 12px;
-}
-.result-actions .btn {
-    width: auto;
-    padding: 12px 24px;
-}
-.close-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    border-radius: 50%;
-    color: var(--text);
-    font-size: 20px;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-.close-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-@media (max-width: 768px) {
-    .app-container { flex-direction: column; }
-    .sidebar { width: 100%; height: 50%; border-right: none; border-bottom: 1px solid var(--border); }
-    .main-stage { height: 50%; padding: 20px; }
-}
-</style>
-</head>
-<body>
-<div class="app-container">
-    <div class="sidebar">
-        <div class="header">
-            <span style="font-size: 24px;">✨</span>
-            <h1>圖像編輯</h1>
-        </div>
-        
-        <div class="edit-mode-selector">
-            <button class="edit-mode-btn active" data-mode="img2img">圖生圖</button>
-            <button class="edit-mode-btn" data-mode="inpainting">修補</button>
-            <button class="edit-mode-btn" data-mode="outpainting">擴展</button>
-        </div>
-        
-        <div class="form-group">
-            <label>上傳參考圖片</label>
-            <div class="upload-area" id="uploadArea">
-                <input type="file" id="imageInput" accept="image/*">
-                <div class="upload-icon">📸</div>
-                <div class="upload-text">點擊或拖拽上傳圖片</div>
-                <div class="upload-hint">支援 JPG, PNG, WEBP (最大 10MB)</div>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label>編輯提示詞</label>
-            <textarea id="prompt" placeholder="描述你想要的編輯效果..."></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>負面提示詞 (可選)</label>
-            <textarea id="negativePrompt" placeholder="描述你不想要的內容..." style="min-height: 60px;"></textarea>
-        </div>
-        
-        <div class="form-group">
-            <label>強度 (Strength)</label>
-            <input type="range" id="strength" min="0.1" max="1" step="0.1" value="0.7">
-            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-top: 4px;">
-                <span>0.1</span>
-                <span id="strengthValue">0.7</span>
-                <span>1.0</span>
-            </div>
-        </div>
-        
-        <div class="form-group">
-            <label>模型</label>
-            <select id="model">
-                <option value="flux-2-dev">Flux 2 Dev 🌟</option>
-                <option value="imagen-4">Imagen 4 (Google) 🌟</option>
-                <option value="zimage">Z-Image</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>尺寸</label>
-            <select id="size">
-                <option value="512x512">512 x 512</option>
-                <option value="768x768">768 x 768</option>
-                <option value="1024x1024" selected>1024 x 1024</option>
-                <option value="1024x768">1024 x 768</option>
-                <option value="768x1024">768 x 1024</option>
-            </select>
-        </div>
-        
-        <button class="btn" id="generateBtn">
-            <span class="loader" id="loader"></span>
-            <span id="btnText">✨ 開始編輯</span>
-        </button>
-    </div>
-    
-    <div class="main-stage">
-        <div class="preview-container" id="previewContainer">
-            <div class="placeholder">
-                <div class="placeholder-icon">🖼️</div>
-                <div>上傳圖片後預覽</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="result-container" id="resultContainer">
-    <button class="close-btn" id="closeResult">×</button>
-    <img class="result-image" id="resultImage" src="" alt="編輯結果">
-    <div class="result-actions">
-        <button class="btn" id="downloadBtn">💾 下載</button>
-        <button class="btn btn-secondary" id="newEditBtn">🔄 繼續編輯</button>
-    </div>
-</div>
-
-<script>
-// 狀態管理
-let uploadedImage = null;
-let currentMode = 'img2img';
-
-// DOM 元素
-const uploadArea = document.getElementById('uploadArea');
-const imageInput = document.getElementById('imageInput');
-const previewContainer = document.getElementById('previewContainer');
-const prompt = document.getElementById('prompt');
-const negativePrompt = document.getElementById('negativePrompt');
-const strength = document.getElementById('strength');
-const strengthValue = document.getElementById('strengthValue');
-const model = document.getElementById('model');
-const size = document.getElementById('size');
-const generateBtn = document.getElementById('generateBtn');
-const loader = document.getElementById('loader');
-const btnText = document.getElementById('btnText');
-const resultContainer = document.getElementById('resultContainer');
-const resultImage = document.getElementById('resultImage');
-const closeResult = document.getElementById('closeResult');
-const downloadBtn = document.getElementById('downloadBtn');
-const newEditBtn = document.getElementById('newEditBtn');
-const editModeBtns = document.querySelectorAll('.edit-mode-btn');
-
-// 上傳區域點擊
-uploadArea.addEventListener('click', () => imageInput.click());
-
-// 拖拽上傳
-uploadArea.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadArea.classList.add('dragover');
-});
-
-uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('dragover');
-});
-
-uploadArea.addEventListener('drop', (e) => {
-    e.preventDefault();
-    uploadArea.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-        handleImageUpload(file);
-    }
-});
-
-// 文件選擇
-imageInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        handleImageUpload(file);
-    }
-});
-
-// 處理圖片上傳
-function handleImageUpload(file) {
-    if (file.size > 10 * 1024 * 1024) {
-        alert('圖片大小不能超過 10MB');
-        return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        uploadedImage = e.target.result;
-        previewContainer.innerHTML = \`<img class="preview-image" src="\${uploadedImage}" alt="預覽圖片">\`;
-    };
-    reader.readAsDataURL(file);
-}
-
-// 強度滑塊
-strength.addEventListener('input', () => {
-    strengthValue.textContent = strength.value;
-});
-
-// 編輯模式切換
-editModeBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        editModeBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentMode = btn.dataset.mode;
-        
-        // 根據模式調整提示詞
-        if (currentMode === 'inpainting') {
-            prompt.placeholder = '描述要修補的區域內容...';
-        } else if (currentMode === 'outpainting') {
-            prompt.placeholder = '描述要擴展的周圍內容...';
-        } else {
-            prompt.placeholder = '描述你想要的編輯效果...';
-        }
-    });
-});
-
-// 生成編輯
-generateBtn.addEventListener('click', async () => {
-    if (!uploadedImage) {
-        alert('請先上傳圖片');
-        return;
-    }
-    
-    if (!prompt.value.trim()) {
-        alert('請輸入編輯提示詞');
-        return;
-    }
-    
-    // 顯示加載狀態
-    generateBtn.disabled = true;
-    loader.style.display = 'inline-block';
-    btnText.textContent = '編輯中...';
-    
-    try {
-        // 將 base64 圖片轉換為 Blob
-        const response = await fetch(uploadedImage);
-        const blob = await response.blob();
-        
-        // 創建 FormData
-        const formData = new FormData();
-        formData.append('image', blob);
-        formData.append('prompt', prompt.value);
-        formData.append('negative_prompt', negativePrompt.value);
-        formData.append('strength', strength.value);
-        formData.append('mode', currentMode);
-        formData.append('model', model.value);
-        formData.append('size', size.value);
-        
-        // 發送請求
-        const res = await fetch('/api/image/edit', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error?.message || '編輯失敗');
-        }
-        
-        const resultBlob = await res.blob();
-        const resultUrl = URL.createObjectURL(resultBlob);
-        
-        // 顯示結果
-        resultImage.src = resultUrl;
-        resultContainer.classList.add('show');
-        
-    } catch (error) {
-        console.error('編輯錯誤:', error);
-        alert('編輯失敗: ' + error.message);
-    } finally {
-        // 恢復按鈕狀態
-        generateBtn.disabled = false;
-        loader.style.display = 'none';
-        btnText.textContent = '✨ 開始編輯';
-    }
-});
-
-// 關閉結果
-closeResult.addEventListener('click', () => {
-    resultContainer.classList.remove('show');
-});
-
-// 下載結果
-downloadBtn.addEventListener('click', () => {
-    const link = document.createElement('a');
-    link.href = resultImage.src;
-    link.download = 'edited-image.png';
-    link.click();
-});
-
-// 繼續編輯
-newEditBtn.addEventListener('click', () => {
-    resultContainer.classList.remove('show');
-    // 使用當前結果作為新的參考圖片
-    uploadedImage = resultImage.src;
-    previewContainer.innerHTML = \`<img class="preview-image" src="\${uploadedImage}" alt="預覽圖片">\`;
-});
 </script>
 </body>
 </html>`;
@@ -4700,9 +4038,6 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     <div class="nav-menu">
         <a href="/nano" target="_blank" class="nav-btn nano-btn" style="border-color:rgba(250,204,21,0.5);color:#FACC15;margin-right:5px">
             🍌 <span data-t="nav_nano">Nano版</span>
-        </a>
-        <a href="/edit" target="_blank" class="nav-btn edit-btn" style="border-color:rgba(168,85,247,0.5);color:#A855F7;margin-right:5px">
-            ✨ <span data-t="nav_edit">圖像編輯</span>
         </a>
         <button class="nav-btn active" data-page="generate"><span data-t="nav_gen">🎨 生成圖像</span></button>
         <button class="nav-btn" data-page="history"><span data-t="nav_his">📚 歷史記錄</span> <span id="historyCount" style="background:rgba(245,158,11,0.2);padding:2px 8px;border-radius:10px;font-size:11px">0</span></button>
@@ -5900,7 +5235,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     
     // 開始生成，鎖定按鈕
     btn.disabled=true;
-    btn.textContent=curLang==='zh'?'生成中...':'Generating...';
+    const generatingText = curLang === 'zh' ? '生成中...' :
+                          curLang === 'en' ? 'Generating...' :
+                          curLang === 'ja' ? '生成中...' :
+                          curLang === 'ko' ? '생성 중...' :
+                          curLang === 'ar' ? 'جاري الإنشاء...' : '生成中...';
+    btn.textContent = generatingText;
     // 顯示進度條
     showGenerationProgress();
     // 模擬進度更新（實際進度由 SSE 流式響應更新）
@@ -5942,7 +5282,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 provider: document.getElementById('provider').value,
                 api_key: document.getElementById('apiKey').value,
                 nsfw: isNSFW,
-                n: batchSize
+                n: batchSize,
+                language: curLang  // Track interface language
             })
         });
         
@@ -5958,7 +5299,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
                 const item={ image:base64, prompt, model:res.headers.get('X-Model'), seed: realSeed, style:res.headers.get('X-Style') };
                 await addToHistory(item);
                 // 更新進度到 100%
-                updateProgressUI(100, '生成完成！');
+                const completeText = curLang === 'zh' ? '生成完成！' :
+                                   curLang === 'en' ? 'Generation Complete!' :
+                                   curLang === 'ja' ? '生成完了！' :
+                                   curLang === 'ko' ? '생성 완료!' :
+                                   curLang === 'ar' ? 'اكتمل الإنشاء!' : '生成完成！';
+                updateProgressUI(100, completeText);
                 setTimeout(() => {
                     hideGenerationProgress();
                     displayResult([item]);
@@ -5974,7 +5320,12 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
             if(data.error) throw new Error(data.error.message);
             for(const d of data.data){ const item={...d, prompt}; await addToHistory(item); items.push(item); }
             // 更新進度到 100%
-            updateProgressUI(100, '生成完成！');
+            const completeText = curLang === 'zh' ? '生成完成！' :
+                               curLang === 'en' ? 'Generation Complete!' :
+                               curLang === 'ja' ? '生成完了！' :
+                               curLang === 'ko' ? '생성 완료!' :
+                               curLang === 'ar' ? 'اكتمل الإنشاء!' : '生成完成！';
+            updateProgressUI(100, completeText);
             setTimeout(() => {
                 hideGenerationProgress();
                 displayResult(items);
@@ -6028,10 +5379,21 @@ let currentProgress = 0;
 
 function showGenerationProgress() {
     const resDiv = document.getElementById('results');
+    const statusText = curLang === 'zh' ? '🎨 正在生成圖像...' :
+                      curLang === 'en' ? '🎨 Generating image...' :
+                      curLang === 'ja' ? '🎨 画像を生成中...' :
+                      curLang === 'ko' ? '🎨 이미지 생성 중...' :
+                      curLang === 'ar' ? '🎨 جاري إنشاء الصورة...' : '🎨 正在生成圖像...';
+    const initText = curLang === 'zh' ? '初始化中...' :
+                     curLang === 'en' ? 'Initializing...' :
+                     curLang === 'ja' ? '初期化中...' :
+                     curLang === 'ko' ? '초기화 중...' :
+                     curLang === 'ar' ? 'جاري التهيئة...' : '初始化中...';
+    
     resDiv.innerHTML = \`
         <div class="generation-progress-container">
             <div class="generation-progress-header">
-                <span class="generation-progress-status">🎨 正在生成圖像...</span>
+                <span class="generation-progress-status">\${statusText}</span>
                 <span class="generation-progress-percentage" id="progressPercentage">0%</span>
             </div>
             <div class="generation-progress-bar">
@@ -6043,11 +5405,11 @@ function showGenerationProgress() {
                 <span class="step-indicator" id="step3">✨</span>
                 <span class="step-indicator" id="step4">🖼️</span>
             </div>
-            <div class="generation-progress-text" id="progressText">初始化中...</div>
+            <div class="generation-progress-text" id="progressText">\${initText}</div>
         </div>
     \`;
     currentProgress = 0;
-    updateProgressUI(0, '初始化中...');
+    updateProgressUI(0, initText);
 }
 
 function updateProgressUI(percentage, text) {
@@ -6089,7 +5451,63 @@ function simulateProgress() {
         clearInterval(progressInterval);
     }
     
-    const progressMessages = [
+    // 根據語言獲取進度訊息
+    const progressMessages = curLang === 'zh' ? [
+        { percent: 5, text: '正在分析提示詞...' },
+        { percent: 15, text: '正在選擇模型...' },
+        { percent: 25, text: '正在初始化生成參數...' },
+        { percent: 35, text: '正在連接 API 服務器...' },
+        { percent: 45, text: '正在生成圖像...' },
+        { percent: 55, text: '正在渲染細節...' },
+        { percent: 65, text: '正在優化質量...' },
+        { percent: 75, text: '正在應用風格...' },
+        { percent: 85, text: '正在最終處理...' },
+        { percent: 95, text: '即將完成...' }
+    ] : curLang === 'en' ? [
+        { percent: 5, text: 'Analyzing prompt...' },
+        { percent: 15, text: 'Selecting model...' },
+        { percent: 25, text: 'Initializing parameters...' },
+        { percent: 35, text: 'Connecting to API...' },
+        { percent: 45, text: 'Generating image...' },
+        { percent: 55, text: 'Rendering details...' },
+        { percent: 65, text: 'Optimizing quality...' },
+        { percent: 75, text: 'Applying style...' },
+        { percent: 85, text: 'Final processing...' },
+        { percent: 95, text: 'Almost done...' }
+    ] : curLang === 'ja' ? [
+        { percent: 5, text: 'プロンプトを分析中...' },
+        { percent: 15, text: 'モデルを選択中...' },
+        { percent: 25, text: 'パラメータを初期化中...' },
+        { percent: 35, text: 'APIに接続中...' },
+        { percent: 45, text: '画像を生成中...' },
+        { percent: 55, text: '詳細をレンダリング中...' },
+        { percent: 65, text: '品質を最適化中...' },
+        { percent: 75, text: 'スタイルを適用中...' },
+        { percent: 85, text: '最終処理中...' },
+        { percent: 95, text: 'もうすぐ完了...' }
+    ] : curLang === 'ko' ? [
+        { percent: 5, text: '프롬프트 분석 중...' },
+        { percent: 15, text: '모델 선택 중...' },
+        { percent: 25, text: '매개변수 초기화 중...' },
+        { percent: 35, text: 'API 연결 중...' },
+        { percent: 45, text: '이미지 생성 중...' },
+        { percent: 55, text: '세부 사항 렌더링 중...' },
+        { percent: 65, text: '품질 최적화 중...' },
+        { percent: 75, text: '스타일 적용 중...' },
+        { percent: 85, text: '최종 처리 중...' },
+        { percent: 95, text: '거의 완료...' }
+    ] : curLang === 'ar' ? [
+        { percent: 5, text: 'جاري تحليل الموجه...' },
+        { percent: 15, text: 'جاري اختيار النموذج...' },
+        { percent: 25, text: 'جاري تهيئة المعلمات...' },
+        { percent: 35, text: 'جاري الاتصال بـ API...' },
+        { percent: 45, text: 'جاري إنشاء الصورة...' },
+        { percent: 55, text: 'جاري عرض التفاصيل...' },
+        { percent: 65, text: 'جاري تحسين الجودة...' },
+        { percent: 75, text: 'جاري تطبيق النمط...' },
+        { percent: 85, text: 'جاري المعالجة النهائية...' },
+        { percent: 95, text: 'قريب من الانتهاء...' }
+    ] : [
         { percent: 5, text: '正在分析提示詞...' },
         { percent: 15, text: '正在選擇模型...' },
         { percent: 25, text: '正在初始化生成參數...' },
@@ -6160,18 +5578,33 @@ const PromptGenerator = {
         const referenceImage = document.getElementById('referenceImages')?.value.trim() || '';
         
         if (!input && !referenceImage && !this.uploadedImage) {
-            this.showStatus('請輸入畫面描述或上傳圖片', 'error');
+            const errorText = curLang === 'zh' ? '請輸入畫面描述或上傳圖片' :
+                               curLang === 'en' ? 'Please enter a description or upload an image' :
+                               curLang === 'ja' ? '説明を入力するか画像をアップロードしてください' :
+                               curLang === 'ko' ? '설명을 입력하거나 이미지를 업로드하세요' :
+                               curLang === 'ar' ? 'الرجاء إدخال وصف أو رفع صورة' : '請輸入畫面描述或上傳圖片';
+            this.showStatus(errorText, 'error');
             return;
         }
         
         const btn = document.getElementById('generatePromptBtn');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '<span>⏳</span><span>生成中...</span>';
+        const generatingText = curLang === 'zh' ? '生成中...' :
+                              curLang === 'en' ? 'Generating...' :
+                              curLang === 'ja' ? '生成中...' :
+                              curLang === 'ko' ? '생성 중...' :
+                              curLang === 'ar' ? 'جاري الإنشاء...' : '生成中...';
+        btn.innerHTML = '<span>⏳</span><span>' + generatingText + '</span>';
         
         // 如果有上傳圖片但還沒有 URL，先上傳獲取 URL
         if (this.uploadedImage && !this.uploadedImageUrl) {
-            this.showStatus('正在上傳圖片...', 'loading');
+            const uploadingText = curLang === 'zh' ? '正在上傳圖片...' :
+                                  curLang === 'en' ? 'Uploading image...' :
+                                  curLang === 'ja' ? '画像をアップロード中...' :
+                                  curLang === 'ko' ? '이미지 업로드 중...' :
+                                  curLang === 'ar' ? 'جاري رفع الصورة...' : '正在上傳圖片...';
+            this.showStatus(uploadingText, 'loading');
             try {
                 this.uploadedImageUrl = await this.uploadImageAndGetUrl(this.uploadedImage);
                 this.showStatus('圖片上傳成功，正在生成提示詞...', 'loading');
