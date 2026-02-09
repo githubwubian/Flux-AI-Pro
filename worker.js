@@ -6030,7 +6030,7 @@ let currentProgress = 0;
 
 function showGenerationProgress() {
     const resDiv = document.getElementById('results');
-    resDiv.innerHTML = `
+    resDiv.innerHTML = \`
         <div class="generation-progress-container">
             <div class="generation-progress-header">
                 <span class="generation-progress-status">🎨 正在生成圖像...</span>
@@ -6047,7 +6047,7 @@ function showGenerationProgress() {
             </div>
             <div class="generation-progress-text" id="progressText">初始化中...</div>
         </div>
-    `;
+    \`;
     currentProgress = 0;
     updateProgressUI(0, '初始化中...');
 }
