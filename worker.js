@@ -1343,8 +1343,7 @@ class AirforceProvider {
         prompt: finalPrompt,
         n: 1,
         size: size,
-        response_format: "b64_json",
-        sse: true
+        response_format: "b64_json"
       };
 
       logger.add("📤 Request to Airforce", {
@@ -1352,7 +1351,6 @@ class AirforceProvider {
         model: body.model,
         size: body.size,
         response_format: body.response_format,
-        sse: body.sse,
         promptLength: finalPrompt.length,
         apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none',
         apiKeyLength: finalApiKey ? finalApiKey.length : 0,
@@ -1415,11 +1413,11 @@ class AirforceProvider {
       let results = [];
       
       if (contentType.includes('text/event-stream') || contentType.includes('text/plain')) {
-        // Handle SSE streaming response
-        logger.add("📡 Using SSE stream handler");
+        // Handle SSE streaming response (fallback for unexpected SSE responses)
+        logger.add("📡 Using SSE stream handler (fallback)");
         results = await this.handleSSEStream(response, logger, width, height, model);
       } else {
-        // Handle regular JSON response
+        // Handle regular JSON response (standard for Airforce API)
         logger.add("📡 Using JSON response handler");
         const data = await response.json();
         logger.add("📊 Airforce Response Data", {
@@ -5574,7 +5572,7 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     btn.textContent = generatingText;
     // 顯示進度條
     showGenerationProgress();
-    // 模擬進度更新（實際進度由 SSE 流式響應更新）
+    // 模擬進度更新（實際進度由 API 響應更新）
     simulateProgress();
     
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);

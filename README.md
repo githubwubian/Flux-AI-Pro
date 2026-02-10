@@ -36,7 +36,7 @@
 - **🤖 AI 提示詞生成器**：使用 Pollinations Vision API 生成專業提示詞。
 - **📊 API 端點**：提供完整的 RESTful API 端點供外部呼叫。
 - **🌐 介面語言跟蹤**：生成進度、按鈕文本、狀態消息等所有 UI 元素均支持 5 種語言。
-- **🔧 Airforce API 優化**：更新端點為 `https://api.airforce/v1/images/generations`，改進 SSE 流處理和錯誤處理。
+- **🔧 Airforce API 優化**：更新端點為 `https://api.airforce/v1/images/generations`，改進 JSON 響應處理和錯誤處理。
 
 ---
 
@@ -67,8 +67,8 @@
 *   **懶加載技術**：利用 IntersectionObserver 優化圖片加載速度。
 *   **請求隊列**：智慧管理併發請求，避免瀏覽器卡頓。
 *   **自動翻譯**：內建 Google 翻譯接口，支援中文提示詞自動轉英文。
-*   **實時生成時間追生成時間追蹤**：顯示圖片生成的實時進度與最終耗時，提供透明的性能反饋。
-*   **SSE 流處理**：Airforce API 採用 Server-Sent Events 流式響應，提升生成效率。
+*   **實時生成時間追蹤**：顯示圖片生成的實時進度與最終耗時，提供透明的性能反饋。
+*   **JSON 響應處理**：Airforce API 採用標準 JSON 響應格式，確保穩定的圖片返回。
 
 ---
 
