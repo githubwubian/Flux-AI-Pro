@@ -28,15 +28,24 @@ const CONFIG = {
     "square-1k": { name: "方形 1024x1024", width: 1024, height: 1024 },
     "square-1.5k": { name: "方形 1536x1536", width: 1536, height: 1536 },
     "square-2k": { name: "方形 2048x2048", width: 2048, height: 2048 },
+    "square-4k": { name: "方形 4096x4096 (4K)", width: 4096, height: 4096 },
     "portrait-9-16-hd": { name: "豎屏 9:16 HD", width: 1080, height: 1920 },
+    "portrait-9-16-2k": { name: "豎屏 9:16 2K", width: 2160, height: 3840 },
+    "portrait-9-16-4k": { name: "豎屏 9:16 4K", width: 4320, height: 7680 },
     "landscape-16-9-hd": { name: "橫屏 16:9 HD", width: 1920, height: 1080 },
+    "landscape-16-9-2k": { name: "橫屏 16:9 2K", width: 3840, height: 2160 },
+    "landscape-16-9-4k": { name: "橫屏 16:9 4K", width: 7680, height: 4320 },
     "instagram-square": { name: "Instagram 方形", width: 1080, height: 1080 },
     "wallpaper-fhd": { name: "桌布 Full HD", width: 1920, height: 1080 },
+    "wallpaper-2k": { name: "桌布 2K", width: 2560, height: 1440 },
+    "wallpaper-4k": { name: "桌布 4K", width: 3840, height: 2160 },
     "portrait-3-4": { name: "豎屏 3:4", width: 768, height: 1024 },
     "portrait-4-5": { name: "豎屏 4:5", width: 1080, height: 1350 },
     "landscape-4-3": { name: "橫屏 4:3", width: 1024, height: 768 },
     "landscape-3-2": { name: "橫屏 3:2", width: 1200, height: 800 },
-    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 }
+    "cinematic-21-9": { name: "電影感 21:9", width: 1920, height: 822 },
+    "cinematic-21-9-2k": { name: "電影感 21:9 2K", width: 3840, height: 1644 },
+    "cinematic-21-9-4k": { name: "電影感 21:9 4K", width: 7680, height: 3288 }
   },
   
   PROVIDERS: {
@@ -151,6 +160,24 @@ const CONFIG = {
       ],
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 2048, height: 2048 }
+    },
+    nonpon: {
+      name: "Nonpon API",
+      endpoint: "https://api-reverse-engineering.kines966176.workers.dev",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Nonpon AI 圖像生成服務",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview 🌟", category: "gemini", description: "Gemini 3 Pro 圖像預覽模型 - 高品質圖像生成", max_size: 4096 }
+      ],
+      rate_limit: { requests: 60, interval: 60 },
+      max_size: { width: 4096, height: 4096 }
     }
   },
   
@@ -1867,6 +1894,172 @@ class AirforceProvider {
 }
 
 // =================================================================================
+// NonponProvider - Nonpon API Provider
+// =================================================================================
+class NonponProvider {
+  constructor(config, env) {
+    this.config = config;
+    this.name = config.name;
+    this.env = env;
+  }
+
+  async generate(prompt, options, logger) {
+    const {
+      model = "flux-1-dev",
+      width = 1024,
+      height = 1024,
+      apiKey = "",
+      style = "none",
+      negativePrompt = ""
+    } = options;
+
+    const finalApiKey = this.env.NONPON_API_KEY || apiKey;
+    if (!finalApiKey || finalApiKey.trim() === '') {
+      throw new Error("Nonpon API key is required. Please configure NONPON_API_KEY in your environment variables or provide it in the request.");
+    }
+
+    logger.add("🎨 Nonpon Generating", {
+      model,
+      width,
+      height,
+      style,
+      promptLength: prompt.length
+    });
+
+    try {
+      // Translate prompt to English if needed
+      const translationResult = await translateToEnglish(prompt, this.env);
+      const translatedPrompt = translationResult.text || prompt;
+      
+      // Apply style if specified
+      let finalPrompt = translatedPrompt;
+      if (style !== "none") {
+        const styleResult = StyleProcessor.applyStyle(translatedPrompt, style, negativePrompt);
+        finalPrompt = styleResult.enhancedPrompt || translatedPrompt;
+      }
+
+      const size = `${width}x${height}`;
+      const url = `${this.config.endpoint}/v1/images/generations`;
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': finalApiKey.startsWith('Bearer ') ? finalApiKey : `Bearer ${finalApiKey}`,
+        'User-Agent': 'Flux-AI-Pro-Worker'
+      };
+
+      const body = {
+        model: model,
+        prompt: finalPrompt,
+        n: 1,
+        size: size,
+        response_format: "url"
+      };
+
+      logger.add("📤 Request to Nonpon", {
+        url,
+        model: body.model,
+        size: body.size,
+        response_format: body.response_format,
+        promptLength: finalPrompt.length,
+        apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none'
+      });
+
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(body)
+      }, 120000);
+
+      logger.add("📥 Nonpon Response Status", {
+        status: response.status,
+        ok: response.ok,
+        contentType: response.headers.get('content-type')
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.add("❌ Nonpon API Error", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorText
+        });
+        
+        let errorMessage = `Nonpon API error: ${response.status}`;
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error) {
+            errorMessage += ` - ${errorData.error.message || errorData.error}`;
+          } else if (errorData.message) {
+            errorMessage += ` - ${errorData.message}`;
+          } else {
+            errorMessage += ` - ${errorText}`;
+          }
+        } catch {
+          errorMessage += ` - ${errorText}`;
+        }
+        
+        if (response.status === 401 || response.status === 403) {
+          errorMessage += '. Please check your Nonpon API key.';
+        } else if (response.status === 429) {
+          errorMessage += '. Rate limit exceeded. Please try again later.';
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      logger.add("📊 Nonpon Response Data", {
+        dataKeys: Object.keys(data),
+        dataPreview: JSON.stringify(data).substring(0, 500)
+      });
+
+      let imgUrl = null;
+      
+      // Parse response - support multiple formats
+      if (data.url) {
+        imgUrl = data.url;
+        logger.add("✅ Found URL in data.url");
+      } else if (data.data && Array.isArray(data.data) && data.data[0] && data.data[0].url) {
+        imgUrl = data.data[0].url;
+        logger.add("✅ Found URL in data.data[0].url");
+      } else if (data.images && Array.isArray(data.images) && data.images[0] && data.images[0].url) {
+        imgUrl = data.images[0].url;
+        logger.add("✅ Found URL in data.images[0].url");
+      } else if (data.image) {
+        imgUrl = data.image;
+        logger.add("✅ Found URL in data.image");
+      } else {
+        throw new Error("Invalid response format from Nonpon API - no image URL found");
+      }
+
+      logger.add("⬇️ Downloading Image", { url: imgUrl });
+      
+      // Download image to return binary
+      const imgResp = await fetch(imgUrl);
+      const imageBuffer = await imgResp.arrayBuffer();
+      const contentType = imgResp.headers.get('content-type') || 'image/png';
+      
+      return {
+        imageData: imageBuffer,
+        contentType: contentType,
+        url: imgUrl,
+        provider: this.name,
+        model: model,
+        seed: -1,
+        width: width,
+        height: height,
+        auto_translated: translationResult.translated,
+        authenticated: true,
+        cost: "QUOTA"
+      };
+    } catch (e) {
+      logger.add("❌ Nonpon Failed", { error: e.message });
+      throw e;
+    }
+  }
+}
+
+// =================================================================================
 // 供應商隊列管理器 - 為指定供應商提供獨立的隊列和並發控制
 // =================================================================================
 class ProviderQueueManager {
@@ -1878,7 +2071,7 @@ class ProviderQueueManager {
     };
     
     // 不使用隊列的供應商列表
-    this.noQueueProviders = ['pollinations', 'infip', 'kinai'];
+    this.noQueueProviders = ['pollinations', 'infip', 'kinai', 'nonpon'];
   }
 
   /**
@@ -2037,6 +2230,7 @@ class MultiProviderRouter {
         else if (key === 'aqua') this.providers[key] = new AquaProvider(config, env);
         else if (key === 'kinai') this.providers[key] = new KinaiProvider(config, env);
         else if (key === 'airforce') this.providers[key] = new AirforceProvider(config, env);
+        else if (key === 'nonpon') this.providers[key] = new NonponProvider(config, env);
       }
     }
   }
@@ -2648,7 +2842,7 @@ function handleNanoPage(request) {
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>🍌 NanoBanana Pro - 控制台</title>
+<title>🍌 Nano Pro - Gemini 3 Pro 控制台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍌</text></svg>">
 <style>
 :root {
@@ -2976,6 +3170,24 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                     <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影">
                         <div class="ratio-shape" style="width:18px; height:7px;"></div>
                     </div>
+                    <div class="ratio-item" data-w="2048" data-h="2048" title="2K 方形">
+                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="3840" data-h="2160" title="2K 16:9">
+                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="2160" data-h="3840" title="2K 9:16">
+                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #FACC15;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="4096" data-h="4096" title="4K 方形">
+                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #8B5CF6;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="7680" data-h="4320" title="4K 16:9">
+                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #8B5CF6;"></div>
+                    </div>
+                    <div class="ratio-item" data-w="4320" data-h="7680" title="4K 9:16">
+                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #8B5CF6;"></div>
+                    </div>
                 </div>
                 <input type="hidden" id="width" value="1024">
                 <input type="hidden" id="height" value="1024">
@@ -3058,7 +3270,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
 
             <button id="genBtn" class="gen-btn">
                 <span id="genBtnText">生成圖像</span>
-                <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">消耗 1 香蕉能量 🍌</span>
+                <span id="genBtnCost" style="font-size:12px; opacity:0.6; font-weight:400; display:block; margin-top:4px">Gemini 3 Pro 🌟</span>
             </button>
             
             <div class="quota-box">
@@ -3069,6 +3281,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
                 <div class="quota-bar">
                     <div id="quotaFill" class="quota-fill"></div>
                 </div>
+                <div style="font-size:10px; color:#9ca3af; margin-top:6px; text-align:center;">支援 2K / 4K 輸出</div>
             </div>
         </div>
 
@@ -4186,7 +4399,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
         try {
             console.log("🍌 Nano Pro: 開始生成圖片...", {
                 prompt: p,
-                model: 'nanobanana',
+                provider: 'nonpon',
+                model: 'gemini-3-pro-image-preview',
                 width: els.width.value,
                 height: els.height.value,
                 style: els.style.value,
@@ -4196,7 +4410,8 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             const requestBody = {
                 prompt: p,
                 negative_prompt: els.negative.value,
-                model: 'nanobanana',
+                provider: 'nonpon',
+                model: 'gemini-3-pro-image-preview',
                 width: parseInt(els.width.value),
                 height: parseInt(els.height.value),
                 style: els.style.value,
@@ -5654,6 +5869,8 @@ const STYLE_PRESETS=${JSON.stringify(CONFIG.STYLE_PRESETS)};
 const STYLE_CATEGORIES=${JSON.stringify(CONFIG.STYLE_CATEGORIES)};
 // Inject server-side key status
 const frontendProviders = ${JSON.stringify(CONFIG.PROVIDERS)};
+// Remove nonpon provider from main UI (only available in Nano Pro page)
+delete frontendProviders.nonpon;
 if (${hasInfipServerKey} && frontendProviders.infip) {
     frontendProviders.infip.has_server_key = true;
 }

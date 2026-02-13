@@ -30,8 +30,8 @@ binding = "AI"
 [vars]
 WORKER_VERSION = "11.12.0"
 DEFAULT_MODEL = "flux-schnell"
-MAX_WIDTH = 2048
-MAX_HEIGHT = 2048
+MAX_WIDTH = 4096
+MAX_HEIGHT = 4096
 MAX_TIMEOUT = 300000
 ENVIRONMENT = "production"
 
@@ -43,6 +43,7 @@ ENVIRONMENT = "production"
 # 3. AQUA_API_KEY (Aqua Server)
 # 4. KINAI_API_KEY (Kinai API)
 # 5. AIRFORCE_API_KEY (Airforce API)
+# 6. NONPON_API_KEY (Nonpon API)
 # ============================================
 # 設置命令範例：
 # npx wrangler secret put POLLINATIONS_API_KEY
@@ -50,3 +51,4 @@ ENVIRONMENT = "production"
 # npx wrangler secret put AQUA_API_KEY
 # npx wrangler secret put KINAI_API_KEY
 # npx wrangler secret put AIRFORCE_API_KEY
+# npx wrangler secret put NONPON_API_KEY

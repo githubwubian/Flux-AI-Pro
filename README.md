@@ -43,8 +43,9 @@
 ## ✨ 核心功能特色
 
 ### 1. 雙重操作介面 (Dual UI)
-*   **專業版主介面 (`/`)**：提供完整的參數控制，適合需要精細調整的專業創作者。
-*   **NanoBanana Pro (`/nano`)**：極簡設計，內建每小時 5 張的免費配額與能量回充系統，適合快速獲取靈感。
+*   **專業版主介面 (`/`)**：提供完整的參數控制，適合需要精細調整的專業創作者。支援 Pollinations.ai、Infip、Aqua、Kinai、Airforce 等供應商。
+*   **Nano Pro (`/nano`)**：極簡設計，專門使用 Nonpon API 的 Gemini 3 Pro Image Preview 模型，支援 2K/4K 輸出，內建每小時 5 張的免費配額與能量回充系統，適合快速獲取靈感。
+    > **注意**：Nonpon API 僅在 Nano Pro 頁面可用，主介面不支援此供應商。
 
 ### 2. 智慧語言管理 (Smart I18N)
 *   **自動偵測**：根據 `navigator.language` 自動切換，並記憶用戶的手動選擇。
@@ -128,6 +129,7 @@
     wrangler secret put AQUA_API_KEY
     wrangler secret put KINAI_API_KEY
     wrangler secret put AIRFORCE_API_KEY
+    wrangler secret put NONPON_API_KEY
     ```
 4.  **部署**：
     ```bash
@@ -150,6 +152,7 @@
 - [Aqua Server](https://aqua.server) - AI Generation Server
 - [Kinai API](https://kinai.eu.cc) - High-Performance AI Generation API
 - [Airforce API](https://api.airforce) - High-Quality AI Image Generation API
+- [Nonpon API](https://api-reverse-engineering.kines966176.workers.dev) - AI Image Generation API (Nano Pro 專用)
 - [ShowMeBest.AI](https://showmebest.ai) - AI Tool Directory
 - [Cloudflare Workers](https://workers.cloudflare.com) - Serverless Platform
 

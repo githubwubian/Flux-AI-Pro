@@ -55,13 +55,13 @@ export const TRANSLATIONS = {
     stat_storage: "💾 存儲空間 (永久)",
     
     // Nano 版專用
-    nano_title: "🍌 NanoBanana Pro - 控制台",
+    nano_title: "🍌 Nano Pro - Gemini 3 Pro 控制台",
     nano_prompt: "Prompt",
     nano_canvas_ratio: "畫布比例",
     nano_style_settings: "風格與設定",
     nano_exclude: "排除",
     nano_energy_per_hour: "每小時能量",
-    nano_consume_energy: "消耗 1 香蕉能量",
+    nano_consume_energy: "Gemini 3 Pro 🌟",
     nano_energy_recharging: "能量回充中",
     nano_injecting_energy: "正在注入 AI 能量",
     nano_generating: "生成中",
@@ -94,6 +94,7 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     provider_kinai: "Kinai API 🚀",
     provider_airforce: "Airforce API ✈️",
+    provider_nonpon: "Nonpon API 🎨",
     
     // 模型名稱
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -429,6 +430,7 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     provider_kinai: "Kinai API 🚀",
     provider_airforce: "Airforce API ✈️",
+    provider_nonpon: "Nonpon API 🎨",
     
     // Model Names
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -705,6 +707,7 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     provider_kinai: "Kinai API 🚀",
     provider_airforce: "Airforce API ✈️",
+    provider_nonpon: "Nonpon API 🎨",
     
     // モデル名
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -981,6 +984,7 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     provider_kinai: "Kinai API 🚀",
     provider_airforce: "Airforce API ✈️",
+    provider_nonpon: "Nonpon API 🎨",
     
     // 모델 이름
     model_flux_2_dev: "Flux 2 Dev 🌟",
@@ -1218,13 +1222,13 @@ export const TRANSLATIONS = {
     stat_storage: "💾 مساحة التخزين (دائمة)",
     
     // إصدار Nano
-    nano_title: "🍌 NanoBanana Pro - وحدة التحكم",
+    nano_title: "🍌 Nano Pro - Gemini 3 Pro وحدة التحكم",
     nano_prompt: "موجه",
     nano_canvas_ratio: "نسبة اللوحة",
     nano_style_settings: "النمط والإعدادات",
     nano_exclude: "استبعاد",
     nano_energy_per_hour: "الطاقة لكل ساعة",
-    nano_consume_energy: "استهلاك 1 طاقة موز",
+    nano_consume_energy: "Gemini 3 Pro 🌟",
     nano_energy_recharging: "إعادة شحن الطاقة",
     nano_injecting_energy: "حقن طاقة AI...",
     nano_generating: "جاري الإنشاء",
@@ -1257,6 +1261,7 @@ export const TRANSLATIONS = {
     provider_aqua: "Aqua Server 🌊",
     provider_kinai: "Kinai API 🚀",
     provider_airforce: "Airforce API ✈️",
+    provider_nonpon: "Nonpon API 🎨",
     
     // أسماء النماذج
     model_flux_2_dev: "Flux 2 Dev 🌟",
