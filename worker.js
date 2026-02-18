@@ -5426,18 +5426,24 @@ async function handleAdminAPI(request, env, ctx) {
 // 登入處理
 async function handleAdminLogin(request, env) {
   try {
+    console.log('[Admin Login] 收到登入請求');
     const body = await request.json();
     const { username, password } = body;
+    console.log('[Admin Login] 用戶名:', username);
     
     // 獲取存儲的管理員憑證
     const credentials = await env.FLUX_KV.get('admin:credentials', 'json');
+    console.log('[Admin Login] KV 憑證查詢結果:', credentials ? '找到' : '未找到');
+    
     if (!credentials) {
       // 創建默認管理員賬戶
+      console.log('[Admin Login] 創建默認管理員賬戶');
       const defaultCredentials = {
         username: 'admin',
         passwordHash: await hashPassword('admin123')
       };
       await env.FLUX_KV.put('admin:credentials', JSON.stringify(defaultCredentials));
+      console.log('[Admin Login] 默認賬戶已創建');
     }
     
     const storedCredentials = credentials || {
@@ -5447,16 +5453,25 @@ async function handleAdminLogin(request, env) {
     
     // 驗證用戶名和密碼
     if (username !== storedCredentials.username) {
+      console.log('[Admin Login] 用戶名不匹配');
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
     }
     
     const passwordHash = await hashPassword(password);
+    console.log('[Admin Login] 密碼哈希:', passwordHash);
+    console.log('[Admin Login] 存儲的密碼哈希:', storedCredentials.passwordHash);
+    
     if (passwordHash !== storedCredentials.passwordHash) {
+      console.log('[Admin Login] 密碼不匹配');
       return new Response(JSON.stringify({ error: 'Invalid credentials' }), { status: 401, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
     }
     
+    console.log('[Admin Login] 驗證成功');
+    
     // 生成 JWT Token
     const token = await generateAdminToken(username);
+    console.log('[Admin Login] Token 已生成:', token.substring(0, 16) + '...');
+    
     const tokenData = {
       user: username,
       createdAt: Date.now(),
@@ -5464,9 +5479,12 @@ async function handleAdminLogin(request, env) {
     };
     
     await env.FLUX_KV.put('admin:tokens:' + token, JSON.stringify(tokenData), { expirationTtl: 86400 });
+    console.log('[Admin Login] Token 已存儲到 KV');
     
+    console.log('[Admin Login] 登入成功，返回 Token');
     return new Response(JSON.stringify({ token, user: username }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
   } catch (error) {
+    console.error('[Admin Login] 登入錯誤:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
   }
 }
@@ -5597,34 +5615,87 @@ async function renderAdminLogin() {
         <div class="error-message" id="errorMessage"></div>
     </div>
     <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const errorMessage = document.getElementById('errorMessage');
+        console.log('[Login Script] 腳本開始執行');
+        console.log('[Login Script] DOM 狀態:', document.readyState);
+        
+        function initLoginForm() {
+            console.log('[Login Script] 初始化登入表單...');
+            const form = document.getElementById('loginForm');
+            console.log('[Login Script] 表單元素:', form);
             
-            try {
-                const response = await fetch('/admin/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    localStorage.setItem('adminToken', data.token);
-                    localStorage.setItem('adminUser', data.user);
-                    window.location.href = '/admin';
-                } else {
-                    errorMessage.textContent = data.error || '登入失敗';
-                    errorMessage.classList.add('show');
-                }
-            } catch (error) {
-                errorMessage.textContent = '網絡錯誤，請稍後再試';
-                errorMessage.classList.add('show');
+            if (!form) {
+                console.error('[Login Script] 錯誤: 找不到 loginForm 元素!');
+                return;
             }
-        });
+            
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                console.log('[Login Form] 表單提交事件觸發');
+                
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const errorMessage = document.getElementById('errorMessage');
+                
+                console.log('[Login Form] 用戶名:', username);
+                console.log('[Login Form] 密碼長度:', password ? password.length : 0);
+                
+                if (!username || !password) {
+                    errorMessage.textContent = '請輸入用戶名和密碼';
+                    errorMessage.classList.add('show');
+                    return;
+                }
+                
+                // 禁用按鈕防止重複提交
+                const submitBtn = form.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = '登入中...';
+                
+                try {
+                    console.log('[Login Form] 發送登入請求...');
+                    const response = await fetch('/admin/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+                    
+                    console.log('[Login Form] 響應狀態:', response.status, response.statusText);
+                    
+                    const data = await response.json();
+                    console.log('[Login Form] 響應數據:', data);
+                    
+                    if (response.ok) {
+                        console.log('[Login Form] 登入成功，保存 Token');
+                        localStorage.setItem('adminToken', data.token);
+                        localStorage.setItem('adminUser', data.user);
+                        console.log('[Login Form] Token 已保存，跳轉到 /admin');
+                        window.location.href = '/admin';
+                    } else {
+                        console.log('[Login Form] 登入失敗:', data.error);
+                        errorMessage.textContent = data.error || '登入失敗';
+                        errorMessage.classList.add('show');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '登入';
+                    }
+                } catch (error) {
+                    console.error('[Login Form] 請求錯誤:', error);
+                    errorMessage.textContent = '網絡錯誤，請稍後再試: ' + error.message;
+                    errorMessage.classList.add('show');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '登入';
+                }
+            });
+            
+            console.log('[Login Script] 事件監聽器已附加');
+        }
+        
+        // 確保 DOM 載入完成後再初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initLoginForm);
+            console.log('[Login Script] 等待 DOMContentLoaded 事件');
+        } else {
+            // DOM 已經載入完成
+            initLoginForm();
+        }
     </script>
 </body>
 </html>`;
