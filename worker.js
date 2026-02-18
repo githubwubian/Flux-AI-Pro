@@ -5414,12 +5414,53 @@ async function handleAdminAPI(request, env, ctx) {
     return await getAdminGlobalSettings(env);
   } else if (pathname === '/admin/api/settings/global' && method === 'PUT') {
     return await updateAdminGlobalSettings(request, env);
+    }
+  
+    // 修改密碼 API
+    if (pathname === '/admin/api/settings/password' && method === 'PUT') {
+      return await updateAdminPassword(request, env);
+    }
+  
+    return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
   }
   
-  return new Response(JSON.stringify({ error: 'Not Found' }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
-}
-
-// 登入處理
+  // 修改密碼
+  async function updateAdminPassword(request, env) {
+    try {
+      const body = await request.json();
+      const { currentPassword, newPassword } = body;
+      
+      if (!currentPassword || !newPassword) {
+        return new Response(JSON.stringify({ error: '請輸入當前密碼和新密碼' }), { status: 400, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      }
+      
+      if (newPassword.length < 6) {
+        return new Response(JSON.stringify({ error: '新密碼長度至少6個字符' }), { status: 400, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      }
+      
+      // 獲取當前管理員憑證
+      const credentials = await env.FLUX_KV.get('admin:credentials', 'json');
+      if (!credentials) {
+        return new Response(JSON.stringify({ error: '管理員賬戶未配置' }), { status: 500, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      }
+      
+      // 驗證當前密碼
+      const currentHash = await hashPassword(currentPassword);
+      if (currentHash !== credentials.passwordHash) {
+        return new Response(JSON.stringify({ error: '當前密碼不正確' }), { status: 401, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      }
+      
+      // 更新密碼
+      credentials.passwordHash = await hashPassword(newPassword);
+      await env.FLUX_KV.put('admin:credentials', JSON.stringify(credentials));
+      
+      return new Response(JSON.stringify({ success: true, message: '密碼修改成功' }), { headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+    }
+  }
+  
+  // 登入處理
 async function handleAdminLogin(request, env) {
   try {
     console.log('[Admin Login] 收到登入請求');
@@ -6519,6 +6560,63 @@ async function renderAdminSettings() {
             cursor: pointer;
             font-size: 14px;
         }
+        .password-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 400px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group label {
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+        .form-group input {
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-primary {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+        }
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .message {
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -6560,8 +6658,11 @@ async function renderAdminSettings() {
                 const data = await response.json();
                 
                 const container = document.getElementById('settingsContainer');
+                let html = '';
+                
+                // 全局設置
                 if (data.global_settings) {
-                    let html = '<div class="settings-section"><h2>全局設置</h2>';
+                    html += '<div class="settings-section"><h2>全局設置</h2>';
                     html += '<div class="setting-item">' +
                         '<span class="setting-label">默認供應商</span>' +
                         '<span class="setting-value">' + (data.global_settings.defaultProvider || 'pollinations') + '</span>' +
@@ -6575,14 +6676,94 @@ async function renderAdminSettings() {
                         '<span class="setting-value">' + (data.global_settings.defaultSize || 'square-1k') + '</span>' +
                     '</div>';
                     html += '</div>';
-                    container.innerHTML = html;
-                } else {
-                    container.innerHTML = '<p>暫無設置</p>';
                 }
+                
+                // 修改密碼區塊
+                html += '<div class="settings-section"><h2>修改密碼</h2>';
+                html += '<form class="password-form" id="passwordForm" onsubmit="return changePassword(event)">';
+                html += '<div class="form-group">';
+                html += '<label for="currentPassword">當前密碼</label>';
+                html += '<input type="password" id="currentPassword" name="currentPassword" required placeholder="請輸入當前密碼">';
+                html += '</div>';
+                html += '<div class="form-group">';
+                html += '<label for="newPassword">新密碼</label>';
+                html += '<input type="password" id="newPassword" name="newPassword" required minlength="6" placeholder="請輸入新密碼（至少6個字符）">';
+                html += '</div>';
+                html += '<div class="form-group">';
+                html += '<label for="confirmPassword">確認新密碼</label>';
+                html += '<input type="password" id="confirmPassword" name="confirmPassword" required placeholder="請再次輸入新密碼">';
+                html += '</div>';
+                html += '<button type="submit" class="btn-primary" id="submitBtn">修改密碼</button>';
+                html += '</form>';
+                html += '<div id="passwordMessage"></div>';
+                html += '</div>';
+                
+                container.innerHTML = html;
             } catch (error) {
                 console.error('Failed to load settings:', error);
                 document.getElementById('settingsContainer').innerHTML = '<p>載入失敗</p>';
             }
+        }
+        
+        async function changePassword(event) {
+            event.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const messageDiv = document.getElementById('passwordMessage');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // 清除之前的訊息
+            messageDiv.innerHTML = '';
+            messageDiv.className = '';
+            
+            // 驗證新密碼
+            if (newPassword !== confirmPassword) {
+                messageDiv.innerHTML = '新密碼與確認密碼不一致';
+                messageDiv.className = 'message error';
+                return false;
+            }
+            
+            if (newPassword.length < 6) {
+                messageDiv.innerHTML = '新密碼長度至少6個字符';
+                messageDiv.className = 'message error';
+                return false;
+            }
+            
+            // 禁用按鈕
+            submitBtn.disabled = true;
+            submitBtn.textContent = '處理中...';
+            
+            try {
+                const response = await fetch('/admin/api/settings/password', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    messageDiv.innerHTML = '密碼修改成功！';
+                    messageDiv.className = 'message success';
+                    document.getElementById('passwordForm').reset();
+                } else {
+                    messageDiv.innerHTML = data.error || '修改失敗';
+                    messageDiv.className = 'message error';
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '網絡錯誤：' + error.message;
+                messageDiv.className = 'message error';
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '修改密碼';
+            }
+            
+            return false;
         }
         
         loadSettings();
