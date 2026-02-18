@@ -4545,7 +4545,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     }
 
     function updateCooldownText(sec) {
-        els.genBtn.innerHTML = \`<span>\${nanoT('gen_btn_charging').replace('{s}', sec)}</span>\`;
+        els.genBtn.innerHTML = '<span>' + nanoT('gen_btn_charging').replace('{s}', sec) + '</span>';
     }
     
     // Check quota reset (per minute)
@@ -4580,7 +4580,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     checkAndStartCooldown();
     
     function updateQuotaUI() {
-        els.quotaText.textContent = \`\${currentQuota} / \${maxQuota}\`;
+        els.quotaText.textContent = currentQuota + ' / ' + maxQuota;
         const pct = (currentQuota / maxQuota) * 100;
         els.quotaFill.style.width = pct + '%';
         if(currentQuota <= 0) {
@@ -4637,7 +4637,7 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             ratioPreviewBox.style.width = previewWidth + 'px';
             ratioPreviewBox.style.height = previewHeight + 'px';
             ratioPreviewInfo.textContent = title;
-            ratioPreviewDimensions.textContent = `${width} x ${height}`;
+            ratioPreviewDimensions.textContent = width + ' x ' + height;
             
             // 顯示預覽覆蓋層
             ratioPreviewOverlay.classList.add('show');
@@ -6966,24 +6966,23 @@ function showGenerationProgress() {
                      curLang === 'ko' ? '초기화 중...' :
                      curLang === 'ar' ? 'جاري التهيئة...' : '初始化中...';
     
-    resDiv.innerHTML = \`
-        <div class="generation-progress-container">
-            <div class="generation-progress-header">
-                <span class="generation-progress-status">\${statusText}</span>
-                <span class="generation-progress-percentage" id="progressPercentage">0%</span>
-            </div>
-            <div class="generation-progress-bar">
-                <div class="generation-progress-fill" id="progressFill"></div>
-            </div>
-            <div class="generation-progress-steps">
-                <span class="step-indicator" id="step1">📝</span>
-                <span class="step-indicator" id="step2">🎨</span>
-                <span class="step-indicator" id="step3">✨</span>
-                <span class="step-indicator" id="step4">🖼️</span>
-            </div>
-            <div class="generation-progress-text" id="progressText">\${initText}</div>
-        </div>
-    \`;
+    resDiv.innerHTML =
+        '<div class="generation-progress-container">' +
+            '<div class="generation-progress-header">' +
+                '<span class="generation-progress-status">' + statusText + '</span>' +
+                '<span class="generation-progress-percentage" id="progressPercentage">0%</span>' +
+            '</div>' +
+            '<div class="generation-progress-bar">' +
+                '<div class="generation-progress-fill" id="progressFill"></div>' +
+            '</div>' +
+            '<div class="generation-progress-steps">' +
+                '<span class="step-indicator" id="step1">📝</span>' +
+                '<span class="step-indicator" id="step2">🎨</span>' +
+                '<span class="step-indicator" id="step3">✨</span>' +
+                '<span class="step-indicator" id="step4">🖼️</span>' +
+            '</div>' +
+            '<div class="generation-progress-text" id="progressText">' + initText + '</div>' +
+        '</div>';
     currentProgress = 0;
     updateProgressUI(0, initText);
 }
@@ -7127,7 +7126,7 @@ function displayResult(items){
     const div=document.createElement('div');div.className='gallery';
     items.forEach(item=>{
         const d=document.createElement('div');d.className='gallery-item';
-        d.innerHTML=\`<img src="\${item.image||item.url}" onclick="openModal(this.src)">\`;
+        d.innerHTML='<img src="' + (item.image||item.url) + '" onclick="openModal(this.src)">';
         div.appendChild(d);
     });
     document.getElementById('results').innerHTML='';
