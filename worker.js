@@ -6592,21 +6592,13 @@ async function renderAdminProviders() {
 		.main-content { margin-left: 250px; padding: 30px; }
 		.page-header h1 { font-size: 28px; color: #333; margin-bottom: 30px; }
 		.logout-btn { position: fixed; top: 20px; right: 20px; padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
-		
-		/* 統計欄 */
 		.stats-bar { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
 		.stat-card { background: white; border-radius: 12px; padding: 20px; flex: 1; min-width: 150px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 		.stat-value { font-size: 28px; font-weight: 700; color: #667eea; }
 		.stat-label { font-size: 13px; color: #666; margin-top: 5px; }
-		
-		/* 區塊標題 */
 		.section-title { font-size: 18px; font-weight: 600; color: #333; margin: 30px 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
 		.section-title:first-child { margin-top: 0; }
-		
-		/* 供應商網格 */
 		.providers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-		
-		/* 供應商卡片 */
 		.provider-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent; }
 		.provider-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
 		.provider-card.custom { border-color: #667eea; }
@@ -6620,8 +6612,6 @@ async function renderAdminProviders() {
 		.provider-info { margin-bottom: 15px; }
 		.provider-info p { font-size: 13px; color: #666; margin: 4px 0; }
 		.provider-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-		
-		/* 按鈕樣式 */
 		.action-btn-small { padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; background: #f3f4f6; color: #374151; transition: background 0.2s; }
 		.action-btn-small:hover { background: #e5e7eb; }
 		.action-btn-small.edit { background: #667eea; color: white; }
@@ -6632,8 +6622,6 @@ async function renderAdminProviders() {
 		.action-btn-small.test:hover { background: #059669; }
 		.add-btn { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
 		.add-btn:hover { background: #5a67d8; }
-		
-		/* 自定義模型區塊 */
 		.custom-models-section { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
 		.models-list { margin-top: 15px; }
 		.models-table { width: 100%; border-collapse: collapse; }
@@ -6644,12 +6632,9 @@ async function renderAdminProviders() {
 		.status-badge.disabled { background: #fee2e2; color: #991b1b; }
 		.empty-text { color: #9ca3af; text-align: center; padding: 40px; }
 		.error-text { color: #ef4444; text-align: center; padding: 20px; }
-		
-		/* Modal 樣式 */
 		.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-		.modal { background: white; border-radius: 16px; padding: 30px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+		.modal { background: white; border-radius: 16px; padding: 30px; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; position: relative; }
 		.modal h2 { margin-bottom: 20px; color: #333; }
-		.modal-close { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
 		.form-group { margin-bottom: 20px; }
 		.form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #374151; }
 		.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
@@ -6657,8 +6642,6 @@ async function renderAdminProviders() {
 		.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 		.btn-primary { padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; }
 		.btn-secondary { padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; }
-		
-		/* 測試結果 */
 		.test-result { margin-top: 15px; padding: 15px; border-radius: 8px; }
 		.test-result.success { background: #dcfce7; border: 1px solid #86efac; }
 		.test-result.error { background: #fee2e2; border: 1px solid #fca5a5; }
@@ -6676,101 +6659,42 @@ async function renderAdminProviders() {
 		<a href="/admin/settings" class="nav-item">🔧 系統設置</a>
 	</div>
 	<button class="logout-btn" onclick="logout()">登出</button>
-	
 	<div class="main-content">
 		<h1>模型配置</h1>
-		
-		<!-- 統計欄 -->
 		<div class="stats-bar">
-			<div class="stat-card">
-				<div class="stat-value" id="totalProviders">-</div>
-				<div class="stat-label">總供應商</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-value" id="enabledProviders">-</div>
-				<div class="stat-label">已啟用</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-value" id="customProviders">-</div>
-				<div class="stat-label">自定義</div>
-			</div>
-			<div class="stat-card">
-				<div class="stat-value" id="totalModels">-</div>
-				<div class="stat-label">模型總數</div>
-			</div>
+			<div class="stat-card"><div class="stat-value" id="totalProviders">-</div><div class="stat-label">總供應商</div></div>
+			<div class="stat-card"><div class="stat-value" id="enabledProviders">-</div><div class="stat-label">已啟用</div></div>
+			<div class="stat-card"><div class="stat-value" id="customProviders">-</div><div class="stat-label">自定義</div></div>
+			<div class="stat-card"><div class="stat-value" id="totalModels">-</div><div class="stat-label">模型總數</div></div>
 		</div>
-		
-		<!-- 內建供應商 -->
-		<div class="section-title">
-			<span>內建供應商</span>
-		</div>
-		<div id="builtinProviders" class="providers-grid">
-			<p>載入中...</p>
-		</div>
-		
-		<!-- 自定義供應商 -->
-		<div class="section-title">
-			<span>自定義供應商</span>
-			<button class="add-btn" onclick="showAddProviderModal()">+ 新增供應商</button>
-		</div>
-		<div id="customProviders" class="providers-grid">
-			<p>載入中...</p>
-		</div>
-		
-		<!-- 自定義模型 -->
-		<div class="section-title">
-			<span>自定義模型</span>
-			<button class="add-btn" onclick="showAddModelModal()">+ 新增模型</button>
-		</div>
-		<div class="custom-models-section">
-			<div id="customModelsList" class="models-list">載入中...</div>
-		</div>
+		<div class="section-title"><span>內建供應商</span></div>
+		<div id="builtinProviders" class="providers-grid"><p>載入中...</p></div>
+		<div class="section-title"><span>自定義供應商</span><button class="add-btn" onclick="showAddProviderModal()">+ 新增供應商</button></div>
+		<div id="customProvidersGrid" class="providers-grid"><p>載入中...</p></div>
+		<div class="section-title"><span>自定義模型</span><button class="add-btn" onclick="showAddModelModal()">+ 新增模型</button></div>
+		<div class="custom-models-section"><div id="customModelsList" class="models-list">載入中...</div></div>
 	</div>
-	
-	<!-- Modal 容器 -->
 	<div id="modalContainer"></div>
-	
 	<script>
 		const token = localStorage.getItem('adminToken');
-		if (!token) {
-			window.location.href = '/admin/login';
-		}
-		
-		function logout() {
-			localStorage.removeItem('adminToken');
-			localStorage.removeItem('adminUser');
-			window.location.href = '/admin/login';
-		}
-		
+		if (!token) window.location.href = '/admin/login';
+		function logout() { localStorage.removeItem('adminToken'); localStorage.removeItem('adminUser'); window.location.href = '/admin/login'; }
 		let allProviders = {};
 		let allCustomProviders = {};
 		
-		// 載入所有供應商
 		async function loadProviders() {
 			try {
-				const response = await fetch('/admin/api/providers', {
-					headers: { 'Authorization': 'Bearer ' + token }
-				});
+				const response = await fetch('/admin/api/providers', { headers: { 'Authorization': 'Bearer ' + token } });
 				const data = await response.json();
 				allProviders = data.providers || {};
-				
-				// 更新統計
 				const total = Object.keys(allProviders).length;
 				const enabled = Object.values(allProviders).filter(p => p.enabled !== false).length;
 				document.getElementById('totalProviders').textContent = total;
 				document.getElementById('enabledProviders').textContent = enabled;
-				
-				// 計算模型總數
 				let modelCount = 0;
-				Object.values(allProviders).forEach(p => {
-					modelCount += (p.models?.length || 0);
-				});
+				Object.values(allProviders).forEach(p => { modelCount += (p.models?.length || 0); });
 				document.getElementById('totalModels').textContent = modelCount;
-				
-				// 渲染內建供應商
 				renderBuiltinProviders();
-				
-				// 載入自定義供應商
 				await loadCustomProviders();
 			} catch (error) {
 				console.error('Failed to load providers:', error);
@@ -6778,110 +6702,92 @@ async function renderAdminProviders() {
 			}
 		}
 		
-		// 渲染內建供應商
 		function renderBuiltinProviders() {
 			const container = document.getElementById('builtinProviders');
 			const providers = Object.entries(allProviders).filter(([id, p]) => !p.custom);
-			
 			if (providers.length > 0) {
-				container.innerHTML = providers.map(([id, provider]) => `
-					<div class="provider-card ${provider.enabled === false ? 'disabled' : ''}">
-						<div class="provider-header">
-							<span class="provider-name">${provider.name || id}</span>
-							<span class="provider-status ${provider.enabled !== false ? 'enabled' : 'disabled'}">${provider.enabled !== false ? '啟用' : '禁用'}</span>
-						</div>
-						<div class="provider-info">
-							<p><strong>端點:</strong> ${provider.endpoint || 'N/A'}</p>
-							<p><strong>模型數:</strong> ${provider.models?.length || 0}</p>
-							<p><strong>優先級:</strong> ${provider.priority || 'normal'}</p>
-						</div>
-						<div class="provider-actions">
-							<button class="action-btn-small" onclick="toggleProvider('${id}', ${provider.enabled !== false})">${provider.enabled !== false ? '禁用' : '啟用'}</button>
-							<button class="action-btn-small edit" onclick="editProvider('${id}')">配置</button>
-							<button class="action-btn-small test" onclick="testProvider('${id}')">測試</button>
-						</div>
-					</div>
-				`).join('');
+				container.innerHTML = providers.map(([id, provider]) => 
+					'<div class="provider-card ' + (provider.enabled === false ? 'disabled' : '') + '">' +
+						'<div class="provider-header">' +
+							'<span class="provider-name">' + (provider.name || id) + '</span>' +
+							'<span class="provider-status ' + (provider.enabled !== false ? 'enabled' : 'disabled') + '">' + (provider.enabled !== false ? '啟用' : '禁用') + '</span>' +
+						'</div>' +
+						'<div class="provider-info">' +
+							'<p><strong>端點:</strong> ' + (provider.endpoint || 'N/A') + '</p>' +
+							'<p><strong>模型數:</strong> ' + (provider.models?.length || 0) + '</p>' +
+							'<p><strong>優先級:</strong> ' + (provider.priority || 'normal') + '</p>' +
+						'</div>' +
+						'<div class="provider-actions">' +
+							'<button class="action-btn-small" onclick="toggleProvider(\'' + id + '\', ' + (provider.enabled !== false) + ')">' + (provider.enabled !== false ? '禁用' : '啟用') + '</button>' +
+							'<button class="action-btn-small edit" onclick="editProvider(\'' + id + '\')">配置</button>' +
+							'<button class="action-btn-small test" onclick="testProvider(\'' + id + '\')">測試</button>' +
+						'</div>' +
+					'</div>'
+				).join('');
 			} else {
 				container.innerHTML = '<p class="empty-text">暫無內建供應商</p>';
 			}
 		}
 		
-		// 載入自定義供應商
 		async function loadCustomProviders() {
 			try {
-				const response = await fetch('/admin/api/providers/custom', {
-					headers: { 'Authorization': 'Bearer ' + token }
-				});
+				const response = await fetch('/admin/api/providers/custom', { headers: { 'Authorization': 'Bearer ' + token } });
 				const data = await response.json();
 				allCustomProviders = data.providers || {};
-				
 				document.getElementById('customProviders').textContent = Object.keys(allCustomProviders).length;
-				
-				const container = document.getElementById('customProviders');
+				const container = document.getElementById('customProvidersGrid');
 				const providers = Object.entries(allCustomProviders);
-				
 				if (providers.length > 0) {
-					container.innerHTML = providers.map(([id, provider]) => `
-						<div class="provider-card custom ${provider.enabled === false ? 'disabled' : ''}">
-							<div class="provider-header">
-								<span class="provider-name">${provider.name || id} <span class="badge">自定義</span></span>
-								<span class="provider-status ${provider.enabled !== false ? 'enabled' : 'disabled'}">${provider.enabled !== false ? '啟用' : '禁用'}</span>
-							</div>
-							<div class="provider-info">
-								<p><strong>類型:</strong> ${provider.type || 'openai'}</p>
-								<p><strong>端點:</strong> ${provider.endpoint || 'N/A'}</p>
-								<p><strong>API Key:</strong> ${provider.api_key ? '已配置' : '未配置'}</p>
-								<p><strong>模型數:</strong> ${provider.models?.length || 0}</p>
-							</div>
-							<div class="provider-actions">
-								<button class="action-btn-small" onclick="toggleCustomProvider('${id}', ${provider.enabled !== false})">${provider.enabled !== false ? '禁用' : '啟用'}</button>
-								<button class="action-btn-small edit" onclick="editCustomProvider('${id}')">編輯</button>
-								<button class="action-btn-small test" onclick="testCustomProvider('${id}')">測試</button>
-								<button class="action-btn-small delete" onclick="deleteCustomProvider('${id}')">刪除</button>
-							</div>
-						</div>
-					`).join('');
+					container.innerHTML = providers.map(([id, provider]) => 
+						'<div class="provider-card custom ' + (provider.enabled === false ? 'disabled' : '') + '">' +
+							'<div class="provider-header">' +
+								'<span class="provider-name">' + (provider.name || id) + ' <span class="badge">自定義</span></span>' +
+								'<span class="provider-status ' + (provider.enabled !== false ? 'enabled' : 'disabled') + '">' + (provider.enabled !== false ? '啟用' : '禁用') + '</span>' +
+							'</div>' +
+							'<div class="provider-info">' +
+								'<p><strong>類型:</strong> ' + (provider.type || 'openai') + '</p>' +
+								'<p><strong>端點:</strong> ' + (provider.endpoint || 'N/A') + '</p>' +
+								'<p><strong>API Key:</strong> ' + (provider.api_key ? '已配置' : '未配置') + '</p>' +
+								'<p><strong>模型數:</strong> ' + (provider.models?.length || 0) + '</p>' +
+							'</div>' +
+							'<div class="provider-actions">' +
+								'<button class="action-btn-small" onclick="toggleCustomProvider(\'' + id + '\', ' + (provider.enabled !== false) + ')">' + (provider.enabled !== false ? '禁用' : '啟用') + '</button>' +
+								'<button class="action-btn-small edit" onclick="editCustomProvider(\'' + id + '\')">編輯</button>' +
+								'<button class="action-btn-small test" onclick="testCustomProvider(\'' + id + '\')">測試</button>' +
+								'<button class="action-btn-small delete" onclick="deleteCustomProvider(\'' + id + '\')">刪除</button>' +
+							'</div>' +
+						'</div>'
+					).join('');
 				} else {
 					container.innerHTML = '<p class="empty-text">暫無自定義供應商，點擊上方按鈕新增</p>';
 				}
 			} catch (error) {
 				console.error('Failed to load custom providers:', error);
-				document.getElementById('customProviders').innerHTML = '<p class="error-text">載入失敗</p>';
+				document.getElementById('customProvidersGrid').innerHTML = '<p class="error-text">載入失敗</p>';
 			}
 		}
 		
-		// 載入自定義模型
 		async function loadCustomModels() {
 			try {
-				const response = await fetch('/admin/api/models/custom', {
-					headers: { 'Authorization': 'Bearer ' + token }
-				});
+				const response = await fetch('/admin/api/models/custom', { headers: { 'Authorization': 'Bearer ' + token } });
 				const data = await response.json();
 				const container = document.getElementById('customModelsList');
 				const models = Object.values(data.models || {});
-				
 				if (models.length > 0) {
-					container.innerHTML = `
-						<table class="models-table">
-							<thead><tr><th>ID</th><th>名稱</th><th>供應商</th><th>模型 ID</th><th>狀態</th><th>操作</th></tr></thead>
-							<tbody>
-								${models.map(model => `
-									<tr>
-										<td>${model.id}</td>
-										<td>${model.name}</td>
-										<td>${model.provider}</td>
-										<td>${model.model_id}</td>
-										<td><span class="status-badge ${model.enabled ? 'enabled' : 'disabled'}">${model.enabled ? '啟用' : '禁用'}</span></td>
-										<td>
-											<button class="action-btn-small edit" onclick="editModel('${model.id}')">編輯</button>
-											<button class="action-btn-small delete" onclick="deleteModel('${model.id}')">刪除</button>
-										</td>
-									</tr>
-								`).join('')}
-							</tbody>
-						</table>
-					`;
+					container.innerHTML = '<table class="models-table"><thead><tr><th>ID</th><th>名稱</th><th>供應商</th><th>模型 ID</th><th>狀態</th><th>操作</th></tr></thead><tbody>' +
+						models.map(model => 
+							'<tr>' +
+								'<td>' + model.id + '</td>' +
+								'<td>' + model.name + '</td>' +
+								'<td>' + model.provider + '</td>' +
+								'<td>' + model.model_id + '</td>' +
+								'<td><span class="status-badge ' + (model.enabled ? 'enabled' : 'disabled') + '">' + (model.enabled ? '啟用' : '禁用') + '</span></td>' +
+								'<td>' +
+									'<button class="action-btn-small edit" onclick="editModel(\'' + model.id + '\')">編輯</button>' +
+									'<button class="action-btn-small delete" onclick="deleteModel(\'' + model.id + '\')">刪除</button>' +
+								'</td>' +
+							'</tr>'
+						).join('') + '</tbody></table>';
 				} else {
 					container.innerHTML = '<p class="empty-text">暫無自定義模型</p>';
 				}
@@ -6890,7 +6796,6 @@ async function renderAdminProviders() {
 			}
 		}
 		
-		// 切換供應商狀態
 		async function toggleProvider(id, currentEnabled) {
 			try {
 				const response = await fetch('/admin/api/providers/' + id, {
@@ -6898,17 +6803,11 @@ async function renderAdminProviders() {
 					headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
 					body: JSON.stringify({ enabled: !currentEnabled })
 				});
-				if (response.ok) {
-					loadProviders();
-				} else {
-					alert('操作失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) loadProviders();
+				else alert('操作失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 切換自定義供應商狀態
 		async function toggleCustomProvider(id, currentEnabled) {
 			try {
 				const response = await fetch('/admin/api/providers/custom/' + id, {
@@ -6916,138 +6815,89 @@ async function renderAdminProviders() {
 					headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
 					body: JSON.stringify({ enabled: !currentEnabled })
 				});
-				if (response.ok) {
-					loadCustomProviders();
-				} else {
-					alert('操作失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) loadCustomProviders();
+				else alert('操作失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 編輯內建供應商
 		function editProvider(id) {
 			const provider = allProviders[id];
 			if (!provider) return;
-			
-			const modal = `
-				<div class="modal-overlay" onclick="closeModal(event)">
-					<div class="modal" onclick="event.stopPropagation()">
-						<h2>配置供應商: ${provider.name || id}</h2>
-						<div class="form-group">
-							<label>端點 URL</label>
-							<input type="text" id="editEndpoint" value="${provider.endpoint || ''}" />
-						</div>
-						<div class="form-group">
-							<label>API Key (可選)</label>
-							<input type="password" id="editApiKey" value="${provider.apiKey || ''}" placeholder="輸入新的 API Key" />
-						</div>
-						<div class="form-group">
-							<label>優先級</label>
-							<select id="editPriority">
-								<option value="high" ${provider.priority === 'high' ? 'selected' : ''}>高</option>
-								<option value="normal" ${provider.priority === 'normal' || !provider.priority ? 'selected' : ''}>普通</option>
-								<option value="low" ${provider.priority === 'low' ? 'selected' : ''}>低</option>
-							</select>
-						</div>
-						<div class="form-actions">
-							<button class="btn-secondary" onclick="closeModal()">取消</button>
-							<button class="btn-primary" onclick="saveProvider('${id}')">保存</button>
-						</div>
-					</div>
-				</div>
-			`;
+			const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+				'<div class="modal" onclick="event.stopPropagation()">' +
+					'<h2>配置供應商: ' + (provider.name || id) + '</h2>' +
+					'<div class="form-group"><label>端點 URL</label><input type="text" id="editEndpoint" value="' + (provider.endpoint || '') + '" /></div>' +
+					'<div class="form-group"><label>API Key (可選)</label><input type="password" id="editApiKey" value="' + (provider.apiKey || '') + '" placeholder="輸入新的 API Key" /></div>' +
+					'<div class="form-group"><label>優先級</label><select id="editPriority">' +
+						'<option value="high" ' + (provider.priority === 'high' ? 'selected' : '') + '>高</option>' +
+						'<option value="normal" ' + (provider.priority === 'normal' || !provider.priority ? 'selected' : '') + '>普通</option>' +
+						'<option value="low" ' + (provider.priority === 'low' ? 'selected' : '') + '>低</option>' +
+					'</select></div>' +
+					'<div class="form-actions">' +
+						'<button class="btn-secondary" onclick="closeModal()">取消</button>' +
+						'<button class="btn-primary" onclick="saveProvider(\'' + id + '\')">保存</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
 			document.getElementById('modalContainer').innerHTML = modal;
 		}
 		
-		// 保存供應商配置
 		async function saveProvider(id) {
 			const endpoint = document.getElementById('editEndpoint').value;
 			const apiKey = document.getElementById('editApiKey').value;
 			const priority = document.getElementById('editPriority').value;
-			
 			const updateData = { endpoint, priority };
 			if (apiKey) updateData.apiKey = apiKey;
-			
 			try {
 				const response = await fetch('/admin/api/providers/' + id, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
 					body: JSON.stringify(updateData)
 				});
-				if (response.ok) {
-					closeModal();
-					loadProviders();
-				} else {
-					alert('保存失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) { closeModal(); loadProviders(); }
+				else alert('保存失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 測試內建供應商
-		async function testProvider(id) {
+		function testProvider(id) {
 			const provider = allProviders[id];
 			if (!provider) return;
-			
 			showTestModal(id, provider.endpoint, provider.apiKey, 'openai');
 		}
 		
-		// 測試自定義供應商
-		async function testCustomProvider(id) {
+		function testCustomProvider(id) {
 			const provider = allCustomProviders[id];
 			if (!provider) return;
-			
 			showTestModal(id, provider.endpoint, provider.api_key, provider.type);
 		}
 		
-		// 顯示測試 Modal
 		function showTestModal(id, endpoint, apiKey, type) {
-			const modal = `
-				<div class="modal-overlay" onclick="closeModal(event)">
-					<div class="modal" onclick="event.stopPropagation()">
-						<h2>測試供應商連接</h2>
-						<div class="form-group">
-							<label>供應商 ID</label>
-							<input type="text" value="${id}" disabled />
-						</div>
-						<div class="form-group">
-							<label>端點 URL</label>
-							<input type="text" id="testEndpoint" value="${endpoint || ''}" />
-						</div>
-						<div class="form-group">
-							<label>API Key</label>
-							<input type="password" id="testApiKey" value="${apiKey || ''}" />
-						</div>
-						<div class="form-group">
-							<label>供應商類型</label>
-							<select id="testType">
-								<option value="openai" ${type === 'openai' ? 'selected' : ''}>OpenAI 兼容</option>
-								<option value="stability" ${type === 'stability' ? 'selected' : ''}>Stability AI</option>
-								<option value="custom" ${type === 'custom' ? 'selected' : ''}>自定義</option>
-							</select>
-						</div>
-						<div id="testResult"></div>
-						<div class="form-actions">
-							<button class="btn-secondary" onclick="closeModal()">關閉</button>
-							<button class="btn-primary" onclick="runTest('${id}')">測試連接</button>
-						</div>
-					</div>
-				</div>
-			`;
+			const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+				'<div class="modal" onclick="event.stopPropagation()">' +
+					'<h2>測試供應商連接</h2>' +
+					'<div class="form-group"><label>供應商 ID</label><input type="text" value="' + id + '" disabled /></div>' +
+					'<div class="form-group"><label>端點 URL</label><input type="text" id="testEndpoint" value="' + (endpoint || '') + '" /></div>' +
+					'<div class="form-group"><label>API Key</label><input type="password" id="testApiKey" value="' + (apiKey || '') + '" /></div>' +
+					'<div class="form-group"><label>供應商類型</label><select id="testType">' +
+						'<option value="openai" ' + (type === 'openai' ? 'selected' : '') + '>OpenAI 兼容</option>' +
+						'<option value="stability" ' + (type === 'stability' ? 'selected' : '') + '>Stability AI</option>' +
+						'<option value="custom" ' + (type === 'custom' ? 'selected' : '') + '>自定義</option>' +
+					'</select></div>' +
+					'<div id="testResult"></div>' +
+					'<div class="form-actions">' +
+						'<button class="btn-secondary" onclick="closeModal()">關閉</button>' +
+						'<button class="btn-primary" onclick="runTest(\'' + id + '\')">測試連接</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
 			document.getElementById('modalContainer').innerHTML = modal;
 		}
 		
-		// 執行測試
 		async function runTest(id) {
 			const endpoint = document.getElementById('testEndpoint').value;
 			const apiKey = document.getElementById('testApiKey').value;
 			const type = document.getElementById('testType').value;
-			
 			document.getElementById('testResult').innerHTML = '<p>測試中...</p>';
-			
 			try {
 				const response = await fetch('/admin/api/providers/test/' + id, {
 					method: 'POST',
@@ -7055,80 +6905,39 @@ async function renderAdminProviders() {
 					body: JSON.stringify({ endpoint, api_key: apiKey, type })
 				});
 				const data = await response.json();
-				
 				if (data.success) {
-					document.getElementById('testResult').innerHTML = `
-						<div class="test-result success">
-							<h4>✅ 連接成功</h4>
-							<p>狀態碼: ${data.status}</p>
-							<p>響應時間: ${data.responseTime}</p>
-							${data.models?.length ? '<p>可用模型: ' + data.models.slice(0, 5).join(', ') + (data.models.length > 5 ? '...' : '') + '</p>' : ''}
-						</div>
-					`;
+					document.getElementById('testResult').innerHTML = '<div class="test-result success"><h4>✅ 連接成功</h4><p>狀態碼: ' + data.status + '</p><p>響應時間: ' + data.responseTime + '</p>' + (data.models?.length ? '<p>可用模型: ' + data.models.slice(0, 5).join(', ') + (data.models.length > 5 ? '...' : '') + '</p>' : '') + '</div>';
 				} else {
-					document.getElementById('testResult').innerHTML = `
-						<div class="test-result error">
-							<h4>❌ 連接失敗</h4>
-							<p>錯誤: ${data.error}</p>
-							${data.status ? '<p>狀態碼: ' + data.status + '</p>' : ''}
-						</div>
-					`;
+					document.getElementById('testResult').innerHTML = '<div class="test-result error"><h4>❌ 連接失敗</h4><p>錯誤: ' + data.error + '</p>' + (data.status ? '<p>狀態碼: ' + data.status + '</p>' : '') + '</div>';
 				}
 			} catch (error) {
-				document.getElementById('testResult').innerHTML = `
-					<div class="test-result error">
-						<h4>❌ 測試失敗</h4>
-						<p>${error.message}</p>
-					</div>
-				`;
+				document.getElementById('testResult').innerHTML = '<div class="test-result error"><h4>❌ 測試失敗</h4><p>' + error.message + '</p></div>';
 			}
 		}
 		
-		// 顯示新增供應商 Modal
 		function showAddProviderModal() {
-			const modal = `
-				<div class="modal-overlay" onclick="closeModal(event)">
-					<div class="modal" onclick="event.stopPropagation()">
-						<h2>新增自定義供應商</h2>
-						<div class="form-group">
-							<label>供應商 ID *</label>
-							<input type="text" id="newProviderId" placeholder="例如: my-openai" />
-						</div>
-						<div class="form-group">
-							<label>名稱 *</label>
-							<input type="text" id="newProviderName" placeholder="例如: 我的 OpenAI" />
-						</div>
-						<div class="form-group">
-							<label>端點 URL *</label>
-							<input type="text" id="newProviderEndpoint" placeholder="例如: https://api.openai.com" />
-						</div>
-						<div class="form-group">
-							<label>API Key</label>
-							<input type="password" id="newProviderApiKey" placeholder="輸入 API Key" />
-						</div>
-						<div class="form-group">
-							<label>供應商類型</label>
-							<select id="newProviderType">
-								<option value="openai">OpenAI 兼容</option>
-								<option value="stability">Stability AI</option>
-								<option value="custom">自定義</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>描述</label>
-							<textarea id="newProviderDesc" rows="2" placeholder="供應商描述"></textarea>
-						</div>
-						<div class="form-actions">
-							<button class="btn-secondary" onclick="closeModal()">取消</button>
-							<button class="btn-primary" onclick="createProvider()">創建</button>
-						</div>
-					</div>
-				</div>
-			`;
+			const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+				'<div class="modal" onclick="event.stopPropagation()">' +
+					'<h2>新增自定義供應商</h2>' +
+					'<div class="form-group"><label>供應商 ID *</label><input type="text" id="newProviderId" placeholder="例如: my-openai" /></div>' +
+					'<div class="form-group"><label>名稱 *</label><input type="text" id="newProviderName" placeholder="例如: 我的 OpenAI" /></div>' +
+					'<div class="form-group"><label>端點 URL *</label><input type="text" id="newProviderEndpoint" placeholder="例如: https://api.openai.com" /></div>' +
+					'<div class="form-group"><label>API Key</label><input type="password" id="newProviderApiKey" placeholder="輸入 API Key" /></div>' +
+					'<div class="form-group"><label>供應商類型</label><select id="newProviderType">' +
+						'<option value="openai">OpenAI 兼容</option>' +
+						'<option value="stability">Stability AI</option>' +
+						'<option value="custom">自定義</option>' +
+					'</select></div>' +
+					'<div class="form-group"><label>描述</label><textarea id="newProviderDesc" rows="2" placeholder="供應商描述"></textarea></div>' +
+					'<div class="form-actions">' +
+						'<button class="btn-secondary" onclick="closeModal()">取消</button>' +
+						'<button class="btn-primary" onclick="createProvider()">創建</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
 			document.getElementById('modalContainer').innerHTML = modal;
 		}
 		
-		// 創建供應商
 		async function createProvider() {
 			const id = document.getElementById('newProviderId').value.trim();
 			const name = document.getElementById('newProviderName').value.trim();
@@ -7136,12 +6945,7 @@ async function renderAdminProviders() {
 			const api_key = document.getElementById('newProviderApiKey').value;
 			const type = document.getElementById('newProviderType').value;
 			const description = document.getElementById('newProviderDesc').value;
-			
-			if (!id || !name || !endpoint) {
-				alert('請填寫必要欄位');
-				return;
-			}
-			
+			if (!id || !name || !endpoint) { alert('請填寫必要欄位'); return; }
 			try {
 				const response = await fetch('/admin/api/providers/custom', {
 					method: 'POST',
@@ -7149,166 +6953,93 @@ async function renderAdminProviders() {
 					body: JSON.stringify({ id, name, endpoint, api_key, type, description, models: [] })
 				});
 				const data = await response.json();
-				
-				if (data.success) {
-					closeModal();
-					loadCustomProviders();
-				} else {
-					alert('創建失敗: ' + (data.error || '未知錯誤'));
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (data.success) { closeModal(); loadCustomProviders(); }
+				else alert('創建失敗: ' + (data.error || '未知錯誤'));
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 編輯自定義供應商
 		function editCustomProvider(id) {
 			const provider = allCustomProviders[id];
 			if (!provider) return;
-			
-			const modal = `
-				<div class="modal-overlay" onclick="closeModal(event)">
-					<div class="modal" onclick="event.stopPropagation()">
-						<h2>編輯供應商: ${provider.name}</h2>
-						<div class="form-group">
-							<label>名稱</label>
-							<input type="text" id="editProviderName" value="${provider.name || ''}" />
-						</div>
-						<div class="form-group">
-							<label>端點 URL</label>
-							<input type="text" id="editProviderEndpoint" value="${provider.endpoint || ''}" />
-						</div>
-						<div class="form-group">
-							<label>API Key</label>
-							<input type="password" id="editProviderApiKey" placeholder="留空保持不變" />
-						</div>
-						<div class="form-group">
-							<label>供應商類型</label>
-							<select id="editProviderType">
-								<option value="openai" ${provider.type === 'openai' ? 'selected' : ''}>OpenAI 兼容</option>
-								<option value="stability" ${provider.type === 'stability' ? 'selected' : ''}>Stability AI</option>
-								<option value="custom" ${provider.type === 'custom' ? 'selected' : ''}>自定義</option>
-							</select>
-						</div>
-						<div class="form-group">
-							<label>描述</label>
-							<textarea id="editProviderDesc" rows="2">${provider.description || ''}</textarea>
-						</div>
-						<div class="form-actions">
-							<button class="btn-secondary" onclick="closeModal()">取消</button>
-							<button class="btn-primary" onclick="updateCustomProvider('${id}')">保存</button>
-						</div>
-					</div>
-				</div>
-			`;
+			const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+				'<div class="modal" onclick="event.stopPropagation()">' +
+					'<h2>編輯供應商: ' + provider.name + '</h2>' +
+					'<div class="form-group"><label>名稱</label><input type="text" id="editProviderName" value="' + (provider.name || '') + '" /></div>' +
+					'<div class="form-group"><label>端點 URL</label><input type="text" id="editProviderEndpoint" value="' + (provider.endpoint || '') + '" /></div>' +
+					'<div class="form-group"><label>API Key</label><input type="password" id="editProviderApiKey" placeholder="留空保持不變" /></div>' +
+					'<div class="form-group"><label>供應商類型</label><select id="editProviderType">' +
+						'<option value="openai" ' + (provider.type === 'openai' ? 'selected' : '') + '>OpenAI 兼容</option>' +
+						'<option value="stability" ' + (provider.type === 'stability' ? 'selected' : '') + '>Stability AI</option>' +
+						'<option value="custom" ' + (provider.type === 'custom' ? 'selected' : '') + '>自定義</option>' +
+					'</select></div>' +
+					'<div class="form-group"><label>描述</label><textarea id="editProviderDesc" rows="2">' + (provider.description || '') + '</textarea></div>' +
+					'<div class="form-actions">' +
+						'<button class="btn-secondary" onclick="closeModal()">取消</button>' +
+						'<button class="btn-primary" onclick="updateCustomProvider(\'' + id + '\')">保存</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
 			document.getElementById('modalContainer').innerHTML = modal;
 		}
 		
-		// 更新自定義供應商
 		async function updateCustomProvider(id) {
 			const name = document.getElementById('editProviderName').value;
 			const endpoint = document.getElementById('editProviderEndpoint').value;
 			const api_key = document.getElementById('editProviderApiKey').value;
 			const type = document.getElementById('editProviderType').value;
 			const description = document.getElementById('editProviderDesc').value;
-			
 			const updateData = { name, endpoint, type, description };
 			if (api_key) updateData.api_key = api_key;
-			
 			try {
 				const response = await fetch('/admin/api/providers/custom/' + id, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
 					body: JSON.stringify(updateData)
 				});
-				if (response.ok) {
-					closeModal();
-					loadCustomProviders();
-				} else {
-					alert('更新失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) { closeModal(); loadCustomProviders(); }
+				else alert('更新失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 刪除自定義供應商
 		async function deleteCustomProvider(id) {
 			if (!confirm('確定要刪除此供應商嗎？此操作無法復原。')) return;
-			
 			try {
 				const response = await fetch('/admin/api/providers/custom/' + id, {
 					method: 'DELETE',
 					headers: { 'Authorization': 'Bearer ' + token }
 				});
-				if (response.ok) {
-					loadCustomProviders();
-				} else {
-					alert('刪除失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) loadCustomProviders();
+				else alert('刪除失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 顯示新增模型 Modal
 		function showAddModelModal() {
-			// 構建供應商選項
-			const providerOptions = [
-				...Object.keys(allProviders).map(id => '<option value="' + id + '">' + (allProviders[id].name || id) + ' (內建)</option>'),
-				...Object.keys(allCustomProviders).map(id => '<option value="' + id + '">' + (allCustomProviders[id].name || id) + ' (自定義)</option>')
-			].join('');
-			
-			const modal = `
-				<div class="modal-overlay" onclick="closeModal(event)">
-					<div class="modal" onclick="event.stopPropagation()">
-						<h2>新增自定義模型</h2>
-						<div class="form-group">
-							<label>模型 ID *</label>
-							<input type="text" id="newModelId" placeholder="例如: my-model-v1" />
-						</div>
-						<div class="form-group">
-							<label>顯示名稱 *</label>
-							<input type="text" id="newModelName" placeholder="例如: 我的模型 V1" />
-						</div>
-						<div class="form-group">
-							<label>所屬供應商 *</label>
-							<select id="newModelProvider">
-								<option value="">選擇供應商</option>
-								${providerOptions}
-							</select>
-						</div>
-						<div class="form-group">
-							<label>實際模型 ID *</label>
-							<input type="text" id="newModelRealId" placeholder="API 中使用的模型 ID" />
-						</div>
-						<div class="form-group">
-							<label>描述</label>
-							<textarea id="newModelDesc" rows="2" placeholder="模型描述"></textarea>
-						</div>
-						<div class="form-actions">
-							<button class="btn-secondary" onclick="closeModal()">取消</button>
-							<button class="btn-primary" onclick="createModel()">創建</button>
-						</div>
-					</div>
-				</div>
-			`;
+			const providerOptions = Object.keys(allProviders).map(id => '<option value="' + id + '">' + (allProviders[id].name || id) + ' (內建)</option>').join('') +
+				Object.keys(allCustomProviders).map(id => '<option value="' + id + '">' + (allCustomProviders[id].name || id) + ' (自定義)</option>').join('');
+			const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+				'<div class="modal" onclick="event.stopPropagation()">' +
+					'<h2>新增自定義模型</h2>' +
+					'<div class="form-group"><label>模型 ID *</label><input type="text" id="newModelId" placeholder="例如: my-model-v1" /></div>' +
+					'<div class="form-group"><label>顯示名稱 *</label><input type="text" id="newModelName" placeholder="例如: 我的模型 V1" /></div>' +
+					'<div class="form-group"><label>所屬供應商 *</label><select id="newModelProvider"><option value="">選擇供應商</option>' + providerOptions + '</select></div>' +
+					'<div class="form-group"><label>實際模型 ID *</label><input type="text" id="newModelRealId" placeholder="API 中使用的模型 ID" /></div>' +
+					'<div class="form-group"><label>描述</label><textarea id="newModelDesc" rows="2" placeholder="模型描述"></textarea></div>' +
+					'<div class="form-actions">' +
+						'<button class="btn-secondary" onclick="closeModal()">取消</button>' +
+						'<button class="btn-primary" onclick="createModel()">創建</button>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
 			document.getElementById('modalContainer').innerHTML = modal;
 		}
 		
-		// 創建模型
 		async function createModel() {
 			const id = document.getElementById('newModelId').value.trim();
 			const name = document.getElementById('newModelName').value.trim();
 			const provider = document.getElementById('newModelProvider').value;
 			const model_id = document.getElementById('newModelRealId').value.trim();
 			const description = document.getElementById('newModelDesc').value;
-			
-			if (!id || !name || !provider || !model_id) {
-				alert('請填寫必要欄位');
-				return;
-			}
-			
+			if (!id || !name || !provider || !model_id) { alert('請填寫必要欄位'); return; }
 			try {
 				const response = await fetch('/admin/api/models/custom', {
 					method: 'POST',
@@ -7316,123 +7047,74 @@ async function renderAdminProviders() {
 					body: JSON.stringify({ id, name, provider, model_id, description })
 				});
 				const data = await response.json();
-				
-				if (data.success) {
-					closeModal();
-					loadCustomModels();
-				} else {
-					alert('創建失敗: ' + (data.error || '未知錯誤'));
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (data.success) { closeModal(); loadCustomModels(); }
+				else alert('創建失敗: ' + (data.error || '未知錯誤'));
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 編輯模型
 		function editModel(id) {
-			// 需要先載入模型數據
-			fetch('/admin/api/models/custom', {
-				headers: { 'Authorization': 'Bearer ' + token }
-			})
+			fetch('/admin/api/models/custom', { headers: { 'Authorization': 'Bearer ' + token } })
 			.then(r => r.json())
 			.then(data => {
 				const model = data.models[id];
 				if (!model) return;
-				
-				const providerOptions = [
-					...Object.keys(allProviders).map(pid => '<option value="' + pid + '" ' + (model.provider === pid ? 'selected' : '') + '>' + (allProviders[pid].name || pid) + ' (內建)</option>'),
-					...Object.keys(allCustomProviders).map(pid => '<option value="' + pid + '" ' + (model.provider === pid ? 'selected' : '') + '>' + (allCustomProviders[pid].name || pid) + ' (自定義)</option>')
-				].join('');
-				
-				const modal = `
-					<div class="modal-overlay" onclick="closeModal(event)">
-						<div class="modal" onclick="event.stopPropagation()">
-							<h2>編輯模型</h2>
-							<div class="form-group">
-								<label>顯示名稱</label>
-								<input type="text" id="editModelName" value="${model.name || ''}" />
-							</div>
-							<div class="form-group">
-								<label>所屬供應商</label>
-								<select id="editModelProvider">${providerOptions}</select>
-							</div>
-							<div class="form-group">
-								<label>實際模型 ID</label>
-								<input type="text" id="editModelRealId" value="${model.model_id || ''}" />
-							</div>
-							<div class="form-group">
-								<label>描述</label>
-								<textarea id="editModelDesc" rows="2">${model.description || ''}</textarea>
-							</div>
-							<div class="form-group">
-								<label>狀態</label>
-								<select id="editModelEnabled">
-									<option value="true" ${model.enabled ? 'selected' : ''}>啟用</option>
-									<option value="false" ${!model.enabled ? 'selected' : ''}>禁用</option>
-								</select>
-							</div>
-							<div class="form-actions">
-								<button class="btn-secondary" onclick="closeModal()">取消</button>
-								<button class="btn-primary" onclick="updateModel('${id}')">保存</button>
-							</div>
-						</div>
-					</div>
-				`;
+				const providerOptions = Object.keys(allProviders).map(pid => '<option value="' + pid + '" ' + (model.provider === pid ? 'selected' : '') + '>' + (allProviders[pid].name || pid) + ' (內建)</option>').join('') +
+					Object.keys(allCustomProviders).map(pid => '<option value="' + pid + '" ' + (model.provider === pid ? 'selected' : '') + '>' + (allCustomProviders[pid].name || pid) + ' (自定義)</option>').join('');
+				const modal = '<div class="modal-overlay" onclick="closeModal(event)">' +
+					'<div class="modal" onclick="event.stopPropagation()">' +
+						'<h2>編輯模型</h2>' +
+						'<div class="form-group"><label>顯示名稱</label><input type="text" id="editModelName" value="' + (model.name || '') + '" /></div>' +
+						'<div class="form-group"><label>所屬供應商</label><select id="editModelProvider">' + providerOptions + '</select></div>' +
+						'<div class="form-group"><label>實際模型 ID</label><input type="text" id="editModelRealId" value="' + (model.model_id || '') + '" /></div>' +
+						'<div class="form-group"><label>描述</label><textarea id="editModelDesc" rows="2">' + (model.description || '') + '</textarea></div>' +
+						'<div class="form-group"><label>狀態</label><select id="editModelEnabled">' +
+							'<option value="true" ' + (model.enabled ? 'selected' : '') + '>啟用</option>' +
+							'<option value="false" ' + (!model.enabled ? 'selected' : '') + '>禁用</option>' +
+						'</select></div>' +
+						'<div class="form-actions">' +
+							'<button class="btn-secondary" onclick="closeModal()">取消</button>' +
+							'<button class="btn-primary" onclick="updateModel(\'' + id + '\')">保存</button>' +
+						'</div>' +
+					'</div>' +
+				'</div>';
 				document.getElementById('modalContainer').innerHTML = modal;
 			});
 		}
 		
-		// 更新模型
 		async function updateModel(id) {
 			const name = document.getElementById('editModelName').value;
 			const provider = document.getElementById('editModelProvider').value;
 			const model_id = document.getElementById('editModelRealId').value;
 			const description = document.getElementById('editModelDesc').value;
 			const enabled = document.getElementById('editModelEnabled').value === 'true';
-			
 			try {
 				const response = await fetch('/admin/api/models/custom/' + id, {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
 					body: JSON.stringify({ name, provider, model_id, description, enabled })
 				});
-				if (response.ok) {
-					closeModal();
-					loadCustomModels();
-				} else {
-					alert('更新失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) { closeModal(); loadCustomModels(); }
+				else alert('更新失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 刪除模型
 		async function deleteModel(id) {
 			if (!confirm('確定要刪除此模型嗎？')) return;
-			
 			try {
 				const response = await fetch('/admin/api/models/custom/' + id, {
 					method: 'DELETE',
 					headers: { 'Authorization': 'Bearer ' + token }
 				});
-				if (response.ok) {
-					loadCustomModels();
-				} else {
-					alert('刪除失敗');
-				}
-			} catch (error) {
-				alert('網絡錯誤: ' + error.message);
-			}
+				if (response.ok) loadCustomModels();
+				else alert('刪除失敗');
+			} catch (error) { alert('網絡錯誤: ' + error.message); }
 		}
 		
-		// 關閉 Modal
 		function closeModal(event) {
 			if (event && event.target !== event.currentTarget) return;
 			document.getElementById('modalContainer').innerHTML = '';
 		}
 		
-		// 初始化
 		loadProviders();
 		loadCustomModels();
 	</script>
