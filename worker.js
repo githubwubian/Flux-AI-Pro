@@ -6800,7 +6800,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <div id="modalContainer"></div>
 
 <script>
-const token = localStorage.getItem('admin_token');
+const token = localStorage.getItem('adminToken');
 if (!token) window.location.href = '/admin/login';
 
 let allProviders = {};
@@ -7219,7 +7219,7 @@ function closeModal(event) {
 
 // 登出
 function logout() {
-	localStorage.removeItem('admin_token');
+	localStorage.removeItem('adminToken');
 	window.location.href = '/admin/login';
 }
 
