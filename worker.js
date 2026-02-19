@@ -6664,7 +6664,7 @@ async function renderAdminProviders() {
 		<div class="stats-bar">
 			<div class="stat-card"><div class="stat-value" id="totalProviders">-</div><div class="stat-label">總供應商</div></div>
 			<div class="stat-card"><div class="stat-value" id="enabledProviders">-</div><div class="stat-label">已啟用</div></div>
-			<div class="stat-card"><div class="stat-value" id="customProviders">-</div><div class="stat-label">自定義</div></div>
+			<div class="stat-card"><div class="stat-value" id="customProvidersCount">-</div><div class="stat-label">自定義</div></div>
 			<div class="stat-card"><div class="stat-value" id="totalModels">-</div><div class="stat-label">模型總數</div></div>
 		</div>
 		<div class="section-title"><span>內建供應商</span></div>
@@ -6730,11 +6730,11 @@ async function renderAdminProviders() {
 		}
 		
 		async function loadCustomProviders() {
-			try {
-				const response = await fetch('/admin/api/providers/custom', { headers: { 'Authorization': 'Bearer ' + token } });
-				const data = await response.json();
-				allCustomProviders = data.providers || {};
-				document.getElementById('customProviders').textContent = Object.keys(allCustomProviders).length;
+		try {
+		const response = await fetch('/admin/api/providers/custom', { headers: { 'Authorization': 'Bearer ' + token } });
+		const data = await response.json();
+		allCustomProviders = data.providers || {};
+		document.getElementById('customProvidersCount').textContent = Object.keys(allCustomProviders).length;
 				const container = document.getElementById('customProvidersGrid');
 				const providers = Object.entries(allCustomProviders);
 				if (providers.length > 0) {
