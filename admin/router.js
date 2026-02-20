@@ -5,7 +5,6 @@
 
 import { renderLoginPage } from './pages/login.js';
 import { renderDashboardPage } from './pages/dashboard.js';
-import { renderStylesPage } from './pages/styles.js';
 import { renderProvidersPage } from './pages/providers.js';
 import { renderParametersPage } from './pages/parameters.js';
 import { renderSettingsPage } from './pages/settings.js';
@@ -23,11 +22,6 @@ export const ROUTES = {
     dashboard: {
         path: '/admin',
         render: renderDashboardPage,
-        requiresAuth: true
-    },
-    styles: {
-        path: '/admin/styles',
-        render: renderStylesPage,
         requiresAuth: true
     },
     providers: {

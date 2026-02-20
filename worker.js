@@ -7850,8 +7850,14 @@ async function updateAdminProvider(request, env, providerId) {
     const body = await request.json();
     const providersData = await env.FLUX_KV.get('admin:providers', 'json') || { providers: {}, global_settings: {} };
     
+    // 如果 KV 中沒有該 provider，檢查 CONFIG.PROVIDERS 中是否有默認配置
     if (!providersData.providers[providerId]) {
-      return new Response(JSON.stringify({ error: 'Provider not found' }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      if (CONFIG.PROVIDERS[providerId]) {
+        // 從默認配置初始化
+        providersData.providers[providerId] = { ...CONFIG.PROVIDERS[providerId] };
+      } else {
+        return new Response(JSON.stringify({ error: 'Provider not found' }), { status: 404, headers: corsHeaders({ 'Content-Type': 'application/json' }) });
+      }
     }
     
     providersData.providers[providerId] = {
@@ -8064,21 +8070,24 @@ async function updateAdminGlobalSettings(request, env) {
   	const totalStyles = builtinCount + customStylesCount;
  
   	// 獲取供應商統計
-  	const providersData = await env.FLUX_KV.get('admin:providers', 'json') || { providers: {} };
-  	const configProviders = Object.keys(CONFIG.PROVIDERS).length;
-  	const enabledProviders = Object.values(providersData.providers || {}).filter(p => p.enabled !== false).length;
-  	const totalProviders = configProviders;
+  	const providersData = await env.FLUX_KV.get('admin:providers', 'json');
+  	// 如果 KV 中沒有數據，使用 CONFIG.PROVIDERS 作為默認值
+  	const providers = (providersData?.providers && Object.keys(providersData.providers).length > 0)
+  		? providersData.providers
+  		: CONFIG.PROVIDERS;
+  	const totalProviders = Object.keys(providers).length;
+  	const enabledProviders = Object.values(providers).filter(p => p.enabled !== false).length;
  
   	// 獲取模型統計
   	const customModelsData = await env.FLUX_KV.get('admin:custom_models', 'json') || { models: {} };
   	const customModelsCount = Object.keys(customModelsData.models || {}).length;
-  	let totalModels = 0;
-  	Object.values(CONFIG.PROVIDERS).forEach(provider => {
+  	let builtinModelsCount = 0;
+  	Object.values(providers).forEach(provider => {
   		if (provider.models) {
-  			totalModels += provider.models.length;
+  			builtinModelsCount += provider.models.length;
   		}
   	});
-  	totalModels += customModelsCount;
+  	const totalModels = builtinModelsCount + customModelsCount;
  
   	// 獲取在線人數
   	let onlineCount = 0;
@@ -8107,7 +8116,7 @@ async function updateAdminGlobalSettings(request, env) {
   				disabled: totalProviders - enabledProviders
   			},
   			models: {
-  				builtin: totalModels - customModelsCount,
+  				builtin: builtinModelsCount,
   				custom: customModelsCount,
   				total: totalModels
   			},

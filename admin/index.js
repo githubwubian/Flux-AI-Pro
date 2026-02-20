@@ -53,7 +53,6 @@ export {
 // 頁面
 export { renderLoginPage } from './pages/login.js';
 export { renderDashboardPage } from './pages/dashboard.js';
-export { renderStylesPage } from './pages/styles.js';
 export { renderProvidersPage } from './pages/providers.js';
 export { renderParametersPage } from './pages/parameters.js';
 export { renderSettingsPage } from './pages/settings.js';

@@ -3,11 +3,10 @@
  */
 
 export const NAV_ITEMS = [
-    { id: 'dashboard', label: '儀表板', icon: '📊', path: '/admin' },
-    { id: 'styles', label: '風格管理', icon: '🎨', path: '/admin/styles' },
-    { id: 'providers', label: '模型配置', icon: '⚙️', path: '/admin/providers' },
-    { id: 'parameters', label: '參數調整', icon: '🔧', path: '/admin/parameters' },
-    { id: 'settings', label: '系統設置', icon: '🔐', path: '/admin/settings' }
+	{ id: 'dashboard', label: '儀表板', icon: '📊', path: '/admin' },
+	{ id: 'providers', label: '模型配置', icon: '⚙️', path: '/admin/providers' },
+	{ id: 'parameters', label: '參數調整', icon: '🔧', path: '/admin/parameters' },
+	{ id: 'settings', label: '系統設置', icon: '🔐', path: '/admin/settings' }
 ];
 
 /**
@@ -37,11 +36,10 @@ export function renderSidebar(activePage) {
  * 獲取當前頁面 ID
  */
 export function getCurrentPageId() {
-    const path = window.location.pathname;
-    if (path === '/admin' || path === '/admin/') return 'dashboard';
-    if (path.startsWith('/admin/styles')) return 'styles';
-    if (path.startsWith('/admin/providers')) return 'providers';
-    if (path.startsWith('/admin/parameters')) return 'parameters';
-    if (path.startsWith('/admin/settings')) return 'settings';
-    return 'dashboard';
+	const path = window.location.pathname;
+	if (path === '/admin' || path === '/admin/') return 'dashboard';
+	if (path.startsWith('/admin/providers')) return 'providers';
+	if (path.startsWith('/admin/parameters')) return 'parameters';
+	if (path.startsWith('/admin/settings')) return 'settings';
+	return 'dashboard';
 }
