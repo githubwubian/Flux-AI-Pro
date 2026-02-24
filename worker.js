@@ -189,7 +189,7 @@ PROJECT_VERSION: "11.16.0",
       default: false,
       description: "Kaai AI 圖像生成服務 - OpenAI 相容 API",
       features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true, max_batch_size: 4
       },
       models: [
         { id: "dall-e-3-hd", name: "DALL-E 3 HD 🌟", category: "dalle", description: "DALL-E 3 高清版本 - 最高品質圖像生成", max_size: 2048 },
@@ -5505,6 +5505,7 @@ function handleUI(request, env) {
     const hasInfipServerKey = !!(env && env.INFIP_API_KEY);
     const hasAquaServerKey = !!(env && env.AQUA_API_KEY);
     const hasKinaiServerKey = !!(env && env.KINAI_API_KEY);
+    const hasKaaiServerKey = !!(env && env.KAAI_API_KEY);
     const hasAirforceServerKey = !!(env && env.AIRFORCE_API_KEY);
     const authStatus = CONFIG.POLLINATIONS_AUTH.enabled ? '<span style="color:#22c55e;font-weight:600;font-size:12px">🔐 已認證</span>' : '<span style="color:#f59e0b;font-weight:600;font-size:12px">⚠️ 需要 API Key</span>';
     
@@ -5870,15 +5871,37 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
     </div>
     
     <div id="batchGroup" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
-        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold;">🖼️ 批量生成</div>
-        <div class="form-group">
-            <label>生成數量 (Batch Size)</label>
-            <select id="batchSize">
-                <option value="1">1 張</option>
-                <option value="2">2 張</option>
-                <option value="3">3 張</option>
-                <option value="4">4 張</option>
-            </select>
+        <div style="font-size:12px; color:#f59e0b; margin-bottom:10px; font-weight:bold; display:flex; align-items:center; gap:6px;">
+            <span>🖼️</span>
+            <span data-t="batch_label">批量生成</span>
+            <span style="font-size:10px; color:#888; font-weight:normal; margin-left:auto; background:rgba(245,158,11,0.15); padding:2px 8px; border-radius:10px;">1-4 張</span>
+        </div>
+        <div class="form-group" style="background:rgba(255,255,255,0.03); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+            <label data-t="batch_size_label" style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                <span style="font-size:14px;">📊</span>
+                <span>生成數量</span>
+            </label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <label style="flex:1; min-width:60px; cursor:pointer;">
+                    <input type="radio" name="batchSize" value="1" checked style="display:none;">
+                    <span style="display:block; text-align:center; padding:10px 8px; background:rgba(255,255,255,0.1); border-radius:8px; border:2px solid transparent; transition:all 0.2s; font-size:13px;" onclick="document.querySelectorAll('[name=\\'batchSize\\']').forEach(el=>el.parentElement.querySelector('span').style.borderColor='transparent');this.style.borderColor='#f59e0b';this.style.background='rgba(245,158,11,0.2)';">1 張</span>
+                </label>
+                <label style="flex:1; min-width:60px; cursor:pointer;">
+                    <input type="radio" name="batchSize" value="2" style="display:none;">
+                    <span style="display:block; text-align:center; padding:10px 8px; background:rgba(255,255,255,0.1); border-radius:8px; border:2px solid transparent; transition:all 0.2s; font-size:13px;" onclick="document.querySelectorAll('[name=\\'batchSize\\']').forEach(el=>el.parentElement.querySelector('span').style.borderColor='transparent');this.style.borderColor='#f59e0b';this.style.background='rgba(245,158,11,0.2)';">2 張</span>
+                </label>
+                <label style="flex:1; min-width:60px; cursor:pointer;">
+                    <input type="radio" name="batchSize" value="3" style="display:none;">
+                    <span style="display:block; text-align:center; padding:10px 8px; background:rgba(255,255,255,0.1); border-radius:8px; border:2px solid transparent; transition:all 0.2s; font-size:13px;" onclick="document.querySelectorAll('[name=\\'batchSize\\']').forEach(el=>el.parentElement.querySelector('span').style.borderColor='transparent');this.style.borderColor='#f59e0b';this.style.background='rgba(245,158,11,0.2)';">3 張</span>
+                </label>
+                <label style="flex:1; min-width:60px; cursor:pointer;">
+                    <input type="radio" name="batchSize" value="4" style="display:none;">
+                    <span style="display:block; text-align:center; padding:10px 8px; background:rgba(255,255,255,0.1); border-radius:8px; border:2px solid transparent; transition:all 0.2s; font-size:13px;" onclick="document.querySelectorAll('[name=\\'batchSize\\']').forEach(el=>el.parentElement.querySelector('span').style.borderColor='transparent');this.style.borderColor='#f59e0b';this.style.background='rgba(245,158,11,0.2)';">4 張</span>
+                </label>
+            </div>
+            <div style="font-size:11px; color:#888; margin-top:10px; text-align:center;">
+                💡 選擇多張可一次生成多個版本，方便比較選擇
+            </div>
         </div>
     </div>
 
@@ -6586,14 +6609,22 @@ function updateModelOptions() {
     const nsfwGroup = document.getElementById('nsfwGroup');
     const batchGroup = document.getElementById('batchGroup');
     
-    if (p === 'infip' || p === 'kinai') {
-        nsfwGroup.style.display = 'flex';
+    if (p === 'infip' || p === 'kinai' || p === 'kaai') {
+        nsfwGroup.style.display = 'none';
         batchGroup.style.display = 'block';
     } else {
         nsfwGroup.style.display = 'none';
         batchGroup.style.display = 'none';
         document.getElementById('nsfwToggle').checked = false;
-        document.getElementById('batchSize').value = '1';
+        // Reset batch size radio buttons
+        document.querySelectorAll('input[name="batchSize"]').forEach(el => {
+            el.checked = (el.value === '1');
+            const span = el.parentElement.querySelector('span');
+            if (span) {
+                span.style.borderColor = el.value === '1' ? '#f59e0b' : 'transparent';
+                span.style.background = el.value === '1' ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.1)';
+            }
+        });
     }
 
     modelSelect.innerHTML = '';
@@ -6861,6 +6892,9 @@ if (${hasKinaiServerKey} && frontendProviders.kinai) {
 if (${hasAirforceServerKey} && frontendProviders.airforce) {
     frontendProviders.airforce.has_server_key = true;
 }
+if (${hasKaaiServerKey} && frontendProviders.kaai) {
+    frontendProviders.kaai.has_server_key = true;
+}
 const PROVIDERS=frontendProviders;
 
 async function addToHistory(item){
@@ -6997,7 +7031,8 @@ document.getElementById('generateForm').addEventListener('submit',async(e)=>{
     const currentSeed = isSeedRandom ? -1 : parseInt(seedInput.value);
     const isAutoOpt = autoOptCheckbox.checked;
     const isNSFW = document.getElementById('nsfwToggle').checked;
-    const batchSize = parseInt(document.getElementById('batchSize').value) || 1;
+    const batchSizeRadio = document.querySelector('input[name="batchSize"]:checked');
+    const batchSize = batchSizeRadio ? parseInt(batchSizeRadio.value) : 1;
     
     // Auto-Set Quality to ULTRA for ALL models (Best Quality Policy)
     let qualityMode = 'ultra'; 

@@ -58,7 +58,7 @@ ENVIRONMENT = "production"
 # 4. KINAI_API_KEY (Kinai API)
 # 5. AIRFORCE_API_KEY (Airforce API)
 # 6. NONPON_API_KEY (Nonpon API)
-# 7. KAAI_API_KEY (Kaai API - DALL-E/GPT Image)
+# 7. KAAI_API_KEY (Kaai API - DALL-E/GPT Image，設置後用戶無需輸入)
 #
 # ============================================
 # 設置命令範例：
