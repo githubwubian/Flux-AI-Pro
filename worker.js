@@ -2314,7 +2314,7 @@ class ProviderQueueManager {
     };
     
     // 不使用隊列的供應商列表
-    this.noQueueProviders = ['pollinations', 'infip', 'kinai', 'nonpon'];
+    this.noQueueProviders = ['pollinations', 'infip', 'kinai', 'nonpon', 'kaai'];
   }
 
   /**
@@ -5823,6 +5823,7 @@ select{background-color:#1e293b!important;color:#e2e8f0!important;cursor:pointer
         <option value="aqua">Aqua API 💧</option>
         <option value="kinai">Kinai API 🚀</option>
         <option value="airforce">Airforce API ✈️</option>
+        <option value="kaai">Kaai API 🎨</option>
     </select>
 </div>
 <div class="form-group" id="apiKeyGroup" style="display:none; background:rgba(245, 158, 11, 0.1); padding:10px; border-radius:8px; border:1px solid rgba(245, 158, 11, 0.3);">
@@ -6552,7 +6553,8 @@ function updateModelOptions() {
             'infip': { url: 'https://infip.pro/api-keys', text: 'infip.pro/api-keys' },
             'aqua': { url: 'https://aqua-api.com/api-keys', text: 'aqua-api.com/api-keys' },
             'kinai': { url: 'https://kinai.ai/api-keys', text: 'kinai.ai/api-keys' },
-            'airforce': { url: 'https://api.airforce/', text: 'api.airforce/' }
+            'airforce': { url: 'https://api.airforce/', text: 'api.airforce/' },
+            'kaai': { url: 'https://kaai.eu.cc/', text: 'kaai.eu.cc/' }
         };
         if (providerLinks[p]) {
             apiKeysLink.href = providerLinks[p].url;
@@ -6571,6 +6573,7 @@ function updateModelOptions() {
             if (p === 'aqua') storedKey = sessionStorage.getItem('aqua_api_key');
             if (p === 'kinai') storedKey = sessionStorage.getItem('kinai_api_key');
             if (p === 'airforce') storedKey = sessionStorage.getItem('airforce_api_key');
+            if (p === 'kaai') storedKey = sessionStorage.getItem('kaai_api_key');
             
             apiKeyInput.value = storedKey || '';
             apiKeyInput.placeholder = "Paste your API Key here";
@@ -6820,6 +6823,7 @@ apiKeyInput.addEventListener('input', (e) => {
     if (p === 'aqua') sessionStorage.setItem('aqua_api_key', e.target.value);
     if (p === 'kinai') sessionStorage.setItem('kinai_api_key', e.target.value);
     if (p === 'airforce') sessionStorage.setItem('airforce_api_key', e.target.value);
+    if (p === 'kaai') sessionStorage.setItem('kaai_api_key', e.target.value);
 });
 
 // Show/hide reference images section based on model support
