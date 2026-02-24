@@ -64,7 +64,6 @@ PROJECT_VERSION: "11.16.0",
       },
       models: [
         { id: "flux-2-dev", name: "Flux 2 Dev 🌟", confirmed: true, category: "flux", description: "Flux 2 開發者版本 - 高品質圖像生成", max_size: 2048, pricing: { image_price: 0.0005, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
-        { id: "imagen-4", name: "Imagen 4 (Google) 🌟", confirmed: true, category: "google", description: "Google 最新高品質繪圖模型", max_size: 2048, pricing: { image_price: 0.0004, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "nanobanana", name: "NanoBanana 🍌", confirmed: true, category: "flux", description: "NanoBanana 高品質模型", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "seedream", name: "SeeDream 🌈", confirmed: true, category: "seedream", description: "夢幻般的圖像生成", max_size: 2048, pricing: { image_price: 0.0002, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
         { id: "flux-schnell", name: "Flux Schnell ⚡", confirmed: true, category: "flux", description: "快速且高質量的圖像生成", max_size: 2048, pricing: { image_price: 0.00012, currency: "pollen" }, input_modalities: ["text"], output_modalities: ["image"] },
@@ -85,14 +84,35 @@ PROJECT_VERSION: "11.16.0",
       default: false,
       description: "Ghostbot Web API (High Limit)",
       features: {
-        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
-      },
+            private_mode: true,
+            custom_size: true,
+            seed_control: false,
+            negative_prompt: false,
+            enhance: false,
+            nologo: false,
+            style_presets: true,
+            auto_hd: true,
+            quality_modes: false,
+            auto_translate: true,
+            reference_images: true,
+            image_to_image: true,
+            batch_generation: true,
+            api_key_auth: true,
+            polling_mode: true
+        },
       models: [
-        { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
-        { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
-        { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
-        { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 }
-      ],
+            { id: "img4", name: "Imagen 4 (Google) 🌟", category: "google", description: "Google 最新高品質繪圖模型", max_size: 1792 },
+            { id: "img3", name: "Imagen 3 (Google)", category: "google", description: "Google Imagen 3 模型", max_size: 1024 },
+            { id: "flux-schnell", name: "Flux Schnell ⚡", category: "flux", description: "Flux 極速版", max_size: 1024 },
+            { id: "lucid-origin", name: "Lucid Origin", category: "other", description: "Lucid 風格模型", max_size: 1024 },
+            { id: "phoenix", name: "Phoenix 🔥", category: "other", description: "Phoenix 圖像生成模型", max_size: 1024 },
+            { id: "sdxl", name: "SDXL Stable Diffusion", category: "sd", description: "Stable Diffusion XL", max_size: 1024 },
+            { id: "sdxl-lite", name: "SDXL Lite ⚡", category: "sd", description: "SDXL 輕量版", max_size: 1024 },
+            { id: "z-image-turbo", name: "Z-Image Turbo ⚡", category: "other", description: "Z-Image 快速版（異步輪詢）", max_size: 1024, polling: true },
+            { id: "nano-banana", name: "Nano Banana 🍌", category: "flux", description: "Nano Banana Img2Img 模型（異步輪詢）", max_size: 1024, polling: true, supports_img2img: true },
+            { id: "nbpro", name: "NB Pro 🌟", category: "flux", description: "NB Pro 高品質模型（異步輪詢）", max_size: 1024, polling: true, supports_img2img: true },
+            { id: "qwen", name: "Qwen Image 🎨", category: "qwen", description: "通義千問圖像模型（異步輪詢）", max_size: 1024, polling: true }
+        ],
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 1792, height: 1792 }
     },
@@ -739,154 +759,383 @@ class PollinationsProvider {
 }
 
 class InfipProvider {
-  constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
-  
-  async generate(prompt, options, logger) {
-    const { model = "img4", width = 1024, height = 1024, apiKey = "", nsfw = false, style = "none", negativePrompt = "" } = options;
-    
-    // Prefer environment variable if available
-    const finalApiKey = this.env.INFIP_API_KEY || apiKey;
+ constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }
 
-    if (!finalApiKey) throw new Error("Infip API Key is required (Set INFIP_API_KEY env var or provide via UI)");
+ // 異步模型列表（需要輪詢）
+ static ASYNC_MODELS = ['qwen', 'nano-banana', 'nbpro', 'z-image-turbo'];
 
-    let basePrompt = prompt;
-    let translationLog = { translated: false };
-    if (/[\u4e00-\u9fa5]/.test(prompt)) {
-      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
-      const translation = await translateToEnglish(prompt, this.env);
-      if (translation.translated) {
-        basePrompt = translation.text;
-        translationLog = translation;
-        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
-      }
-    }
+ // 支援 Img2Img 的模型
+ static IMG2IMG_MODELS = ['nano-banana', 'nbpro'];
 
-    // Apply Style
-    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
-    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
+ // 檢查是否為異步模型
+ isAsyncModel(model) {
+ return InfipProvider.ASYNC_MODELS.includes(model.toLowerCase());
+ }
 
-    const url = `${this.config.endpoint}/v1/images/generations`;
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${finalApiKey}`,
-      'User-Agent': 'Flux-AI-Pro-Worker'
-    };
-    
-    // Infip supports 1024x1024, 1792x1024, 1024x1792
-    let sizeStr = "1024x1024";
-    if (width > height && width >= 1500) sizeStr = "1792x1024";
-    else if (height > width && height >= 1500) sizeStr = "1024x1792";
-    
-    // Infip supports up to 4 images per request
-    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+ // 檢查是否支援 Img2Img
+ supportsImg2Img(model) {
+ return InfipProvider.IMG2IMG_MODELS.includes(model.toLowerCase());
+ }
 
-    const body = {
-      model: model,
-      prompt: enhancedPrompt,
-      n: batchSize,
-      size: sizeStr,
-      response_format: "url"
-    };
+ async generate(prompt, options, logger) {
+ const { model = "img4", width = 1024, height = 1024, apiKey = "", nsfw = false, style = "none", negativePrompt = "", referenceImages = [] } = options;
 
-    if (nsfw) {
-        body.safety_check = false;
-        body.censor_nsfw = false;
-        logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
-    }
+ // Prefer environment variable if available
+ const finalApiKey = this.env.INFIP_API_KEY || apiKey;
 
-    logger.add("📡 Infip Request", { endpoint: url, model: model, size: sizeStr });
+ if (!finalApiKey) throw new Error("Infip API Key is required (Set INFIP_API_KEY env var or provide via UI)");
 
-    try {
-      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
-      
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Infip API Error (${response.status}): ${errText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Handle Async Task (if any accidental async model used)
-      if (data.task_id) {
-         throw new Error("Async models (task_id) are not supported in this version. Please use Sync models like img4.");
-      }
-      
-      if (data.data && data.data.length > 0) {
-        // Handle multiple images response
-        if (data.data.length > 1) {
-            const results = [];
-            for(const item of data.data) {
-                if(item.url) {
-                    const imgUrl = item.url;
-                    // For batch results, we return simplified objects
-                    // Note: The caller (MultiProviderRouter) expects a single result object if called once, 
-                    // but here we are inside generate().
-                    // Since MultiProviderRouter loops numOutputs, we need to be careful.
-                    // However, for Infip we are now doing batching INSIDE generate().
-                    // To support this, we need to return an array or change how MultiProviderRouter works.
-                    // BUT, to keep compatibility, let's just return the FIRST image here if called via standard loop,
-                    // OR if we want to support true batching, we should return an array.
-                    // Let's modify MultiProviderRouter to handle array returns from provider.generate().
-                    
-                    // Actually, simpler approach: Return the first image as main, and others as extra_images
-                    // But that complicates the flow. 
-                    
-                    // Let's fetch all images in parallel
-                    const imgResp = await fetch(imgUrl);
-                    const imageBuffer = await imgResp.arrayBuffer();
-                    results.push({
-                        imageData: imageBuffer,
-                        contentType: imgResp.headers.get('content-type') || 'image/png',
-                        url: imgUrl,
-                        provider: this.name,
-                        model: model,
-                        seed: -1,
-                        width: width,
-                        height: height,
-                        authenticated: true
-                    });
-                }
-            }
-            // Return array of results (Special case handled by router/caller?)
-            // No, the router expects a single object. 
-            // We will return a special object that contains "batch_results"
-            return {
-                batch_results: results,
-                provider: this.name,
-                cost: "QUOTA"
-            };
-        }
+ let basePrompt = prompt;
+ let translationLog = { translated: false };
+ if (/[\u4e00-\u9fa5]/.test(prompt)) {
+ logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
+ const translation = await translateToEnglish(prompt, this.env);
+ if (translation.translated) {
+ basePrompt = translation.text;
+ translationLog = translation;
+ logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
+ }
+ }
 
-        const imgUrl = data.data[0].url;
-        logger.add("⬇️ Downloading Image", { url: imgUrl });
-        
-        // Download image to return binary
-        const imgResp = await fetch(imgUrl);
-        const imageBuffer = await imgResp.arrayBuffer();
-        const contentType = imgResp.headers.get('content-type') || 'image/png';
-        
-        return { 
-            imageData: imageBuffer, 
-            contentType: contentType, 
-            url: imgUrl, 
-            provider: this.name, 
-            model: model, 
-            seed: -1, // Infip doesn't return seed usually
-            width: width, 
-            height: height, 
-            auto_translated: translationLog.translated,
-            authenticated: true,
-            cost: "QUOTA"
-        };
-      } else {
-        throw new Error("Invalid response format from Infip API");
-      }
-    } catch (e) {
-      logger.add("❌ Infip Failed", { error: e.message });
-      throw e;
-    }
-  }
-}
+ // Apply Style
+ const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
+ logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
+
+ const headers = {
+ 'Content-Type': 'application/json',
+ 'Authorization': `Bearer ${finalApiKey}`,
+ 'User-Agent': 'Flux-AI-Pro-Worker'
+ };
+
+ // Infip supports 1024x1024, 1792x1024, 1024x1792
+ let sizeStr = "1024x1024";
+ if (width > height && width >= 1500) sizeStr = "1792x1024";
+ else if (height > width && height >= 1500) sizeStr = "1024x1792";
+
+ // 檢查是否為 Img2Img 模式
+ const isImg2Img = this.supportsImg2Img(model) && referenceImages && referenceImages.length > 0;
+
+ // 檢查是否為異步模型
+ const isAsync = this.isAsyncModel(model);
+
+ let imgUrl = null;
+
+ if (isImg2Img) {
+ // ========== Img2Img 模式 ==========
+ logger.add("🖼️ Img2Img Mode", { model, referenceImageCount: referenceImages.length });
+
+ const url = `${this.config.endpoint}/v1/images/edits`;
+ const body = {
+ model: model,
+ prompt: enhancedPrompt,
+ image: referenceImages[0].trim(),
+ size: sizeStr,
+ response_format: "url"
+ };
+
+ if (nsfw) {
+ body.safety_check = false;
+ body.censor_nsfw = false;
+ logger.add("🔞 NSFW Mode", { enabled: true });
+ }
+
+ logger.add("📡 Infip Img2Img Request", { endpoint: url, model, size: sizeStr });
+
+ const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+
+ if (!response.ok) {
+ const errText = await response.text();
+ throw new Error(`Infip Img2Img API Error (${response.status}): ${errText}`);
+ }
+
+ const data = await response.json();
+
+ // Img2Img 可能返回 task_id（異步）或直接返回圖片
+ if (data.task_id) {
+ logger.add("🔄 Img2Img Task Created", { taskId: data.task_id });
+ imgUrl = await this.pollTask(data.task_id, headers, logger);
+ } else if (data.data && data.data.length > 0) {
+ imgUrl = data.data[0].url;
+ } else if (data.url) {
+ imgUrl = data.url;
+ } else {
+ throw new Error("Invalid Img2Img response: " + JSON.stringify(data));
+ }
+
+ } else if (isAsync) {
+ // ========== 異步模型模式 ==========
+ logger.add("🔄 Async Model Detected", { model, note: "Will use polling" });
+
+ const url = `${this.config.endpoint}/v1/images/generations`;
+ const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+
+ const body = {
+ model: model,
+ prompt: enhancedPrompt,
+ n: batchSize,
+ size: sizeStr,
+ response_format: "url"
+ };
+
+ if (nsfw) {
+ body.safety_check = false;
+ body.censor_nsfw = false;
+ logger.add("🔞 NSFW Mode", { enabled: true });
+ }
+
+ logger.add("📡 Infip Async Request", { endpoint: url, model, size: sizeStr });
+
+ const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+
+ if (!response.ok) {
+ const errText = await response.text();
+ throw new Error(`Infip API Error (${response.status}): ${errText}`);
+ }
+
+ const data = await response.json();
+
+ if (data.task_id) {
+ logger.add("🔄 Task Created", { taskId: data.task_id });
+ imgUrl = await this.pollTask(data.task_id, headers, logger);
+ } else if (data.data && data.data.length > 0) {
+ // 某些異步模型可能直接返回結果
+ imgUrl = data.data[0].url;
+ logger.add("✅ Direct Response", { url: imgUrl });
+ } else {
+ throw new Error("Invalid async response: " + JSON.stringify(data));
+ }
+
+ } else {
+ // ========== 同步模型模式 ==========
+ const url = `${this.config.endpoint}/v1/images/generations`;
+ const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+
+ const body = {
+ model: model,
+ prompt: enhancedPrompt,
+ n: batchSize,
+ size: sizeStr,
+ response_format: "url"
+ };
+
+ if (nsfw) {
+ body.safety_check = false;
+ body.censor_nsfw = false;
+ logger.add("🔞 NSFW Mode", { enabled: true, note: "Safety checks disabled" });
+ }
+
+ logger.add("📡 Infip Request", { endpoint: url, model: model, size: sizeStr });
+
+ const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+
+ if (!response.ok) {
+ const errText = await response.text();
+ throw new Error(`Infip API Error (${response.status}): ${errText}`);
+ }
+
+ const data = await response.json();
+
+ if (data.task_id) {
+ // 同步模型不應該返回 task_id，但如果有就處理
+ logger.add("⚠️ Unexpected task_id", { taskId: data.task_id, note: "Sync model returned task_id, polling anyway" });
+ imgUrl = await this.pollTask(data.task_id, headers, logger);
+ } else if (data.data && data.data.length > 0) {
+ // 處理多圖片響應
+ if (data.data.length > 1) {
+ const results = [];
+ for(const item of data.data) {
+ if(item.url) {
+ const imgResp = await fetch(item.url);
+ const imageBuffer = await imgResp.arrayBuffer();
+ results.push({
+ imageData: imageBuffer,
+ contentType: imgResp.headers.get('content-type') || 'image/png',
+ url: item.url,
+ provider: this.name,
+ model: model,
+ seed: -1,
+ width: width,
+ height: height,
+ authenticated: true
+ });
+ }
+ }
+ return {
+ batch_results: results,
+ provider: this.name,
+ cost: "QUOTA"
+ };
+ }
+ imgUrl = data.data[0].url;
+ } else {
+ throw new Error("Invalid response format from Infip API");
+ }
+ }
+
+ // 下載圖片
+ if (!imgUrl) {
+ throw new Error("No image URL obtained from Infip API");
+ }
+
+ logger.add("⬇️ Downloading Image", { url: imgUrl });
+ const imgResp = await fetch(imgUrl);
+ const imageBuffer = await imgResp.arrayBuffer();
+ const contentType = imgResp.headers.get('content-type') || 'image/png';
+
+ return {
+ imageData: imageBuffer,
+ contentType: contentType,
+ url: imgUrl,
+ provider: this.name,
+ model: model,
+ seed: -1,
+ width: width,
+ height: height,
+ auto_translated: translationLog.translated,
+ authenticated: true,
+ cost: "QUOTA",
+ generation_mode: isImg2Img ? "img2img" : "text2img",
+ is_async: isAsync
+ };
+ }
+
+ /**
+ * 輪詢異步任務狀態
+ * @param {string} taskId - 任務 ID
+ * @param {object} headers - 請求標頭
+ * @param {object} logger - 日誌實例
+ * @param {number} maxAttempts - 最大輪詢次數（默認 60 次，約 2 分鐘）
+ * @param {number} interval - 輪詢間隔（默認 2000ms）
+ * @returns {Promise<string>} 圖片 URL
+ */
+ async pollTask(taskId, headers, logger, maxAttempts = 60, interval = 2000) {
+ const statusUrl = `${this.config.endpoint}/v1/tasks/${taskId}`;
+ const totalTimeout = Math.round(maxAttempts * interval / 1000);
+ logger.add("🔄 Starting Poll", { taskId, maxAttempts, interval, totalTimeout: `${totalTimeout}s` });
+
+ let currentInterval = interval;
+ let consecutiveErrors = 0;
+ const maxConsecutiveErrors = 5;
+
+ for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+ try {
+ const response = await fetchWithTimeout(statusUrl, { method: 'GET', headers }, 15000);
+
+ if (!response.ok) {
+ const errText = await response.text();
+
+ logger.add(`⚠️ Poll Attempt ${attempt} Failed`, {
+ status: response.status,
+ error: errText.substring(0, 200)
+ });
+
+ // 處理速率限制 (429)
+ if (response.status === 429) {
+ const retryAfter = parseInt(response.headers.get('Retry-After') || '5');
+ const waitTime = Math.max(retryAfter * 1000, currentInterval);
+ logger.add(`⏳ Rate Limited`, { retryAfter: `${retryAfter}s`, waitTime: `${Math.round(waitTime/1000)}s` });
+ await new Promise(r => setTimeout(r, waitTime));
+ continue;
+ }
+
+ // 處理伺服器錯誤 (5xx)
+ if (response.status >= 500) {
+ consecutiveErrors++;
+ if (consecutiveErrors >= maxConsecutiveErrors) {
+ throw new Error(`Too many consecutive server errors (${maxConsecutiveErrors}): ${errText}`);
+ }
+ const backoffTime = Math.min(currentInterval * Math.pow(2, consecutiveErrors), 30000);
+ logger.add(`⏳ Server Error - Backoff`, { consecutiveErrors, backoffTime: `${Math.round(backoffTime/1000)}s` });
+ await new Promise(r => setTimeout(r, backoffTime));
+ continue;
+ }
+
+ throw new Error(`Poll failed: Status ${response.status} - ${errText}`);
+ }
+
+ // 重置連續錯誤計數
+ consecutiveErrors = 0;
+
+ const data = await response.json();
+
+ // 每 10 次或狀態變化時報告進度
+ if (attempt % 10 === 0 || ['completed', 'failed', 'processing'].includes(data.status)) {
+ const progress = Math.round((attempt / maxAttempts) * 100);
+ const elapsed = Math.round(attempt * currentInterval / 1000);
+ logger.add(`📊 進度: ${progress}%`, {
+ attempt: `${attempt}/${maxAttempts}`,
+ status: data.status,
+ elapsed: `${elapsed}s`
+ });
+ }
+
+ if (data.status === 'completed') {
+ if (data.result && data.result.url) {
+ logger.add("✅ Task Completed", {
+ imageUrl: data.result.url,
+ totalAttempts: attempt,
+ totalTime: `${Math.round(attempt * currentInterval / 1000)}s`
+ });
+ return data.result.url;
+ }
+ // 檢查其他可能的響應格式
+ if (data.url) {
+ logger.add("✅ Task Completed", { imageUrl: data.url });
+ return data.url;
+ }
+ if (data.data && data.data[0] && data.data[0].url) {
+ logger.add("✅ Task Completed", { imageUrl: data.data[0].url });
+ return data.data[0].url;
+ }
+ throw new Error("Task completed but no image URL in result: " + JSON.stringify(data));
+ }
+
+ if (data.status === 'failed') {
+ const errorMsg = data.result?.error || data.result?.message || data.error || 'Unknown error';
+ throw new Error(`Task failed: ${errorMsg}`);
+ }
+
+ // 仍在處理中，等待後繼續
+ if (attempt < maxAttempts) {
+ // 指數退避：每次增加 10%，最大 10 秒
+ currentInterval = Math.min(interval * Math.pow(1.1, attempt), 10000);
+ await new Promise(r => setTimeout(r, currentInterval));
+ }
+
+ } catch (e) {
+ if (attempt === maxAttempts) {
+ throw e;
+ }
+
+ // 檢查是否為網絡錯誤
+ const isNetworkError = e.message.includes('fetch') ||
+ e.message.includes('timeout') ||
+ e.message.includes('ECONN') ||
+ e.name === 'TypeError';
+
+ if (isNetworkError) {
+ consecutiveErrors++;
+ if (consecutiveErrors >= maxConsecutiveErrors) {
+ throw new Error(`Too many consecutive network errors (${maxConsecutiveErrors}): ${e.message}`);
+ }
+ logger.add(`⚠️ Network Error (Attempt ${attempt})`, {
+ error: e.message,
+ consecutiveErrors,
+ willRetry: consecutiveErrors < maxConsecutiveErrors
+ });
+ const backoffTime = Math.min(currentInterval * Math.pow(2, consecutiveErrors), 30000);
+ await new Promise(r => setTimeout(r, backoffTime));
+ continue;
+ }
+
+ logger.add(`⚠️ Poll Error (Attempt ${attempt})`, { error: e.message });
+ await new Promise(r => setTimeout(r, currentInterval));
+ }
+ }
+
+ throw new Error(`Task timeout after ${maxAttempts} attempts (${totalTimeout}s). The task may still be processing on the server.`);
+ }
+ }
 
 class AquaProvider {
   constructor(config, env) { this.config = config; this.name = config.name; this.env = env; }

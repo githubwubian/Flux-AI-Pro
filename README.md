@@ -111,7 +111,6 @@
 | 模型 | 描述 | 最大尺寸 |
 |------|------|----------|
 | **Flux 2 Dev** 🌟 | Flux 2 開發者版本 - 高品質圖像生成 | 2048x2048 |
-| **Imagen 4** 🌟 | Google 最新高品質繪圖模型 | 2048x2048 |
 | **NanoBanana** 🍌 | NanoBanana 高品質模型 | 2048x2048 |
 | **SeeDream** 🌈 | 夢幻般的圖像生成 | 2048x2048 |
 | **Flux Schnell** ⚡ | 快速且高質量的圖像生成 | 2048x2048 |
@@ -121,14 +120,25 @@
 
 #### 🔥 Infip/Ghostbot（專業版）
 
-| 模型 | 描述 | 最大尺寸 |
-|------|------|----------|
-| **Imagen 4** 🌟 | Google 最新高品質繪圖模型 | 1792x1792 |
-| **Flux Schnell** ⚡ | Flux 極速版 | 1024x1024 |
-| **SDXL** | Stable Diffusion XL | 1024x1024 |
-| **Lucid Origin** | Lucid 風格模型 | 1024x1024 |
+| 模型 | 描述 | 模式 | 最大尺寸 |
+|------|------|------|----------|
+| **Imagen 4** 🌟 | Google 最新高品質繪圖模型 | 直接 | 1792x1792 |
+| **Imagen 3** | Google Imagen 3 模型 | 直接 | 1024x1024 |
+| **Flux Schnell** ⚡ | Flux 極速版 | 直接 | 1024x1024 |
+| **Lucid Origin** | Lucid 風格模型 | 直接 | 1024x1024 |
+| **Phoenix** 🔥 | Phoenix 圖像生成模型 | 直接 | 1024x1024 |
+| **SDXL** | Stable Diffusion XL | 直接 | 1024x1024 |
+| **SDXL Lite** ⚡ | SDXL 輕量版 | 直接 | 1024x1024 |
+| **Z-Image Turbo** ⚡ | Z-Image 快速版 | 輪詢 | 1024x1024 |
+| **Nano Banana** 🍌 | Nano Banana Img2Img 模型 | 輪詢 | 1024x1024 |
+| **NB Pro** 🌟 | NB Pro 高品質模型 | 輪詢 | 1024x1024 |
+| **Qwen Image** 🎨 | 通義千問圖像模型 | 輪詢 | 1024x1024 |
 
-**特色功能**：更強的併發處理能力、NSFW 模式支援
+**特色功能**：
+- 更強的併發處理能力
+- NSFW 模式支援
+- **Img2Img 支援**（Nano Banana、NB Pro）
+- **異步輪詢模式**（Z-Image Turbo、Nano Banana、NB Pro、Qwen Image）
 
 #### 💧 Aqua Server
 
