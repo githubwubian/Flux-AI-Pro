@@ -178,6 +178,28 @@ PROJECT_VERSION: "11.16.0",
       ],
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 4096, height: 4096 }
+    },
+    kaai: {
+      name: "Kaai API",
+      endpoint: "https://kaai.eu.cc/v1",
+      type: "openai_compatible",
+      auth_mode: "bearer",
+      requires_key: true,
+      enabled: true,
+      default: false,
+      description: "Kaai AI 圖像生成服務 - OpenAI 相容 API",
+      features: {
+        private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
+      },
+      models: [
+        { id: "dall-e-3-hd", name: "DALL-E 3 HD 🌟", category: "dalle", description: "DALL-E 3 高清版本 - 最高品質圖像生成", max_size: 2048 },
+        { id: "gpt-image-1.5", name: "GPT Image 1.5 🎨", category: "gpt", description: "GPT Image 1.5 - 最新圖像生成模型", max_size: 2048 },
+        { id: "gpt-image-1", name: "GPT Image 1 🖼️", category: "gpt", description: "GPT Image 1 - OpenAI 圖像生成模型", max_size: 2048 },
+        { id: "dall-e-3", name: "DALL-E 3 ✨", category: "dalle", description: "DALL-E 3 - 高品質圖像生成", max_size: 2048 },
+        { id: "dall-e-2", name: "DALL-E 2 ⚡", category: "dalle", description: "DALL-E 2 - 快速圖像生成", max_size: 1024 }
+      ],
+      rate_limit: { requests: 60, interval: 60 },
+      max_size: { width: 2048, height: 2048 }
     }
   },
   
@@ -1303,6 +1325,150 @@ class KinaiProvider {
 }
 
 // =================================================================================
+// KaaiProvider - Kaai API Provider (OpenAI Compatible)
+// =================================================================================
+class KaaiProvider {
+  constructor(config, env) {
+    this.config = config;
+    this.name = config.name;
+    this.env = env;
+  }
+  
+  async generate(prompt, options, logger) {
+    const {
+      model = "dall-e-3",
+      width = 1024,
+      height = 1024,
+      apiKey = "",
+      style = "none",
+      negativePrompt = "",
+      quality = "standard",
+      outputFormat = "jpeg",
+      background = "auto"
+    } = options;
+    
+    // Prefer environment variable if available
+    const finalApiKey = this.env.KAAI_API_KEY || apiKey;
+
+    if (!finalApiKey) throw new Error("Kaai API Key is required (Set KAAI_API_KEY env var or provide via UI)");
+
+    let basePrompt = prompt;
+    let translationLog = { translated: false };
+    if (/[\u4e00-\u9fa5]/.test(prompt)) {
+      logger.add("🌐 Pre-translation", { message: "Detecting Chinese, translating first..." });
+      const translation = await translateToEnglish(prompt, this.env);
+      if (translation.translated) {
+        basePrompt = translation.text;
+        translationLog = translation;
+        logger.add("✅ Translation Success", { original: prompt, translated: basePrompt });
+      }
+    }
+
+    // Apply Style
+    const { enhancedPrompt } = StyleProcessor.applyStyle(basePrompt, style, negativePrompt);
+    logger.add("🎨 Style Processing", { selected_style: style, style_applied: style !== 'none', original: basePrompt, enhanced: enhancedPrompt });
+
+    const url = `${this.config.endpoint}/images/generations`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${finalApiKey}`,
+      'User-Agent': 'Flux-AI-Pro-Worker'
+    };
+    
+    // Map size to supported formats
+    let sizeStr = "1024x1024";
+    if (width > height && width >= 1500) sizeStr = "1792x1024";
+    else if (height > width && height >= 1500) sizeStr = "1024x1792";
+    else if (width >= 2048) sizeStr = "2048x2048";
+    
+    // Kaai supports up to 4 images per request
+    const batchSize = Math.min(Math.max(options.numOutputs || 1, 1), 4);
+
+    const body = {
+      model: model,
+      prompt: enhancedPrompt,
+      n: batchSize,
+      size: sizeStr,
+      quality: quality,
+      style: style === 'none' ? 'natural' : 'vivid',
+      output_format: outputFormat,
+      background: background,
+      response_format: "url"
+    };
+
+    logger.add("📡 Kaai Request", { endpoint: url, model: model, size: sizeStr, quality: quality });
+
+    try {
+      const response = await fetchWithTimeout(url, { method: 'POST', headers: headers, body: JSON.stringify(body) }, 60000);
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Kaai API Error (${response.status}): ${errText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.data && data.data.length > 0) {
+        // Handle multiple images response
+        if (data.data.length > 1) {
+            const results = [];
+            for(const item of data.data) {
+                if(item.url) {
+                    const imgUrl = item.url;
+                    const imgResp = await fetch(imgUrl);
+                    const imageBuffer = await imgResp.arrayBuffer();
+                    results.push({
+                        imageData: imageBuffer,
+                        contentType: imgResp.headers.get('content-type') || 'image/png',
+                        url: imgUrl,
+                        provider: this.name,
+                        model: model,
+                        seed: -1,
+                        width: width,
+                        height: height,
+                        authenticated: true
+                    });
+                }
+            }
+            return {
+                batch_results: results,
+                provider: this.name,
+                cost: "QUOTA"
+            };
+        }
+
+        const imgUrl = data.data[0].url;
+        logger.add("⬇️ Downloading Image", { url: imgUrl });
+        
+        // Download image to return binary
+        const imgResp = await fetch(imgUrl);
+        const imageBuffer = await imgResp.arrayBuffer();
+        const contentType = imgResp.headers.get('content-type') || 'image/png';
+        
+        return {
+            imageData: imageBuffer,
+            contentType: contentType,
+            url: imgUrl,
+            provider: this.name,
+            model: model,
+            seed: -1,
+            width: width,
+            height: height,
+            auto_translated: translationLog.translated,
+            authenticated: true,
+            cost: "QUOTA"
+        };
+      } else {
+        throw new Error("Invalid response format from Kaai API");
+      }
+    } catch (e) {
+      logger.add("❌ Kaai Failed", { error: e.message });
+      throw e;
+    }
+  }
+}
+
+// =================================================================================
 // AirforceProvider - Airforce API Provider
 // =================================================================================
 class AirforceProvider {
@@ -2308,6 +2474,7 @@ class MultiProviderRouter {
         else if (key === 'kinai') this.providers[key] = new KinaiProvider(config, env);
         else if (key === 'airforce') this.providers[key] = new AirforceProvider(config, env);
         else if (key === 'nonpon') this.providers[key] = new NonponProvider(config, env);
+        else if (key === 'kaai') this.providers[key] = new KaaiProvider(config, env);
       }
     }
   }
@@ -2362,8 +2529,8 @@ class MultiProviderRouter {
     return await this.queueManager.addToQueue(providerName, async () => {
       const results = [];
       
-      // Optimization for Infip: Use native batching if available
-      if (providerName === 'infip' && numOutputs > 1) {
+      // Optimization for Infip and Kaai: Use native batching if available
+      if ((providerName === 'infip' || providerName === 'kaai') && numOutputs > 1) {
            const batchOptions = { ...options, numOutputs: numOutputs, seed: options.seed };
            try {
                const result = await provider.generate(prompt, batchOptions, logger);

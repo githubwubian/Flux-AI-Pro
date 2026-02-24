@@ -58,6 +58,7 @@ ENVIRONMENT = "production"
 # 4. KINAI_API_KEY (Kinai API)
 # 5. AIRFORCE_API_KEY (Airforce API)
 # 6. NONPON_API_KEY (Nonpon API)
+# 7. KAAI_API_KEY (Kaai API - DALL-E/GPT Image)
 #
 # ============================================
 # 設置命令範例：
@@ -67,6 +68,7 @@ ENVIRONMENT = "production"
 # npx wrangler secret put KINAI_API_KEY
 # npx wrangler secret put AIRFORCE_API_KEY
 # npx wrangler secret put NONPON_API_KEY
+# npx wrangler secret put KAAI_API_KEY
 #
 # 查看所有 secrets:
 # npx wrangler secret list
