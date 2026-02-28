@@ -194,7 +194,8 @@ PROJECT_VERSION: "11.16.0",
         private_mode: true, custom_size: true, seed_control: false, negative_prompt: false, enhance: false, nologo: false, style_presets: true, auto_hd: true, quality_modes: false, auto_translate: true, reference_images: false, image_to_image: false, batch_generation: true, api_key_auth: true
       },
       models: [
-        { id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview 🌟", category: "gemini", description: "Gemini 3 Pro 圖像預覽模型 - 高品質圖像生成", max_size: 4096 }
+      	{ id: "gemini-3-pro-image-preview", name: "Gemini 3 Pro Image Preview 🌟", category: "gemini", description: "Gemini 3 Pro 圖像預覽模型 - 高品質圖像生成", max_size: 4096 },
+      	{ id: "gemini-3.1-flash-image-preview", name: "Gemini 3.1 Flash Image Preview ⚡", category: "gemini", description: "Gemini 3.1 Flash 圖像預覽模型 - 快速圖像生成", max_size: 4096 }
       ],
       rate_limit: { requests: 60, interval: 60 },
       max_size: { width: 4096, height: 4096 }
@@ -2312,13 +2313,70 @@ class AirforceProvider {
 // NonponProvider - Nonpon API Provider
 // =================================================================================
 class NonponProvider {
-  constructor(config, env) {
-    this.config = config;
-    this.name = config.name;
-    this.env = env;
-  }
+	constructor(config, env) {
+		this.config = config;
+		this.name = config.name;
+		this.env = env;
+	}
 
-  async generate(prompt, options, logger) {
+	/**
+	 * 將 width/height 轉換為 Gemini 支援的 aspectRatio
+	 * @param {number} width - 圖片寬度
+	 * @param {number} height - 圖片高度
+	 * @returns {string} - Gemini 支援的 aspectRatio 字串
+	 */
+	convertToGeminiAspectRatio(width, height) {
+		// Gemini 支援的 aspectRatio 及其數值
+		const supportedRatios = [
+			{ ratio: '1:1', value: 1 },
+			{ ratio: '16:9', value: 16/9 },
+			{ ratio: '9:16', value: 9/16 },
+			{ ratio: '4:3', value: 4/3 },
+			{ ratio: '3:4', value: 3/4 },
+			{ ratio: '3:2', value: 3/2 },
+			{ ratio: '2:3', value: 2/3 },
+			{ ratio: '21:9', value: 21/9 },
+			{ ratio: '9:21', value: 9/21 }
+		];
+
+		// 計算輸入的比例值
+		const inputRatio = width / height;
+
+		// 找出最接近的支援比例
+		let closestRatio = supportedRatios[0];
+		let minDiff = Math.abs(inputRatio - closestRatio.value);
+
+		for (const ratioInfo of supportedRatios) {
+			const diff = Math.abs(inputRatio - ratioInfo.value);
+			if (diff < minDiff) {
+				minDiff = diff;
+				closestRatio = ratioInfo;
+			}
+		}
+
+		return closestRatio.ratio;
+	}
+
+	/**
+	 * 將像素尺寸轉換為 Gemini 的 imageSize
+	 * @param {number} width - 圖片寬度
+	 * @param {number} height - 圖片高度
+	 * @returns {string} - "1K", "2K", 或 "4K"
+	 */
+	convertToGeminiImageSize(width, height) {
+		const totalPixels = width * height;
+
+		// 根據總像素判斷
+		if (totalPixels >= 3840 * 2160) {
+			return "4K"; // 4K: 8294400 像素以上
+		} else if (totalPixels >= 1920 * 1080) {
+			return "2K"; // 2K: 2073600 像素以上
+		} else {
+			return "1K"; // 1K: 其他
+		}
+	}
+
+	async generate(prompt, options, logger) {
   	const {
   		model = "gemini-3-pro-image-preview",
   		width = 1024,
@@ -2365,27 +2423,37 @@ class NonponProvider {
   			}
   		}
  
+  		// 判斷是否為 Gemini 模型，使用原生 API 格式
+  		const isGeminiModel = model.includes('gemini');
+  		const aspectRatio = this.convertToGeminiAspectRatio(width, height);
+  		const imageSize = this.convertToGeminiImageSize(width, height);
   		const size = `${width}x${height}`;
   		const url = `${this.config.endpoint}/v1/images/generations`;
- 
+  
   		const headers = {
   			'Content-Type': 'application/json',
   			'Authorization': finalApiKey.startsWith('Bearer ') ? finalApiKey : `Bearer ${finalApiKey}`,
   			'User-Agent': 'Flux-AI-Pro-Worker'
   		};
- 
+  
   		// 映射 quality_mode 到 API 的 quality 參數
   		const qualityMap = {
   			'economy': 'standard',
   			'standard': 'standard',
   			'ultra': 'hd'
   		};
- 
+  
   		// 構建符合官方 API 規範的請求體
+  		// Gemini 模型使用原生格式 (aspectRatio + imageSize)，其他模型維持 OpenAI 格式 (size)
   		const body = {
   			model: model,
   			prompt: finalPrompt,
-  			size: size,
+  			...(isGeminiModel ? {
+  				aspectRatio: aspectRatio,
+  				imageSize: imageSize
+  			} : {
+  				size: size
+  			}),
   			quality: qualityMap[quality_mode] || 'standard',
   			style: "vivid",
   			n: 1,
@@ -2411,13 +2479,19 @@ class NonponProvider {
   		logger.add("📤 Request to Nonpon", {
   			url,
   			model: body.model,
-  			size: body.size,
+  			...(isGeminiModel ? {
+  				aspectRatio: body.aspectRatio,
+  				imageSize: body.imageSize
+  			} : {
+  				size: body.size
+  			}),
   			quality: body.quality,
   			style: body.style,
   			response_format: body.response_format,
   			extra_body: body.extra_body,
   			promptLength: finalPrompt.length,
-  			apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none'
+  			apiKeyPrefix: finalApiKey ? finalApiKey.substring(0, 8) + '...' : 'none',
+  			isGeminiModel: isGeminiModel
   		});
  
   		const response = await fetchWithTimeout(url, {
@@ -3454,6 +3528,59 @@ textarea:focus, input:focus { border-color: var(--primary); outline: none; backg
 .ratio-item:hover { background: rgba(255,255,255,0.1); }
 .ratio-item.active { border-color: var(--primary); background: rgba(250, 204, 21, 0.1); color: var(--primary); }
 .ratio-shape { border: 2px solid currentColor; opacity: 0.7; }
+/* Gemini 參數預覽區塊樣式 */
+.gemini-preview {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.08));
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.gemini-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gemini-icon { font-size: 16px; }
+.gemini-title { font-weight: 600; color: #a78bfa; font-size: 14px; }
+.gemini-params { display: flex; gap: 12px; flex: 1; flex-wrap: wrap; }
+.gemini-param {
+  background: rgba(255,255,255,0.08);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.param-label { color: #9ca3af; }
+.param-value { font-weight: 600; }
+#geminiAspect { color: #fbbf24; }
+#geminiSize { color: #34d399; }
+/* Gemini 支援標記 */
+.ratio-item[data-gemini-supported="true"]::after {
+  content: '✓';
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #a78bfa;
+}
+.ratio-item[data-gemini-converted="true"] {
+  border-color: rgba(251, 191, 36, 0.5);
+}
+.ratio-item[data-gemini-converted="true"]::after {
+  content: '⟳';
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #fbbf24;
+}
 select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 12px; border-radius: 12px; color: white; appearance: none; cursor: pointer; }
 .gen-btn {
     width: 100%; background: var(--primary); color: #000; border: none; padding: 16px; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; transition: 0.3s; box-shadow: 0 4px 20px rgba(250, 204, 21, 0.2); position: relative; overflow: hidden;
@@ -4012,43 +4139,61 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             <div class="control-group size-style-block">
                 <label id="ratioLabel" style="margin-bottom:10px; display:block">畫布比例</label>
                 <div class="ratio-grid">
-                    <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形">
-                        <div class="ratio-shape" style="width:14px; height:14px;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="1080" data-h="1350" title="4:5 IG">
-                        <div class="ratio-shape" style="width:12px; height:15px;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="1080" data-h="1920" title="9:16 限動">
-                        <div class="ratio-shape" style="width:9px; height:16px;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="1920" data-h="1080" title="16:9 桌布">
-                        <div class="ratio-shape" style="width:16px; height:9px;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影">
-                        <div class="ratio-shape" style="width:18px; height:7px;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="2048" data-h="2048" title="2K 方形">
-                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #FACC15;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="3840" data-h="2160" title="2K 16:9">
-                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #FACC15;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="2160" data-h="3840" title="2K 9:16">
-                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #FACC15;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="4096" data-h="4096" title="4K 方形">
-                        <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #8B5CF6;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="7680" data-h="4320" title="4K 16:9">
-                        <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #8B5CF6;"></div>
-                    </div>
-                    <div class="ratio-item" data-w="4320" data-h="7680" title="4K 9:16">
-                        <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #8B5CF6;"></div>
-                    </div>
+                <div class="ratio-item active" data-w="1024" data-h="1024" title="1:1 方形" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:14px; height:14px;"></div>
+                </div>
+                <div class="ratio-item" data-w="1080" data-h="1350" title="4:5 IG (轉換為 3:4)" data-gemini-converted="true">
+                <div class="ratio-shape" style="width:12px; height:15px;"></div>
+                </div>
+                <div class="ratio-item" data-w="1080" data-h="1920" title="9:16 限動" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:9px; height:16px;"></div>
+                </div>
+                <div class="ratio-item" data-w="1920" data-h="1080" title="16:9 桌布" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:16px; height:9px;"></div>
+                </div>
+                <div class="ratio-item" data-w="2048" data-h="858" title="21:9 電影" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:18px; height:7px;"></div>
+                </div>
+                <div class="ratio-item" data-w="2048" data-h="2048" title="2K 方形" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #FACC15;"></div>
+                </div>
+                <div class="ratio-item" data-w="3840" data-h="2160" title="2K 16:9" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #FACC15;"></div>
+                </div>
+                <div class="ratio-item" data-w="2160" data-h="3840" title="2K 9:16" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #FACC15;"></div>
+                </div>
+                <div class="ratio-item" data-w="4096" data-h="4096" title="4K 方形" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:14px; height:14px; border: 2px solid #8B5CF6;"></div>
+                </div>
+                <div class="ratio-item" data-w="7680" data-h="4320" title="4K 16:9" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:16px; height:9px; border: 2px solid #8B5CF6;"></div>
+                </div>
+                <div class="ratio-item" data-w="4320" data-h="7680" title="4K 9:16" data-gemini-supported="true">
+                <div class="ratio-shape" style="width:9px; height:16px; border: 2px solid #8B5CF6;"></div>
+                </div>
                 </div>
                 <input type="hidden" id="width" value="1024">
                 <input type="hidden" id="height" value="1024">
-            </div>
+                
+                <!-- Gemini 參數預覽區塊 -->
+                <div class="gemini-preview" id="geminiPreview">
+                <div class="gemini-preview-header">
+                <span class="gemini-icon">🎯</span>
+                <span class="gemini-title">Gemini 參數</span>
+                </div>
+                <div class="gemini-params">
+                <div class="gemini-param">
+                <span class="param-label">aspectRatio:</span>
+                <span class="param-value" id="geminiAspect">1:1</span>
+                </div>
+                <div class="gemini-param">
+                <span class="param-label">imageSize:</span>
+                <span class="param-value" id="geminiSize">1K</span>
+                </div>
+                </div>
+                </div>
+                </div>
          
             <div class="control-group size-style-block">
                 <div class="label-row">
@@ -5016,7 +5161,65 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             updateQuotaUI();
         }
     }
-
+    
+    // ====== Gemini 參數轉換函數 ======
+    function convertToGeminiAspectRatio(width, height) {
+    const w = parseInt(width);
+    const h = parseInt(height);
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+    const divisor = gcd(w, h);
+    const ratioW = Math.round(w / divisor);
+    const ratioH = Math.round(h / divisor);
+    const ratioStr = ratioW + ':' + ratioH;
+    // Gemini 支援的比例
+    const supportedRatios = ['1:1', '16:9', '9:16', '4:3', '3:4', '3:2', '2:3', '21:9', '9:21'];
+    if (supportedRatios.includes(ratioStr)) {
+    return ratioStr;
+    }
+    // 嘗試找到最接近的支援比例
+    const ratioValue = w / h;
+    const ratioMap = {
+    '1:1': 1,
+    '16:9': 16/9,
+    '9:16': 9/16,
+    '4:3': 4/3,
+    '3:4': 3/4,
+    '3:2': 3/2,
+    '2:3': 2/3,
+    '21:9': 21/9,
+    '9:21': 9/21
+    };
+    let closestRatio = '1:1';
+    let minDiff = Math.abs(ratioValue - 1);
+    for (const [ratio, value] of Object.entries(ratioMap)) {
+    const diff = Math.abs(ratioValue - value);
+    if (diff < minDiff) {
+    minDiff = diff;
+    closestRatio = ratio;
+    }
+    }
+    return closestRatio;
+    }
+    
+    function convertToGeminiImageSize(width, height) {
+    const pixels = parseInt(width) * parseInt(height);
+    if (pixels >= 4096 * 4096 * 0.8) return '4K';
+    if (pixels >= 2048 * 2048 * 0.8) return '2K';
+    return '1K';
+    }
+    
+    function updateGeminiPreview(width, height) {
+    const aspectEl = document.getElementById('geminiAspect');
+    const sizeEl = document.getElementById('geminiSize');
+    if (aspectEl && sizeEl) {
+    aspectEl.textContent = convertToGeminiAspectRatio(width, height);
+    sizeEl.textContent = convertToGeminiImageSize(width, height);
+    }
+    }
+    
+    // 初始化 Gemini 參數預覽
+    updateGeminiPreview(1024, 1024);
+    
     // 方案三：比例預覽功能
     const ratioPreviewOverlay = document.getElementById('ratioPreviewOverlay');
     const ratioPreviewBox = document.getElementById('ratioPreviewBox');
@@ -5024,13 +5227,15 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
     const ratioPreviewDimensions = document.getElementById('ratioPreviewDimensions');
     
     els.ratios.forEach(r => {
-        // 點擊事件
-        r.onclick = () => {
-            els.ratios.forEach(i => i.classList.remove('active'));
-            r.classList.add('active');
-            els.width.value = r.dataset.w;
-            els.height.value = r.dataset.h;
-        }
+    // 點擊事件
+    r.onclick = () => {
+    els.ratios.forEach(i => i.classList.remove('active'));
+    r.classList.add('active');
+    els.width.value = r.dataset.w;
+    els.height.value = r.dataset.h;
+    // 更新 Gemini 參數預覽
+    updateGeminiPreview(r.dataset.w, r.dataset.h);
+    }
         
         // 懸停事件 - 顯示比例預覽
         r.onmouseenter = () => {
@@ -5619,18 +5824,18 @@ select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--borde
             console.log("🍌 Nano Pro: 開始生成圖片...", {
                 prompt: p,
                 provider: 'nonpon',
-                model: 'gemini-3-pro-image-preview',
+                model: 'gemini-3.1-flash-image-preview',
                 width: els.width.value,
                 height: els.height.value,
                 style: els.style.value,
                 seed: els.seed.value
             });
-
+            
             const requestBody = {
                 prompt: p,
                 negative_prompt: els.negative.value,
                 provider: 'nonpon',
-                model: 'gemini-3-pro-image-preview',
+                model: 'gemini-3.1-flash-image-preview',
                 width: parseInt(els.width.value),
                 height: parseInt(els.height.value),
                 style: els.style.value,
