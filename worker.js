@@ -144,7 +144,7 @@ PROJECT_VERSION: "11.16.0",
     },
     nonpon: {
       name: "Nonpon API",
-      endpoint: "https://api-reverse-engineering.kines966176.workers.dev",
+      endpoint: "https://api-reverse-engineering.kinai.workers.dev",
       type: "openai_compatible",
       auth_mode: "bearer",
       requires_key: true,
